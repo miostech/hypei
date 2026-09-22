@@ -1,0 +1,70 @@
+{
+  "realm": "hypei",
+  "displayName": "Hypei",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "bruteForceProtected": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["pt-BR", "en", "es", "fr", "de", "it"],
+  "defaultLocale": "pt-BR",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "platform_admin",
+        "description": "Hypei staff with access to /admin. Authorization is still enforced by Hypei."
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "hypei-web",
+      "name": "Hypei Web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "hypei-web-local-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:3000/api/auth/callback", "http://localhost:3100/api/auth/callback"],
+      "webOrigins": ["http://localhost:3000", "http://localhost:3100"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:3100/*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "producer@hypei.dev",
+      "email": "producer@hypei.dev",
+      "firstName": "Produtora",
+      "lastName": "Demo",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "hypei-dev-123", "temporary": false }]
+    },
+    {
+      "username": "admin@hypei.dev",
+      "email": "admin@hypei.dev",
+      "firstName": "Admin",
+      "lastName": "Hypei",
+      "enabled": true,
+      "emailVerified": true,
+      "realmRoles": ["default-roles-hypei", "platform_admin"],
+      "credentials": [{ "type": "password", "value": "hypei-dev-123", "temporary": false }]
+    }
+  ]
+}

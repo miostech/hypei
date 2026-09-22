@@ -1,0 +1,1092 @@
+// Hypei — PostgreSQL system of record for identity, commerce and finance.
+// Money is ALWAYS stored as BigInt in minor units together with an ISO-4217 currency code.
+// Flexible/document data (checkout presentation, analytics, payload archives) lives in MongoDB.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum PlatformRole {
+  USER
+  PLATFORM_ADMIN
+}
+
+enum OrganizationStatus {
+  ONBOARDING
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  FINANCE
+  SUPPORT
+  MARKETING
+  VIEWER
+}
+
+enum BusinessType {
+  INDIVIDUAL
+  COMPANY
+}
+
+enum TaxIdType {
+  CPF
+  CNPJ
+  VAT_ID
+  NIF
+  EIN
+  SSN
+  TIN
+  OTHER
+}
+
+enum VerificationStatus {
+  NOT_STARTED
+  PENDING
+  REQUIRES_ACTION
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum PaymentProviderType {
+  STRIPE
+  ADYEN
+  MERCADO_PAGO
+  PAGARME
+  PAYPAL
+  MOCK
+  OTHER
+}
+
+enum PaymentMethodType {
+  CREDIT_CARD
+  DEBIT_CARD
+  PIX
+  BOLETO
+  SEPA_DEBIT
+  BANK_TRANSFER
+  APPLE_PAY
+  GOOGLE_PAY
+  PAYPAL
+}
+
+enum MerchantAccountStatus {
+  PENDING
+  REQUIRES_ACTION
+  UNDER_REVIEW
+  ACTIVE
+  RESTRICTED
+  DISABLED
+}
+
+enum ProductType {
+  COURSE
+  DIGITAL_PRODUCT
+  COMMUNITY
+  MENTORSHIP
+  SUBSCRIPTION
+  EVENT
+  OTHER
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum BillingType {
+  ONE_TIME
+  SUBSCRIPTION
+  INSTALLMENTS
+}
+
+enum BillingInterval {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+enum CheckoutStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderStatus {
+  CREATED
+  PENDING_PAYMENT
+  PAID
+  CANCELED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  PROCESSING
+  AUTHORIZED
+  PAID
+  FAILED
+  CANCELED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  CHARGEBACK
+}
+
+enum TransactionType {
+  PAYMENT
+  CAPTURE
+  REFUND
+  CHARGEBACK
+  FEE
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum LedgerAccount {
+  PLATFORM_CASH
+  PRODUCER_PENDING
+  PRODUCER_AVAILABLE
+  PLATFORM_REVENUE
+  PROCESSOR_FEES
+  REFUNDS
+  CHARGEBACKS
+  RESERVES
+  TAXES
+  PAYOUTS
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  PAUSED
+  CANCELED
+  UNPAID
+}
+
+enum RefundStatus {
+  REQUESTED
+  PROCESSING
+  PAID
+  FAILED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  WON
+  LOST
+  CLOSED
+}
+
+enum ReserveStatus {
+  HELD
+  RELEASED
+  USED
+}
+
+enum PayoutStatus {
+  REQUESTED
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELED
+}
+
+enum PayoutDestinationType {
+  BANK_ACCOUNT
+  PIX
+  OTHER
+}
+
+enum PayoutDestinationStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+}
+
+enum AffiliateCommissionStatus {
+  PENDING
+  APPROVED
+  AVAILABLE
+  PAID
+  CANCELED
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum LessonType {
+  VIDEO
+  TEXT
+  PDF
+  AUDIO
+  LIVE
+  DOWNLOAD
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum WebhookEventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+// ─────────────────────────── Identity ────────────────────────────
+
+/// Identity is owned by Keycloak. Hypei never stores passwords.
+model User {
+  id             String       @id @default(cuid())
+  keycloakUserId String       @unique
+  email          String       @unique
+  name           String?
+  avatarUrl      String?
+  locale         String       @default("pt-BR")
+  timezone       String       @default("America/Sao_Paulo")
+  platformRole   PlatformRole @default(USER)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  memberships OrganizationMember[]
+  auditLogs   AuditLog[]
+}
+
+model Organization {
+  id              String             @id @default(cuid())
+  name            String
+  slug            String             @unique
+  country         String             @db.Char(2)
+  defaultCurrency String             @db.Char(3)
+  businessType    BusinessType
+  legalName       String?
+  website         String?
+  supportEmail    String?
+  status          OrganizationStatus @default(ONBOARDING)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  members            OrganizationMember[]
+  taxIdentities      TaxIdentity[]
+  verifications      OrganizationVerification[]
+  merchantAccounts   MerchantAccount[]
+  payoutDestinations PayoutDestination[]
+  products           Product[]
+  offers             Offer[]
+  checkouts          Checkout[]
+  customers          Customer[]
+  orders             Order[]
+  payments           Payment[]
+  transactions       Transaction[]
+  ledgerJournals     LedgerJournal[]
+  ledgerEntries      LedgerEntry[]
+  balances           Balance[]
+  reserves           Reserve[]
+  payouts            Payout[]
+  refunds            Refund[]
+  disputes           Dispute[]
+  subscriptions      Subscription[]
+  settlementPolicies SettlementPolicy[]
+  platformFeePolicies PlatformFeePolicy[]
+  affiliates         Affiliate[]
+  coupons            Coupon[]
+  courses            Course[]
+  apiKeys            ApiKey[]
+  webhookEndpoints   WebhookEndpoint[]
+  auditLogs          AuditLog[]
+}
+
+model OrganizationMember {
+  id             String           @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrganizationRole
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+// ─────────────────────────── Compliance ──────────────────────────
+
+/// Tax identity per organization. The raw value is never persisted: only a masked
+/// representation (display) and a keyed hash (deduplication). KYC documents live in the provider.
+model TaxIdentity {
+  id             String    @id @default(cuid())
+  organizationId String
+  country        String    @db.Char(2)
+  type           TaxIdType
+  maskedValue    String
+  valueHash      String
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, type])
+  @@index([valueHash])
+}
+
+model OrganizationVerification {
+  id                     String              @id @default(cuid())
+  organizationId         String
+  type                   BusinessType
+  status                 VerificationStatus  @default(NOT_STARTED)
+  provider               PaymentProviderType
+  providerVerificationId String?
+  requirements           Json?
+  submittedAt            DateTime?
+  verifiedAt             DateTime?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+/// Generic connected/merchant account at a payment provider (e.g. a Stripe Connect account).
+model MerchantAccount {
+  id                String                @id @default(cuid())
+  organizationId    String
+  provider          PaymentProviderType
+  providerAccountId String
+  country           String                @db.Char(2)
+  defaultCurrency   String                @db.Char(3)
+  status            MerchantAccountStatus @default(PENDING)
+  chargesEnabled    Boolean               @default(false)
+  payoutsEnabled    Boolean               @default(false)
+  detailsSubmitted  Boolean               @default(false)
+  requirementsDue   String[]              @default([])
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@unique([organizationId, provider])
+}
+
+// ─────────────────────────── Catalog ─────────────────────────────
+
+model Product {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?
+  type           ProductType
+  status         ProductStatus @default(DRAFT)
+  thumbnailUrl   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  offers       Offer[]
+  course       Course?
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+}
+
+/// The official price of anything sold on Hypei. Checkout presentation (MongoDB) never overrides it.
+model Offer {
+  id              String           @id @default(cuid())
+  productId       String
+  organizationId  String
+  name            String
+  amount          BigInt
+  currency        String           @db.Char(3)
+  billingType     BillingType
+  installments    Int?
+  billingInterval BillingInterval?
+  trialDays       Int?
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  providerPrices ProviderPrice[]
+  checkouts      Checkout[]
+  orderItems     OrderItem[]
+  subscriptions  Subscription[]
+
+  @@index([organizationId, productId])
+}
+
+/// Mapping Hypei Offer → provider price object (e.g. Stripe Price for Billing).
+model ProviderPrice {
+  id                String              @id @default(cuid())
+  offerId           String
+  provider          PaymentProviderType
+  providerProductId String
+  providerPriceId   String
+  createdAt         DateTime            @default(now())
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, provider])
+  @@unique([provider, providerPriceId])
+}
+
+/// Relational anchor of a public checkout. Presentation is versioned in MongoDB (checkout_configs).
+model Checkout {
+  id             String         @id @default(cuid())
+  organizationId String
+  offerId        String
+  slug           String         @unique
+  name           String
+  status         CheckoutStatus @default(ACTIVE)
+  currentVersion Int            @default(1)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  offer        Offer        @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  orders       Order[]
+
+  @@index([organizationId])
+}
+
+// ─────────────────────────── Commerce ────────────────────────────
+
+/// The buyer. Not necessarily a Hypei User.
+model Customer {
+  id             String     @id @default(cuid())
+  organizationId String
+  name           String
+  email          String
+  phone          String?
+  country        String?    @db.Char(2)
+  taxIdType      TaxIdType?
+  taxId          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  providerCustomers ProviderCustomer[]
+  orders            Order[]
+  payments          Payment[]
+  subscriptions     Subscription[]
+  enrollments       Enrollment[]
+
+  @@unique([organizationId, email])
+}
+
+model ProviderCustomer {
+  id                 String              @id @default(cuid())
+  customerId         String
+  provider           PaymentProviderType
+  providerCustomerId String
+  createdAt          DateTime            @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, provider])
+  @@unique([provider, providerCustomerId])
+}
+
+/// Commercial intent. NEVER a source of financial truth.
+model Order {
+  id              String      @id @default(cuid())
+  organizationId  String
+  customerId      String
+  checkoutId      String?
+  checkoutVersion Int?
+  status          OrderStatus @default(CREATED)
+  subtotalAmount  BigInt
+  discountAmount  BigInt      @default(0)
+  taxAmount       BigInt      @default(0)
+  totalAmount     BigInt
+  currency        String      @db.Char(3)
+  tracking        Json?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  checkout     Checkout?    @relation(fields: [checkoutId], references: [id], onDelete: SetNull)
+  items        OrderItem[]
+  payments     Payment[]
+  commissions  AffiliateCommission[]
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+}
+
+model OrderItem {
+  id          String @id @default(cuid())
+  orderId     String
+  offerId     String
+  productName String
+  offerName   String
+  quantity    Int    @default(1)
+  unitAmount  BigInt
+  totalAmount BigInt
+  currency    String @db.Char(3)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+}
+
+// ─────────────────────────── Payments ────────────────────────────
+
+/// Money movement from the buyer. Fee breakdown is fixed when the payment is confirmed.
+model Payment {
+  id                 String              @id @default(cuid())
+  organizationId     String
+  orderId            String
+  customerId         String
+  provider           PaymentProviderType
+  providerPaymentId  String?
+  providerCustomerId String?
+  providerChargeId   String?
+  amount             BigInt
+  currency           String              @db.Char(3)
+  status             PaymentStatus       @default(CREATED)
+  paymentMethod      PaymentMethodType?
+  processorFeeAmount BigInt?
+  platformFeeAmount  BigInt?
+  producerNetAmount  BigInt?
+  refundedAmount     BigInt              @default(0)
+  settleAt           DateTime?
+  settledAt          DateTime?
+  authorizedAt       DateTime?
+  paidAt             DateTime?
+  failedAt           DateTime?
+  canceledAt         DateTime?
+  failureReason      String?
+  metadata           Json?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+  refunds      Refund[]
+  disputes     Dispute[]
+
+  @@unique([provider, providerPaymentId])
+  @@index([organizationId, status])
+  @@index([status, settleAt])
+}
+
+/// A financial movement reported by the payment provider.
+model Transaction {
+  id                    String              @id @default(cuid())
+  organizationId        String
+  paymentId             String?
+  provider              PaymentProviderType
+  providerTransactionId String
+  type                  TransactionType
+  amount                BigInt
+  currency              String              @db.Char(3)
+  status                TransactionStatus
+  occurredAt            DateTime
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  payment      Payment?     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerTransactionId, type])
+  @@index([organizationId, occurredAt])
+}
+
+model Subscription {
+  id                     String              @id @default(cuid())
+  organizationId         String
+  customerId             String
+  offerId                String
+  provider               PaymentProviderType
+  providerSubscriptionId String?
+  status                 SubscriptionStatus
+  amount                 BigInt
+  currency               String              @db.Char(3)
+  billingInterval        BillingInterval
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean             @default(false)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  offer        Offer        @relation(fields: [offerId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerSubscriptionId])
+  @@index([organizationId, status])
+}
+
+model Refund {
+  id               String       @id @default(cuid())
+  organizationId   String
+  paymentId        String
+  amount           BigInt
+  currency         String       @db.Char(3)
+  reason           String?
+  status           RefundStatus @default(REQUESTED)
+  providerRefundId String?
+  idempotencyKey   String       @unique
+  completedAt      DateTime?
+  failureReason    String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([providerRefundId])
+  @@index([paymentId])
+}
+
+model Dispute {
+  id                String        @id @default(cuid())
+  organizationId    String
+  paymentId         String
+  providerDisputeId String        @unique
+  amount            BigInt
+  currency          String        @db.Char(3)
+  heldAmount        BigInt        @default(0)
+  reason            String?
+  status            DisputeStatus @default(OPEN)
+  evidenceDueAt     DateTime?
+  closedAt          DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+}
+
+// ──────────────────────────── Ledger ─────────────────────────────
+
+/// A balanced group of ledger entries (sum of debits == sum of credits).
+/// `idempotencyKey` guarantees one logical financial event is recorded exactly once.
+model LedgerJournal {
+  id             String   @id @default(cuid())
+  organizationId String
+  idempotencyKey String   @unique
+  type           String
+  referenceType  String
+  referenceId    String
+  /// Payment whose funds this journal moves (sale, settlement, refund, dispute).
+  /// Lets per-sale pending/held amounts be derived from the ledger itself.
+  paymentId      String?
+  currency       String   @db.Char(3)
+  description    String
+  createdAt      DateTime @default(now())
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  entries      LedgerEntry[]
+
+  @@index([organizationId, createdAt])
+  @@index([referenceType, referenceId])
+  @@index([paymentId])
+}
+
+/// Immutable. Never updated or deleted — corrections are new journals.
+model LedgerEntry {
+  id             String          @id @default(cuid())
+  journalId      String
+  organizationId String
+  referenceType  String
+  referenceId    String
+  account        LedgerAccount
+  direction      LedgerDirection
+  amount         BigInt
+  currency       String          @db.Char(3)
+  description    String
+  createdAt      DateTime        @default(now())
+
+  journal      LedgerJournal @relation(fields: [journalId], references: [id], onDelete: Restrict)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, account, currency])
+  @@index([organizationId, createdAt])
+  @@index([journalId])
+}
+
+/// Projection of the ledger per organization + currency. Never the source of truth.
+model Balance {
+  id              String   @id @default(cuid())
+  organizationId  String
+  currency        String   @db.Char(3)
+  pendingAmount   BigInt   @default(0)
+  availableAmount BigInt   @default(0)
+  reservedAmount  BigInt   @default(0)
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, currency])
+}
+
+model Reserve {
+  id             String        @id @default(cuid())
+  organizationId String
+  amount         BigInt
+  currency       String        @db.Char(3)
+  reason         String
+  referenceType  String?
+  referenceId    String?
+  releaseAt      DateTime?
+  status         ReserveStatus @default(HELD)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+}
+
+/// How long producer funds stay pending. Resolution: organization → country → global default.
+model SettlementPolicy {
+  id             String        @id @default(cuid())
+  organizationId String?
+  country        String?       @db.Char(2)
+  currency       String?       @db.Char(3)
+  delayDays      Int
+  active         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([country])
+}
+
+/// Hypei platform fee (percentage in basis points and/or fixed amount).
+model PlatformFeePolicy {
+  id             String        @id @default(cuid())
+  organizationId String?
+  country        String?       @db.Char(2)
+  currency       String        @db.Char(3)
+  percentageBps  Int           @default(0)
+  fixedAmount    BigInt        @default(0)
+  active         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, currency])
+}
+
+// ──────────────────────────── Payouts ────────────────────────────
+
+model PayoutDestination {
+  id                    String                  @id @default(cuid())
+  organizationId        String
+  type                  PayoutDestinationType
+  provider              PaymentProviderType
+  providerDestinationId String
+  currency              String                  @db.Char(3)
+  country               String                  @db.Char(2)
+  label                 String?
+  status                PayoutDestinationStatus @default(PENDING)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payouts      Payout[]
+
+  @@unique([provider, providerDestinationId])
+}
+
+model Payout {
+  id               String              @id @default(cuid())
+  organizationId   String
+  amount           BigInt
+  currency         String              @db.Char(3)
+  provider         PaymentProviderType
+  providerPayoutId String?
+  destinationId    String?
+  idempotencyKey   String              @unique
+  status           PayoutStatus        @default(REQUESTED)
+  requestedById    String?
+  requestedAt      DateTime            @default(now())
+  processingAt     DateTime?
+  paidAt           DateTime?
+  failedAt         DateTime?
+  failureReason    String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  destination  PayoutDestination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerPayoutId])
+  @@index([organizationId, status])
+}
+
+// ─────────────────────────── Growth ──────────────────────────────
+
+model Affiliate {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  email          String
+  commissionBps  Int
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  links        AffiliateLink[]
+  commissions  AffiliateCommission[]
+
+  @@unique([organizationId, email])
+}
+
+model AffiliateLink {
+  id          String   @id @default(cuid())
+  affiliateId String
+  code        String   @unique
+  checkoutId  String?
+  createdAt   DateTime @default(now())
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+}
+
+/// Commissions only become AVAILABLE after the sale leaves the refund/chargeback risk window.
+model AffiliateCommission {
+  id             String                    @id @default(cuid())
+  organizationId String
+  affiliateId    String
+  orderId        String
+  amount         BigInt
+  currency       String                    @db.Char(3)
+  status         AffiliateCommissionStatus @default(PENDING)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Restrict)
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@unique([affiliateId, orderId])
+  @@index([organizationId, status])
+}
+
+model Coupon {
+  id             String     @id @default(cuid())
+  organizationId String
+  code           String
+  type           CouponType
+  percentageBps  Int?
+  amount         BigInt?
+  currency       String?    @db.Char(3)
+  maxRedemptions Int?
+  redemptions    Int        @default(0)
+  expiresAt      DateTime?
+  active         Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
+}
+
+// ──────────────────────────── Members ────────────────────────────
+
+model Course {
+  id             String   @id @default(cuid())
+  organizationId String
+  productId      String   @unique
+  title          String
+  slug           String
+  description    String?
+  published      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  modules      Module[]
+  enrollments  Enrollment[]
+
+  @@unique([organizationId, slug])
+}
+
+model Module {
+  id        String   @id @default(cuid())
+  courseId  String
+  title     String
+  position  Int
+  createdAt DateTime @default(now())
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([courseId, position])
+}
+
+/// Lesson metadata only — media files live in S3-compatible storage.
+model Lesson {
+  id              String     @id @default(cuid())
+  moduleId        String
+  title           String
+  type            LessonType
+  position        Int
+  durationSeconds Int?
+  storageKey      String?
+  content         String?
+  createdAt       DateTime   @default(now())
+
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@index([moduleId, position])
+}
+
+model Enrollment {
+  id         String           @id @default(cuid())
+  courseId   String
+  customerId String
+  orderId    String?
+  status     EnrollmentStatus @default(ACTIVE)
+  createdAt  DateTime         @default(now())
+
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, customerId])
+}
+
+// ─────────────────────────── Platform ────────────────────────────
+
+model IdempotencyKey {
+  key          String   @id
+  scope        String
+  requestHash  String
+  responseData Json?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+/// Deduplication + processing state of inbound provider webhooks.
+/// The raw payload is archived in MongoDB (webhook_payloads).
+model WebhookEvent {
+  id              String              @id @default(cuid())
+  provider        PaymentProviderType
+  providerEventId String
+  eventType       String
+  status          WebhookEventStatus  @default(RECEIVED)
+  attempts        Int                 @default(0)
+  receivedAt      DateTime            @default(now())
+  processedAt     DateTime?
+  nextAttemptAt   DateTime?
+  error           String?
+
+  @@unique([provider, providerEventId])
+  @@index([status, nextAttemptAt])
+}
+
+/// Outbound webhooks configured by producers (delivery comes in a later phase).
+model WebhookEndpoint {
+  id             String   @id @default(cuid())
+  organizationId String
+  url            String
+  events         String[]
+  secretHash     String
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+/// Transactional outbox: written in the same DB transaction as the state change.
+model OutboxEvent {
+  id          String       @id @default(cuid())
+  type        String
+  aggregateId String
+  payload     Json
+  status      OutboxStatus @default(PENDING)
+  attempts    Int          @default(0)
+  createdAt   DateTime     @default(now())
+  processedAt DateTime?
+
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  userId         String?
+  action         String
+  entity         String
+  entityId       String
+  metadata       Json?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([entity, entityId])
+}
+
+model ApiKey {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  keyPrefix      String    @unique
+  hashedKey      String
+  permissions    String[]
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
