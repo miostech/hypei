@@ -13,7 +13,7 @@ export const getSession = cache(async (): Promise<SessionClaims | null> => {
   return verifyToken<SessionClaims>(store.get(SESSION_COOKIE)?.value, getEnv().SESSION_SECRET);
 });
 
-/** Current Hypei user (or null). Deduplicated per request. */
+/** Current Ripay user (or null). Deduplicated per request. */
 export const getCurrentUser = cache(async (): Promise<User | null> => {
   const session = await getSession();
   if (!session) return null;

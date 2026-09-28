@@ -5,7 +5,7 @@ import { toMerchantSnapshot } from "./stripe-mappers";
 
 /**
  * Stripe Connect specifics (connected accounts + hosted onboarding).
- * Hypei never collects bank details or identity documents itself: Stripe-hosted onboarding does.
+ * Ripay never collects bank details or identity documents itself: Stripe-hosted onboarding does.
  */
 export class StripeConnectService {
   constructor(private readonly stripe: Stripe) {}
@@ -24,7 +24,7 @@ export class StripeConnectService {
           requirement_collection: "stripe",
         },
         capabilities: { transfers: { requested: true } },
-        // Hypei decides WHEN funds leave (internal settlement), so payouts are manual.
+        // Ripay decides WHEN funds leave (internal settlement), so payouts are manual.
         settings: { payouts: { schedule: { interval: "manual" } } },
         metadata: { organizationId: input.organizationId },
       },

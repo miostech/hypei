@@ -8,7 +8,7 @@ import { getServices } from "@/server/container";
 
 /**
  * Creates the merchant account when missing and returns the provider-hosted onboarding link.
- * Sensitive identity/bank data is collected by the provider, never by Hypei.
+ * Sensitive identity/bank data is collected by the provider, never by Ripay.
  */
 export async function startMerchantOnboarding(): Promise<ActionState & { url?: string }> {
   const result = await runAction(async () => {

@@ -4,7 +4,7 @@
 
 ## Contexto
 
-A Hypei precisa de garantias transacionais fortes para dinheiro e, ao mesmo tempo, de flexibilidade
+A Ripay precisa de garantias transacionais fortes para dinheiro e, ao mesmo tempo, de flexibilidade
 para dados que mudam de formato com frequência (configuração de checkout, eventos de tracking,
 payloads de provedores). Usar só um banco obrigaria a escolher entre rigidez onde ela atrapalha ou
 frouxidão onde ela é inaceitável.

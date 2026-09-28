@@ -115,7 +115,7 @@ export interface VerifiedWebhook {
 }
 
 /**
- * Provider-agnostic events consumed by Hypei domain services.
+ * Provider-agnostic events consumed by Ripay domain services.
  * Providers translate their webhooks into these; the domain never sees provider payloads.
  */
 export type NormalizedProviderEvent =

@@ -1,13 +1,13 @@
 import { CheckCircle2Icon, ClockIcon, XCircleIcon } from "lucide-react";
 import { notFound } from "next/navigation";
-import { HypeiLogo } from "@/components/brand/logo";
+import { RipayLogo } from "@/components/brand/logo";
 import { getServices } from "@/server/container";
 import { PaymentStatusWatcher } from "./status-watcher";
 
 export const metadata = { title: "Pagamento" };
 
 /**
- * Result page. The status shown comes from the Hypei Payment record, which is only
+ * Result page. The status shown comes from the Ripay Payment record, which is only
  * marked PAID after the provider's webhook is processed — never from the redirect.
  */
 export default async function CheckoutResultPage({ params, searchParams }: PageProps<"/checkout/[slug]/obrigado">) {
@@ -49,7 +49,7 @@ export default async function CheckoutResultPage({ params, searchParams }: PageP
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted/30 p-4 text-center">
-      <HypeiLogo />
+      <RipayLogo />
       <div className="w-full max-w-md space-y-3 rounded-xl border bg-card p-8">
         <state.icon className={`mx-auto size-10 ${state.tone}`} aria-hidden />
         <h1 className="text-xl font-semibold tracking-tight">{state.title}</h1>

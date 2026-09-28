@@ -80,7 +80,7 @@ export function CheckoutForm({
                 name="slug"
                 defaultValue={defaultValues.slug}
                 required
-                hint="hypei.com/checkout/seu-link"
+                hint="ripay.com/checkout/seu-link"
                 error={fieldError("slug")}
                 readOnly={Boolean(defaultValues.id)}
               />

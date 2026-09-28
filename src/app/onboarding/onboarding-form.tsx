@@ -81,7 +81,7 @@ export function OnboardingForm({ defaultEmail }: { defaultEmail: string }) {
         </div>
         <CardTitle className="mt-4">{STEPS[step]}</CardTitle>
         <CardDescription>
-          {step === 0 && "Como sua operação será identificada na Hypei."}
+          {step === 0 && "Como sua operação será identificada na Ripay."}
           {step === 1 && "Onde você vende e em qual moeda recebe."}
           {step === 2 && "Necessário para emissão fiscal e verificação de identidade."}
           {step === 3 && "Como o dinheiro das suas vendas chega até você."}
@@ -177,7 +177,7 @@ export function OnboardingForm({ defaultEmail }: { defaultEmail: string }) {
                 <p className="font-medium">Verificação e dados bancários</p>
                 <p className="text-muted-foreground">
                   Ao concluir, criamos sua conta de recebimento no provedor de pagamentos. Os documentos e a conta bancária são enviados direto para
-                  ele — a Hypei não armazena esses dados. Você pode concluir a verificação depois, em Integrações.
+                  ele — a Ripay não armazena esses dados. Você pode concluir a verificação depois, em Integrações.
                 </p>
               </div>
             </div>

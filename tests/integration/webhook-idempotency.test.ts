@@ -37,7 +37,7 @@ describe("Webhook idempotency", () => {
   it("rejects webhooks with an invalid signature and persists nothing", async () => {
     const { rawBody } = app.mock.buildWebhook({ type: "payment.failed", providerPaymentId: "x" });
     await expect(
-      app.services.webhookIngestion.ingest("MOCK", rawBody, new Headers({ "x-hypei-mock-signature": "forged" })),
+      app.services.webhookIngestion.ingest("MOCK", rawBody, new Headers({ "x-ripay-mock-signature": "forged" })),
     ).rejects.toMatchObject({ code: "WEBHOOK_SIGNATURE_INVALID" });
     const tampered = rawBody.replace("payment.failed", "payment.succeeded");
     const { headers } = app.mock.buildWebhook({ type: "payment.failed", providerPaymentId: "x" });

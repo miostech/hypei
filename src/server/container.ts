@@ -20,7 +20,7 @@ import { MongoRiskEventRepository } from "@/modules/risk/risk-event.repository";
 import { MongoWebhookPayloadRepository } from "@/modules/webhooks/webhook-payload.repository";
 import { buildServices, type Services } from "./services";
 
-const globalForContainer = globalThis as unknown as { __hypeiServices?: Services };
+const globalForContainer = globalThis as unknown as { __ripayServices?: Services };
 
 /** Mongo indexes are created lazily once per process (idempotent). */
 let indexesReady: Promise<void> | undefined;
@@ -86,11 +86,11 @@ function createContainer(): Services {
   eventBus.subscribe("*", (event) => logger.debug({ type: event.type, aggregateId: event.aggregateId }, "domain event"));
 
   holder.services = services;
-  logger.info({ paymentProvider: paymentProvider.type, queue: env.QUEUE_DRIVER }, "hypei container initialized");
+  logger.info({ paymentProvider: paymentProvider.type, queue: env.QUEUE_DRIVER }, "ripay container initialized");
   return services;
 }
 
 export function getServices(): Services {
-  globalForContainer.__hypeiServices ??= createContainer();
-  return globalForContainer.__hypeiServices;
+  globalForContainer.__ripayServices ??= createContainer();
+  return globalForContainer.__ripayServices;
 }

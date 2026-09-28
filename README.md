@@ -1,8 +1,8 @@
-# Hypei
+# Ripay
 
 Plataforma global para venda de produtos digitais, cursos, comunidades, assinaturas e mentorias.
 
-A Hypei **recebe o pagamento do comprador**, registra a venda no seu próprio ledger, cobra a taxa da
+A Ripay **recebe o pagamento do comprador**, registra a venda no seu próprio ledger, cobra a taxa da
 plataforma e **repassa o saldo ao produtor** quando o prazo de liberação vence. Ou seja: é uma
 plataforma de pagamentos/marketplace, não uma loja com checkout integrado.
 
@@ -17,6 +17,7 @@ Mercados da Fase 1: **Brasil, União Europeia e Estados Unidos** (BRL, EUR, USD)
 - [PostgreSQL vs MongoDB](#postgresql-vs-mongodb)
 - [Identidade (Keycloak)](#identidade-keycloak)
 - [Multi-tenancy e autorização](#multi-tenancy-e-autorização)
+- [Identidade visual](#identidade-visual)
 - [Dinheiro](#dinheiro)
 - [Arquitetura de pagamentos](#arquitetura-de-pagamentos)
 - [Ledger](#ledger)
@@ -42,12 +43,12 @@ Cada camada tem uma responsabilidade única, e elas nunca se misturam:
 | Camada | Responsabilidade |
 |---|---|
 | **Keycloak** | Identidade: login, senha, recuperação, verificação de e-mail, sessão, MFA |
-| **Hypei** | Autorização: quem pertence a qual organização e o que pode fazer |
+| **Ripay** | Autorização: quem pertence a qual organização e o que pode fazer |
 | **PostgreSQL** | Fonte de verdade de commerce e finanças |
 | **MongoDB** | Dados flexíveis: apresentação do checkout, eventos, payloads |
 | **Redis** | Cache, locks, rate limit e (futuramente) filas |
 | **Payment provider** | Movimentação real do dinheiro (Stripe) |
-| **Ledger** | Fonte de verdade financeira da Hypei |
+| **Ledger** | Fonte de verdade financeira da Ripay |
 | **Balance** | Projeção do ledger (cache), nunca fonte de verdade |
 | **Order** | Intenção comercial |
 | **Payment** | Movimentação vinda do comprador |
@@ -101,7 +102,7 @@ O preço oficial vem sempre da `Offer` no PostgreSQL; o Mongo só configura a ap
 
 ## Identidade (Keycloak)
 
-Realm `hypei`, client `hypei-web` (confidencial, PKCE S256). A Hypei **não armazena senhas**:
+Realm `ripay`, client `ripay-web` (confidencial, PKCE S256). A Ripay **não armazena senhas**:
 a tabela `User` guarda `keycloakUserId` (único), e-mail, nome e preferências.
 
 - `GET /api/auth/login` inicia o fluxo (state + nonce + PKCE em cookie assinado de 10 min)
@@ -122,7 +123,38 @@ confiado: o vínculo é sempre reconferido no banco.
 
 Papéis: `OWNER`, `ADMIN`, `FINANCE`, `SUPPORT`, `MARKETING`, `VIEWER` (mapeados para permissões em
 [`permissions.ts`](src/modules/organizations/permissions.ts)), mais o papel global `PLATFORM_ADMIN`
-para a equipe Hypei (`/admin`).
+para a equipe Ripay (`/admin`).
+
+## Identidade visual
+
+A marca é roxa em ~70% da interface; o dourado fica reservado a 10–15% (CTA principal, o raio,
+selos premium), para a Ripay parecer uma fintech moderna e não uma marca de joias.
+
+| Token | Valor | Uso |
+|---|---|---|
+| Roxo principal | `#4B168C` | marca, botões primários, ícones de destaque |
+| Roxo escuro | `#220A45` | sidebar, gradiente de fundo, modo escuro |
+| Roxo vibrante | `#7C3AED` | gráficos, estado ativo, foco e links |
+| Dourado principal | `#D9A52A` | CTAs decisivos e selos |
+| Dourado claro | `#F2C75C` | gradiente e hover do dourado |
+| Cinza muito claro | `#F6F5F8` | fundo do dashboard |
+| Cinza médio | `#8B8793` | texto secundário |
+| Preto azulado | `#17121F` | texto principal |
+
+Gradientes: `.bg-brand-gradient` (`#220A45 → #7C3AED`) e `.bg-gold-gradient` (`#B98012 → #F2C75C`),
+definidos em [`globals.css`](src/app/globals.css) junto com os tokens de sombra (`shadow-soft`,
+`shadow-card`, `shadow-lift`) e os utilitários `bg-aurora`, `bg-dot-grid` e `text-brand-gradient`.
+
+Tipografia: **Plus Jakarta Sans** nos títulos e números (`font-heading`), **Inter** no texto de
+interface. Valores monetários usam a classe `.tabular` para alinhar as colunas.
+
+Arte oficial em [`public/brand`](public/brand): `ripay-icon.png` (transparente, serve em qualquer
+fundo), `ripay-logo.png` (lockup completo) e `ripay-wordmark-light.png` (versão knockout usada na
+sidebar escura). O favicon sai de [`src/app/icon.png`](src/app/icon.png).
+
+Gráficos seguem uma paleta validada para daltonismo (roxo `#7C3AED` como série principal, dourado
+`#B98012` como segunda série), com linha de 2px, grade recessiva, tooltip com crosshair e nenhum
+número impresso sobre cada ponto.
 
 ## Dinheiro
 
@@ -141,11 +173,11 @@ Helpers em [`src/lib/money`](src/lib/money): `formatMoney`, `addMoney`, `subtrac
 ## Arquitetura de pagamentos
 
 ```
-Comprador → Checkout Hypei → PaymentProvider → PaymentIntent
+Comprador → Checkout Ripay → PaymentProvider → PaymentIntent
                                     ↓
                           pagamento confirmado (webhook)
                                     ↓
-   Hypei Ledger → Saldo pendente do produtor → Settlement → Saldo disponível
+   Ripay Ledger → Saldo pendente do produtor → Settlement → Saldo disponível
                                     ↓
                         Payout → conta bancária do produtor
 ```
@@ -177,7 +209,7 @@ correções são novos lançamentos.
 Contas: `PLATFORM_CASH`, `PRODUCER_PENDING`, `PRODUCER_AVAILABLE`, `PLATFORM_REVENUE`,
 `PROCESSOR_FEES`, `REFUNDS`, `CHARGEBACKS`, `RESERVES`, `TAXES`, `PAYOUTS`.
 
-Venda de R$ 100,00 com R$ 4,00 de taxa de processamento e R$ 10,00 de taxa Hypei:
+Venda de R$ 100,00 com R$ 4,00 de taxa de processamento e R$ 10,00 de taxa Ripay:
 
 | Conta | Direção | Valor |
 |---|---|---|
@@ -202,7 +234,7 @@ Depois da venda confirmada, o valor do produtor entra como **pendente**. A liber
 `SettlementPolicy` (D+2, D+7, D+14, D+30…), resolvida por organização → país → padrão global.
 Nada é hardcoded: as políticas são dados (veja [`prisma/seed.ts`](prisma/seed.ts)).
 
-Ter saldo disponível na Stripe não libera nada: o settlement interno da Hypei é independente.
+Ter saldo disponível na Stripe não libera nada: o settlement interno da Ripay é independente.
 
 ```bash
 npm run settlement:run        # libera o que já venceu
@@ -227,7 +259,7 @@ ao saldo disponível.
 
 ## Reembolsos e chargebacks
 
-- **Reembolso**: reverte proporcionalmente a parte do produtor e a taxa Hypei; a taxa de
+- **Reembolso**: reverte proporcionalmente a parte do produtor e a taxa Ripay; a taxa de
   processamento não devolvida pelo PSP é absorvida pela plataforma (conta `REFUNDS`). Nunca é
   possível reembolsar mais do que foi pago, nem duas vezes com a mesma chave.
 - **Disputa**: ao abrir, a parte do produtor vai para `RESERVES`. Ganhou, volta para o produtor;
@@ -283,8 +315,8 @@ npm run check:infra
 
 Aplicação: <http://localhost:3100> · Keycloak: <http://localhost:8080> (admin/admin)
 
-Usuários de desenvolvimento do realm: `producer@hypei.dev` e `admin@hypei.dev` (este com o papel
-`platform_admin`), senha `hypei-dev-123`.
+Usuários de desenvolvimento do realm: `producer@ripay.dev` e `admin@ripay.dev` (este com o papel
+`platform_admin`), senha `ripay-dev-123`.
 
 O worker de background (retry de webhooks, outbox e settlement) roda separado:
 
@@ -312,6 +344,7 @@ recusa a subir com chave `sk_live_` fora de produção.
 npm run db:migrate     # cria migration em desenvolvimento
 npm run db:deploy      # aplica migrations (CI/produção)
 npm run db:seed        # políticas de settlement e de taxa
+npm run db:demo        # dados de demonstração: catálogo + 30 dias de vendas (apenas dev)
 npm run db:studio      # Prisma Studio
 npm run mongo:setup    # cria collections e índices
 ```

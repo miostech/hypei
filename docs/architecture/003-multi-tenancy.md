@@ -15,7 +15,7 @@ Tenancy por coluna `organizationId` em banco compartilhado, com isolamento aplic
    (`updateMany({ where: { id, organizationId } })` em vez de `update({ where: { id } })`).
 2. **Resolução do tenant** (`resolveTenant`) confere o vínculo no banco. O `organizationId` vindo de
    cookie, formulário ou URL é uma preferência, nunca uma credencial.
-3. **Autorização** é da Hypei, não do Keycloak: papéis (`OWNER`, `ADMIN`, `FINANCE`, `SUPPORT`,
+3. **Autorização** é da Ripay, não do Keycloak: papéis (`OWNER`, `ADMIN`, `FINANCE`, `SUPPORT`,
    `MARKETING`, `VIEWER`) mapeiam para permissões, verificadas por `requireRole` /
    `requirePermission` em páginas e Server Actions.
 4. **Referências cruzadas** são validadas: criar uma oferta exige que o produto seja da mesma

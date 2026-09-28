@@ -23,7 +23,7 @@ const checks: Check[] = [
     run: async () => {
       const client = new MongoClient(process.env.MONGODB_URI!, { serverSelectionTimeoutMS: 5000 });
       await client.connect();
-      const db = client.db(process.env.MONGODB_DB ?? "hypei");
+      const db = client.db(process.env.MONGODB_DB ?? "ripay");
       await ensureMongoIndexes(db);
       const collections = await db.listCollections().toArray();
       await client.close();

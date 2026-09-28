@@ -37,7 +37,7 @@ export default async function IntegrationsPage() {
           </CardTitle>
           <CardDescription>
             Provedor de pagamentos: <strong>{provider === "MOCK" ? "Simulado (desenvolvimento)" : "Stripe"}</strong>. A verificação de identidade e os
-            dados bancários são coletados pelo próprio provedor — a Hypei não armazena esses dados.
+            dados bancários são coletados pelo próprio provedor — a Ripay não armazena esses dados.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

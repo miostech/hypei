@@ -13,7 +13,7 @@ import {
 } from "@/modules/auth/session-token";
 import { getServices } from "@/server/container";
 
-/** OIDC callback: validates state/nonce/PKCE, verifies the ID token, links the Hypei User. */
+/** OIDC callback: validates state/nonce/PKCE, verifies the ID token, links the Ripay User. */
 export async function GET(request: NextRequest) {
   const env = getEnv();
   const params = request.nextUrl.searchParams;

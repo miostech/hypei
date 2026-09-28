@@ -41,7 +41,7 @@ const REDACT_PATHS = [
 
 const baseLogger = pino({
   level: process.env.LOG_LEVEL ?? "info",
-  base: { service: "hypei-web", env: process.env.APP_ENV ?? "development" },
+  base: { service: "ripay-web", env: process.env.APP_ENV ?? "development" },
   redact: { paths: REDACT_PATHS, censor: "[REDACTED]" },
   timestamp: pino.stdTimeFunctions.isoTime,
   mixin() {

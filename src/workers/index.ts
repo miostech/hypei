@@ -24,7 +24,7 @@ async function tick() {
 }
 
 async function main() {
-  logger.info({ intervalMs: INTERVAL_MS }, "hypei worker started");
+  logger.info({ intervalMs: INTERVAL_MS }, "ripay worker started");
   for (;;) {
     await tick().catch((err) => logger.error({ err }, "worker tick failed"));
     await new Promise((resolve) => setTimeout(resolve, INTERVAL_MS));

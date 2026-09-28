@@ -31,11 +31,11 @@ const idOf = (value: string | { id: string } | null | undefined) =>
   typeof value === "string" ? value : (value?.id ?? null);
 
 /**
- * Stripe implementation of Hypei's PaymentProvider.
+ * Stripe implementation of Ripay's PaymentProvider.
  *
- * Money model ("separate charges and transfers"): buyers pay the Hypei platform account,
- * Hypei's own ledger tracks what each producer is owed, and funds are transferred to the
- * producer's connected account + paid out only when the Hypei settlement rules allow it.
+ * Money model ("separate charges and transfers"): buyers pay the Ripay platform account,
+ * Ripay's own ledger tracks what each producer is owed, and funds are transferred to the
+ * producer's connected account + paid out only when the Ripay settlement rules allow it.
  */
 export class StripePaymentProvider implements PaymentProvider {
   readonly type = "STRIPE" as const;
@@ -135,8 +135,8 @@ export class StripePaymentProvider implements PaymentProvider {
 
   /**
    * Transfer the producer's settled funds from the platform to the connected account,
-   * then create a payout on that account. The Hypei payout id travels in metadata so the
-   * `payout.*` Connect webhook can be reconciled back to the Hypei Payout.
+   * then create a payout on that account. The Ripay payout id travels in metadata so the
+   * `payout.*` Connect webhook can be reconciled back to the Ripay Payout.
    */
   async createPayout(input: CreatePayoutInput): Promise<ProviderPayoutResult> {
     await this.stripe.transfers.create(
@@ -185,7 +185,7 @@ export class StripePaymentProvider implements PaymentProvider {
 
     switch (event.type) {
       case "payment_intent.created":
-        return [{ kind: "ignored", reason: "payment intent creation is initiated by Hypei" }];
+        return [{ kind: "ignored", reason: "payment intent creation is initiated by Ripay" }];
       case "payment_intent.processing":
         return [{ kind: "payment.processing", providerPaymentId: event.data.object.id, occurredAt }];
       case "payment_intent.succeeded":
@@ -290,7 +290,7 @@ export class StripePaymentProvider implements PaymentProvider {
     const charge = intent.latest_charge as Stripe.Charge | null;
     if (!charge) throw new ProviderError("STRIPE", `PaymentIntent ${providerPaymentId} succeeded without a charge`);
     const balanceTx = charge.balance_transaction as Stripe.BalanceTransaction | null;
-    // Fee is expressed in the settlement currency; Hypei only supports same-currency settlement in Phase 1.
+    // Fee is expressed in the settlement currency; Ripay only supports same-currency settlement in Phase 1.
     if (balanceTx && balanceTx.currency !== intent.currency) {
       throw new ProviderError("STRIPE", "Cross-currency settlement is not supported yet", {
         chargeCurrency: intent.currency,

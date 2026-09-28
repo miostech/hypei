@@ -20,7 +20,7 @@ const VERIFICATION_BY_STATUS: Record<MerchantAccountStatus, VerificationStatus> 
 
 /**
  * Generic connected-account lifecycle (Stripe Connect today). KYC/KYB and bank details are
- * collected by the provider's hosted onboarding — Hypei only stores status for control/display.
+ * collected by the provider's hosted onboarding — Ripay only stores status for control/display.
  */
 export class MerchantAccountService {
   constructor(

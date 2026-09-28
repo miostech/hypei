@@ -5,7 +5,7 @@ import { getEnv } from "@/lib/env";
 
 /**
  * Keycloak (OIDC) is responsible for identity: login, logout, passwords, email verification,
- * recovery, sessions, MFA and social login. Hypei only consumes the verified identity.
+ * recovery, sessions, MFA and social login. Ripay only consumes the verified identity.
  */
 function urls() {
   const env = getEnv();

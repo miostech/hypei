@@ -4,13 +4,13 @@
 
 ## Contexto
 
-A Hypei movimenta dinheiro de terceiros. Identidade precisa de senha forte, recuperação,
+A Ripay movimenta dinheiro de terceiros. Identidade precisa de senha forte, recuperação,
 verificação de e-mail, MFA, login social e sessão auditável — e nada disso deveria ser reimplementado
 dentro da aplicação.
 
 ## Decisão
 
-Keycloak é o provedor de identidade (realm `hypei`, client confidencial `hypei-web`). A integração é
+Keycloak é o provedor de identidade (realm `ripay`, client confidencial `ripay-web`). A integração é
 OIDC Authorization Code + PKCE (S256), implementada diretamente com `jose`, sem NextAuth, Auth.js,
 Clerk, Supabase Auth ou Firebase Auth.
 
@@ -20,11 +20,11 @@ Clerk, Supabase Auth ou Firebase Auth.
 - `POST /api/auth/logout`: limpa a sessão local e encerra a sessão no Keycloak com `id_token_hint`.
   É POST para não ser acionável por link/imagem de terceiros.
 
-A sessão da Hypei é um JWT HS256 próprio em cookie `httpOnly`, `SameSite=Lax`, `Secure` em produção,
-com validade de 8 horas. A Hypei **nunca** armazena senha.
+A sessão da Ripay é um JWT HS256 próprio em cookie `httpOnly`, `SameSite=Lax`, `Secure` em produção,
+com validade de 8 horas. A Ripay **nunca** armazena senha.
 
 O papel de realm `platform_admin` é sincronizado no login para `User.platformRole`, mas quem decide
-acesso é sempre a Hypei (ADR 003).
+acesso é sempre a Ripay (ADR 003).
 
 O URL público do Keycloak (issuer) e o interno (chamadas server-to-server) são separados
 (`KEYCLOAK_URL` e `KEYCLOAK_INTERNAL_URL`), para o app funcionar dentro de container sem quebrar o issuer.

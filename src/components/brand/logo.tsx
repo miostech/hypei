@@ -1,27 +1,53 @@
+import Image from "next/image";
 import { cn } from "cn";
 
-/** Hypei mark: an ascending "H" — two columns bridged by a rising bar. */
-export function HypeiMark({ className }: { className?: string }) {
+/**
+ * Official Ripay artwork (public/brand). The icon PNG is transparent, so it works on
+ * any surface; the lockup's wordmark is deep purple, so dark surfaces use the knockout
+ * variant instead.
+ */
+export function RipayMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 32 32" role="img" aria-label="Hypei" className={cn("size-7", className)}>
-      <defs>
-        <linearGradient id="hypei-mark" x1="0" y1="32" x2="32" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="currentColor" stopOpacity="0.75" />
-          <stop offset="1" stopColor="currentColor" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="9" fill="url(#hypei-mark)" />
-      <path d="M11 9v14M21 9v14" stroke="var(--primary-foreground)" strokeWidth="3" strokeLinecap="round" />
-      <path d="M10 19.5 22 12.5" stroke="var(--primary-foreground)" strokeWidth="3" strokeLinecap="round" />
-    </svg>
+    <Image
+      src="/brand/ripay-icon.png"
+      alt=""
+      width={498}
+      height={512}
+      priority
+      className={cn("size-8 w-auto object-contain", className)}
+    />
   );
 }
 
-export function HypeiLogo({ className, showWordmark = true }: { className?: string; showWordmark?: boolean }) {
+export function RipayLogo({
+  className,
+  showWordmark = true,
+  variant = "default",
+}: {
+  className?: string;
+  showWordmark?: boolean;
+  /** `knockout` renders the white wordmark, for the sidebar and other dark surfaces. */
+  variant?: "default" | "knockout";
+}) {
+  if (!showWordmark) return <RipayMark className={className} />;
+
+  if (variant === "knockout") {
+    return (
+      <span className={cn("flex items-center gap-2", className)}>
+        <RipayMark />
+        <Image src="/brand/ripay-wordmark-light.png" alt="Ripay" width={761} height={296} className="h-[1.15rem] w-auto object-contain" />
+      </span>
+    );
+  }
+
   return (
-    <span className={cn("flex items-center gap-2 text-primary", className)}>
-      <HypeiMark />
-      {showWordmark && <span className="text-[1.05rem] font-semibold tracking-tight text-foreground">Hypei</span>}
-    </span>
+    <Image
+      src="/brand/ripay-logo.png"
+      alt="Ripay"
+      width={1140}
+      height={361}
+      priority
+      className={cn("h-8 w-auto object-contain", className)}
+    />
   );
 }

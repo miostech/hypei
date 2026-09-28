@@ -55,7 +55,13 @@ describe("Money", () => {
     expect(parseDecimalToMinorUnits("29.99", "USD")).toBe(2999n);
     expect(parseDecimalToMinorUnits("15", "EUR")).toBe(1500n);
     expect(parseDecimalToMinorUnits("0.1", "EUR")).toBe(10n);
-    expect(() => parseDecimalToMinorUnits("1.999", "EUR")).toThrow(MoneyError);
+    // Thousand separators, the way people actually type prices.
+    expect(parseDecimalToMinorUnits("1.997,00", "BRL")).toBe(199_700n);
+    expect(parseDecimalToMinorUnits("1,997.00", "USD")).toBe(199_700n);
+    expect(parseDecimalToMinorUnits("1.234.567,89", "BRL")).toBe(123_456_789n);
+    expect(parseDecimalToMinorUnits("1.997", "BRL")).toBe(199_700n);
+    expect(() => parseDecimalToMinorUnits("0.001", "BRL")).toThrow(MoneyError);
+    expect(() => parseDecimalToMinorUnits("12,3456", "EUR")).toThrow(MoneyError);
     expect(() => parseDecimalToMinorUnits("abc", "EUR")).toThrow(MoneyError);
   });
 

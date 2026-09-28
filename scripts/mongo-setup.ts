@@ -6,7 +6,7 @@ import { COLLECTIONS, ensureMongoIndexes } from "../src/lib/database/mongo/colle
 async function main() {
   const client = new MongoClient(process.env.MONGODB_URI!);
   await client.connect();
-  const db = client.db(process.env.MONGODB_DB ?? "hypei");
+  const db = client.db(process.env.MONGODB_DB ?? "ripay");
 
   const existing = new Set((await db.listCollections().toArray()).map((c) => c.name));
   for (const name of Object.values(COLLECTIONS)) {

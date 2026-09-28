@@ -22,17 +22,21 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <SidebarProvider>
-      <AppSidebar allowedHrefs={allowedHrefs} />
-      <SidebarInset>
+      <AppSidebar
+        allowedHrefs={allowedHrefs}
+        environmentLabel={services.paymentProvider.type === "MOCK" ? "Ambiente de teste" : undefined}
+      />
+      <SidebarInset className="bg-background">
         <Topbar
           organizations={memberships.map((m) => ({ id: m.organization.id, name: m.organization.name, role: m.role }))}
           currentOrganizationId={organization.id}
           currentOrganizationName={organization.name}
+          currentRole={membership.role}
           userName={user?.name ?? ""}
           userEmail={user?.email ?? ""}
           switchOrganization={switchOrganization}
         />
-        <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6">{children}</main>
+        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

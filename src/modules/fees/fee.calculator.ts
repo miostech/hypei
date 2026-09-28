@@ -24,7 +24,7 @@ export interface FeeBreakdown {
 
 /**
  * gross = processorFee + platformFee + producerNet — always exact, never floats.
- * Processor fee (what the PSP charged) and platform fee (Hypei) are kept separate.
+ * Processor fee (what the PSP charged) and platform fee (Ripay) are kept separate.
  */
 export function calculateFeeBreakdown(gross: Money, processorFee: Money, rule: PlatformFeeRule): FeeBreakdown {
   if (gross.amount <= 0n) throw new ValidationError("Gross amount must be positive");

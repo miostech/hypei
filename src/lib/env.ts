@@ -13,13 +13,13 @@ const envSchema = z.object({
 
   DATABASE_URL: z.string().min(1),
   MONGODB_URI: z.string().min(1),
-  MONGODB_DB: z.string().default("hypei"),
+  MONGODB_DB: z.string().default("ripay"),
   REDIS_URL: z.string().min(1),
 
   KEYCLOAK_URL: z.string().url(),
   KEYCLOAK_INTERNAL_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
-  KEYCLOAK_REALM: z.string().default("hypei"),
-  KEYCLOAK_CLIENT_ID: z.string().default("hypei-web"),
+  KEYCLOAK_REALM: z.string().default("ripay"),
+  KEYCLOAK_CLIENT_ID: z.string().default("ripay-web"),
   KEYCLOAK_CLIENT_SECRET: z.string().min(1),
 
   PAYMENT_PROVIDER: z.enum(["stripe", "mock"]).default("mock"),
@@ -33,7 +33,7 @@ const envSchema = z.object({
 
   STORAGE_PROVIDER: z.enum(["s3", "r2", "minio", "none"]).default("none"),
   EMAIL_PROVIDER: z.enum(["console", "resend", "ses", "postmark"]).default("console"),
-  EMAIL_FROM: z.string().default("Hypei <no-reply@hypei.local>"),
+  EMAIL_FROM: z.string().default("Ripay <no-reply@ripay.local>"),
   QUEUE_DRIVER: z.enum(["memory", "bullmq", "redis-streams"]).default("memory"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });

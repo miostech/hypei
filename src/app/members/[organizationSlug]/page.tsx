@@ -1,7 +1,7 @@
 import { BookOpenIcon, LockIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { HypeiLogo } from "@/components/brand/logo";
+import { RipayLogo } from "@/components/brand/logo";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/modules/auth/current-user";
@@ -28,7 +28,7 @@ export default async function MembersHomePage({ params }: PageProps<"/members/[o
             <p className="font-semibold">{organization.name}</p>
             <p className="text-xs text-muted-foreground">Área de membros</p>
           </div>
-          <HypeiLogo className="opacity-70" />
+          <RipayLogo className="opacity-70" />
         </div>
       </header>
 

@@ -19,7 +19,7 @@ import type {
 } from "../types";
 import type { PaymentMethodType } from "@/generated/prisma/enums";
 
-export const MOCK_SIGNATURE_HEADER = "x-hypei-mock-signature";
+export const MOCK_SIGNATURE_HEADER = "x-ripay-mock-signature";
 
 /** Shape of events emitted by the mock provider (mirrors how a real PSP would notify us). */
 export type MockEvent =

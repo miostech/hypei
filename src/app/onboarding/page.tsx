@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { HypeiLogo } from "@/components/brand/logo";
+import { RipayLogo } from "@/components/brand/logo";
 import { requireUser } from "@/modules/auth/current-user";
 import { getServices } from "@/server/container";
 import { OnboardingForm } from "./onboarding-form";
@@ -14,7 +14,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted/30 p-4">
-      <HypeiLogo />
+      <RipayLogo />
       <OnboardingForm defaultEmail={user.email} />
       <p className="text-xs text-muted-foreground">Você poderá convidar sua equipe e ajustar tudo depois.</p>
     </div>

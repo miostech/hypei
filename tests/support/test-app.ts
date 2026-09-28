@@ -119,7 +119,7 @@ export async function createSeller(app: TestApp, options: { amount?: bigint; cur
   return { user, organization, product, offer, checkout };
 }
 
-/** Buyer goes through the public checkout; returns the Hypei payment (status PENDING). */
+/** Buyer goes through the public checkout; returns the Ripay payment (status PENDING). */
 export async function startPurchase(app: TestApp, checkoutSlug: string, email = `buyer-${randomUUID().slice(0, 6)}@example.com`) {
   const result = await app.services.checkouts.start({
     slug: checkoutSlug,

@@ -22,7 +22,7 @@ export interface RequestRefundInput {
 
 /**
  * Refund policy (explicit, documented in ADR 005):
- * - producer share and Hypei fee are reversed proportionally;
+ * - producer share and Ripay fee are reversed proportionally;
  * - the processor fee the PSP does not return is absorbed by the platform (REFUNDS expense);
  * - producer balance may go negative ONLY through reversals (refund/chargeback), never through payouts.
  */
@@ -97,7 +97,7 @@ export class RefundService {
 
       let refund = await repos.refunds.findByProviderRefundId(event.providerRefundId);
       if (!refund) {
-        // Refund initiated outside Hypei (e.g. provider dashboard): record it now.
+        // Refund initiated outside Ripay (e.g. provider dashboard): record it now.
         refund = await repos.refunds.create({
           organizationId: payment.organizationId,
           paymentId: payment.id,
@@ -163,7 +163,7 @@ export class RefundService {
       description: "Reembolso ao comprador",
       lines: [
         { account: producerAccountFor(payment), direction: "DEBIT", amount: shares.producer, description: "Estorno da parte do produtor" },
-        { account: "PLATFORM_REVENUE", direction: "DEBIT", amount: shares.platform, description: "Estorno da taxa Hypei" },
+        { account: "PLATFORM_REVENUE", direction: "DEBIT", amount: shares.platform, description: "Estorno da taxa Ripay" },
         { account: "REFUNDS", direction: "DEBIT", amount: shares.processor, description: "Taxa de processamento não recuperada" },
         { account: "PLATFORM_CASH", direction: "CREDIT", amount, description: "Devolução ao comprador" },
       ],

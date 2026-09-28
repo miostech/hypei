@@ -20,7 +20,7 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 const ALL = new Set<Permission>(PERMISSIONS);
 
-/** Authorization is Hypei's responsibility (Keycloak only authenticates). */
+/** Authorization is Ripay's responsibility (Keycloak only authenticates). */
 export const ROLE_PERMISSIONS: Record<OrganizationRole, ReadonlySet<Permission>> = {
   OWNER: ALL,
   ADMIN: new Set(PERMISSIONS.filter((p) => p !== "members:manage")),

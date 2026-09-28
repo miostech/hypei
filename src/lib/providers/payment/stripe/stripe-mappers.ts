@@ -2,8 +2,8 @@ import type Stripe from "stripe";
 import type { PaymentMethodType } from "@/generated/prisma/enums";
 import type { MerchantAccountSnapshot, ProviderPaymentResult, ProviderPayoutState } from "../types";
 
-/** Hypei payment method → Stripe payment_method_types. */
-export const STRIPE_METHOD_BY_HYPEI: Partial<Record<PaymentMethodType, string>> = {
+/** Ripay payment method → Stripe payment_method_types. */
+export const STRIPE_METHOD_BY_RIPAY: Partial<Record<PaymentMethodType, string>> = {
   CREDIT_CARD: "card",
   DEBIT_CARD: "card",
   APPLE_PAY: "card", // wallets ride on the card method in Payment Element
@@ -16,7 +16,7 @@ export const STRIPE_METHOD_BY_HYPEI: Partial<Record<PaymentMethodType, string>> 
 };
 
 export function toStripePaymentMethodTypes(methods: PaymentMethodType[]): string[] {
-  return [...new Set(methods.map((m) => STRIPE_METHOD_BY_HYPEI[m]).filter((m): m is string => Boolean(m)))];
+  return [...new Set(methods.map((m) => STRIPE_METHOD_BY_RIPAY[m]).filter((m): m is string => Boolean(m)))];
 }
 
 export function fromStripePaymentMethodType(type: string | undefined | null, wallet?: string | null): PaymentMethodType | null {

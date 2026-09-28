@@ -24,7 +24,7 @@ Plano de contas: `PLATFORM_CASH` (ativo), `PRODUCER_PENDING`, `PRODUCER_AVAILABL
 `PAYOUTS`, `PROCESSOR_FEES` (passivos), `PLATFORM_REVENUE` (receita), `REFUNDS`, `CHARGEBACKS`
 (despesas), `TAXES`.
 
-Política de reembolso (explícita): parte do produtor e taxa Hypei são revertidas proporcionalmente;
+Política de reembolso (explícita): parte do produtor e taxa Ripay são revertidas proporcionalmente;
 a taxa de processamento que o PSP não devolve é absorvida pela plataforma (`REFUNDS`). Em chargeback
 perdido, a perda vai para `CHARGEBACKS`.
 

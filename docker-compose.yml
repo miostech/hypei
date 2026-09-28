@@ -1,24 +1,24 @@
-# Hypei — local development stack.
+# Ripay — local development stack.
 # `docker compose up -d` starts infra only (Postgres, MongoDB, Redis, Keycloak).
 # `docker compose --profile app up -d --build` also runs the Next.js app in a container.
 
-name: hypei
+name: ripay
 
 services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: hypei
-      POSTGRES_PASSWORD: hypei
-      POSTGRES_DB: hypei
+      POSTGRES_USER: ripay
+      POSTGRES_PASSWORD: ripay
+      POSTGRES_DB: ripay
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hypei -d hypei"]
+      test: ["CMD-SHELL", "pg_isready -U ripay -d ripay"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -91,7 +91,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./docker/keycloak/realm-hypei.json:/opt/keycloak/data/import/realm-hypei.json:ro
+      - ./docker/keycloak/realm-ripay.json:/opt/keycloak/data/import/realm-ripay.json:ro
     depends_on:
       keycloak-db:
         condition: service_healthy
@@ -114,8 +114,8 @@ services:
         required: false
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://hypei:hypei@postgres:5432/hypei?schema=public
-      MONGODB_URI: mongodb://mongo:27017/hypei
+      DATABASE_URL: postgresql://ripay:ripay@postgres:5432/ripay?schema=public
+      MONGODB_URI: mongodb://mongo:27017/ripay
       REDIS_URL: redis://redis:6379
       KEYCLOAK_URL: http://localhost:8080
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080

@@ -17,7 +17,7 @@ export function getStripeClient(): Stripe {
   const apiVersion = process.env.STRIPE_API_VERSION || undefined;
   client = new Stripe(secretKey, {
     ...(apiVersion ? { apiVersion: apiVersion as Stripe.StripeConfig["apiVersion"] } : {}),
-    appInfo: { name: "Hypei", url: process.env.APP_URL },
+    appInfo: { name: "Ripay", url: process.env.APP_URL },
     maxNetworkRetries: 2,
     telemetry: false,
   });

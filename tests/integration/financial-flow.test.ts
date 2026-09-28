@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { accountTotals, confirmPayment, createSeller, createTestApp, expectLedgerBalanced, startPurchase, type TestApp } from "../support/test-app";
 
 /**
- * Reference scenario: price 10000 BRL, processor fee 400, Hypei fee 1000, producer net 8600.
+ * Reference scenario: price 10000 BRL, processor fee 400, Ripay fee 1000, producer net 8600.
  * Payment → Ledger → Balance → Settlement → Payout, checking that money is never created or lost.
  */
 describe("Financial flow: payment → ledger → balance → settlement → payout", () => {
@@ -33,7 +33,7 @@ describe("Financial flow: payment → ledger → balance → settlement → payo
     let totals = await accountTotals(app.prisma, organization.id);
     expect(totals.PLATFORM_CASH).toBe(10_000n); // gross payment
     expect(-totals.PROCESSOR_FEES).toBe(400n); // processor fee
-    expect(-totals.PLATFORM_REVENUE).toBe(1000n); // Hypei revenue
+    expect(-totals.PLATFORM_REVENUE).toBe(1000n); // Ripay revenue
     expect(-totals.PRODUCER_PENDING).toBe(8600n); // producer pending
     expect(totals.PRODUCER_AVAILABLE ?? 0n).toBe(0n);
     await expectLedgerBalanced(app.prisma);
@@ -77,7 +77,7 @@ describe("Financial flow: payment → ledger → balance → settlement → payo
     totals = await accountTotals(app.prisma, organization.id);
     expect(totals.PAYOUTS).toBe(0n);
     expect(totals.PLATFORM_CASH).toBe(1400n); // 10000 in − 8600 out
-    // Accounting equation: cash = processor fees owed + Hypei revenue + producer balances.
+    // Accounting equation: cash = processor fees owed + Ripay revenue + producer balances.
     expect(totals.PLATFORM_CASH).toBe(-totals.PROCESSOR_FEES + -totals.PLATFORM_REVENUE + -(totals.PRODUCER_PENDING ?? 0n) + -(totals.PRODUCER_AVAILABLE ?? 0n));
     await expectLedgerBalanced(app.prisma);
 

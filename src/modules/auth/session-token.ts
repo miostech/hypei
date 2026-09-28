@@ -4,9 +4,9 @@ import { jwtVerify, SignJWT, type JWTPayload } from "jose";
  * Session cookie format (signed HS256 JWT, httpOnly). Kept free of `server-only` / env
  * imports so the proxy can use it for optimistic checks.
  */
-export const SESSION_COOKIE = "hypei_session";
-export const OIDC_FLOW_COOKIE = "hypei_oidc";
-export const ORGANIZATION_COOKIE = "hypei_org";
+export const SESSION_COOKIE = "ripay_session";
+export const OIDC_FLOW_COOKIE = "ripay_oidc";
+export const ORGANIZATION_COOKIE = "ripay_org";
 export const SESSION_TTL_SECONDS = 60 * 60 * 8;
 
 export interface SessionClaims {
@@ -29,7 +29,7 @@ export async function signToken<T extends object>(claims: T, secret: string, ttl
   return new SignJWT({ ...claims } as JWTPayload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setIssuer("hypei")
+    .setIssuer("ripay")
     .setExpirationTime(`${ttlSeconds}s`)
     .sign(key(secret));
 }
@@ -37,7 +37,7 @@ export async function signToken<T extends object>(claims: T, secret: string, ttl
 export async function verifyToken<T>(token: string | undefined, secret: string): Promise<T | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, key(secret), { issuer: "hypei", algorithms: ["HS256"] });
+    const { payload } = await jwtVerify(token, key(secret), { issuer: "ripay", algorithms: ["HS256"] });
     return payload as T;
   } catch {
     return null;

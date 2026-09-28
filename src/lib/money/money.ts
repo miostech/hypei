@@ -3,7 +3,7 @@ import { assertSupportedCurrency, currencyExponent, type CurrencyCode } from "./
 
 /**
  * Money is always an integer amount of MINOR units (cents) + currency.
- * Floats are never used for money anywhere in Hypei.
+ * Floats are never used for money anywhere in Ripay.
  */
 export interface Money {
   readonly amount: bigint;
@@ -105,10 +105,29 @@ export function allocateProportionally(total: Money, weights: bigint[]): Money[]
 }
 
 /** Converts a decimal string typed by a user ("10,90" / "10.90") to minor units without floats. */
+/**
+ * Normalizes the human separators of "1.997,00", "1,997.00", "1997,00" and "1997" to a
+ * single dot. A separator followed by exactly three digits is a thousands separator;
+ * anything else (1 or 2 digits) is the decimal mark, which is how people actually type
+ * prices in pt-BR, pt-PT and en-US alike.
+ */
+function separateDecimal(value: string): string {
+  const last = Math.max(value.lastIndexOf("."), value.lastIndexOf(","));
+  if (last === -1) return value;
+
+  const tail = value.slice(last + 1);
+  // "1.997" / "1,997" / "1.234.567": every separator groups thousands.
+  const onlyThousandGroups = /^\d{1,3}(?:[.,]\d{3})+$/.test(value) && !/^0/.test(value);
+  if (tail.length === 3 && onlyThousandGroups) return value.replace(/[.,]/g, "");
+
+  // Otherwise the last separator is the decimal mark and the rest group thousands.
+  return `${value.slice(0, last).replace(/[.,]/g, "")}.${tail}`;
+}
+
 export function parseDecimalToMinorUnits(input: string, currency: CurrencyCode): bigint {
   const exponent = currencyExponent(currency);
-  const normalized = input.trim().replace(/\s/g, "");
-  const match = /^(\d+)(?:[.,](\d+))?$/.exec(normalized);
+  const normalized = separateDecimal(input.trim().replace(/\s/g, ""));
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(normalized);
   if (!match) throw new MoneyError(`Invalid amount: "${input}"`);
   const [, whole, fraction = ""] = match;
   if (fraction.length > exponent) {

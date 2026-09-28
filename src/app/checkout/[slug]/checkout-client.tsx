@@ -15,7 +15,7 @@ import { startCheckoutAction, trackCheckoutEvent } from "./actions";
 import { MockPaymentPanel } from "./mock-payment-panel";
 import { StripePaymentPanel } from "./stripe-payment-panel";
 
-const SESSION_KEY = "hypei_checkout_session";
+const SESSION_KEY = "ripay_checkout_session";
 
 function sessionId(): string {
   try {
@@ -97,8 +97,8 @@ export function CheckoutClient({
 
   if (payment) {
     return (
-      <div className="space-y-4 rounded-xl border bg-card p-5">
-        <h2 className="font-medium">Pagamento</h2>
+      <div className="space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
+        <h2 className="font-heading text-lg font-semibold">Pagamento</h2>
         {provider === "STRIPE" && publishableKey && payment.clientSecret ? (
           <StripePaymentPanel
             publishableKey={publishableKey}
@@ -119,24 +119,24 @@ export function CheckoutClient({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-4 rounded-xl border bg-card p-5">
-      <h2 className="font-medium">Seus dados</h2>
+    <form action={handleSubmit} className="space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
+      <h2 className="font-heading text-lg font-semibold">Seus dados</h2>
 
       <div className="space-y-1.5">
         <Label htmlFor="name">Nome completo</Label>
-        <Input id="name" name="name" required autoComplete="name" />
+        <Input id="name" name="name" required autoComplete="name" className="h-11 rounded-xl" placeholder="Como no documento" />
       </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="email">E-mail</Label>
-        <Input id="email" name="email" type="email" required autoComplete="email" />
+        <Input id="email" name="email" type="email" required autoComplete="email" className="h-11 rounded-xl" placeholder="voce@email.com" />
         <p className="text-xs text-muted-foreground">É para este e-mail que enviaremos o acesso.</p>
       </div>
 
       {collectPhone && (
         <div className="space-y-1.5">
           <Label htmlFor="phone">Telefone</Label>
-          <Input id="phone" name="phone" type="tel" autoComplete="tel" />
+          <Input id="phone" name="phone" type="tel" autoComplete="tel" className="h-11 rounded-xl" />
         </div>
       )}
 
@@ -147,7 +147,7 @@ export function CheckoutClient({
             id="country"
             name="country"
             defaultValue="BR"
-            className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+            className="flex h-11 w-full rounded-xl border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
           >
             {SUPPORTED_COUNTRIES.map((code) => (
               <option key={code} value={code}>
@@ -164,7 +164,7 @@ export function CheckoutClient({
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <Button type="submit" size="lg" className="w-full" disabled={submitting} style={{ background: accentColor }}>
+      <Button type="submit" size="lg" className="h-12 w-full rounded-xl text-base" disabled={submitting} style={{ background: accentColor }}>
         {submitting ? <Loader2Icon className="animate-spin" /> : <LockIcon />}
         Ir para o pagamento · {amountLabel}
       </Button>

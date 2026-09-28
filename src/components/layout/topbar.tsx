@@ -1,11 +1,9 @@
 "use client";
 
-import { BuildingIcon, CheckIcon, ChevronsUpDownIcon, LogOutIcon, PlusIcon } from "lucide-react";
+import { CheckIcon, ChevronsUpDownIcon, LogOutIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export interface OrganizationOption {
@@ -23,10 +20,20 @@ export interface OrganizationOption {
   role: string;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  OWNER: "Proprietário",
+  ADMIN: "Administrador",
+  FINANCE: "Financeiro",
+  SUPPORT: "Suporte",
+  MARKETING: "Marketing",
+  VIEWER: "Visualizador",
+};
+
 export function Topbar({
   organizations,
   currentOrganizationId,
   currentOrganizationName,
+  currentRole,
   userName,
   userEmail,
   switchOrganization,
@@ -34,35 +41,44 @@ export function Topbar({
   organizations: OrganizationOption[];
   currentOrganizationId: string;
   currentOrganizationName: string;
+  currentRole: string;
   userName: string;
   userEmail: string;
   switchOrganization: (organizationId: string) => Promise<void>;
 }) {
   const [pending, startTransition] = useTransition();
   const initials = (userName || userEmail).slice(0, 2).toUpperCase();
+  const orgInitials = currentOrganizationName.slice(0, 2).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 px-3 backdrop-blur-sm">
-      <SidebarTrigger />
-      <Separator orientation="vertical" className="mr-1 h-5" />
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur-md">
+      <SidebarTrigger className="text-muted-foreground" />
 
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button variant="ghost" size="sm" className="gap-2" disabled={pending}>
-              <BuildingIcon />
-              <span className="max-w-40 truncate">{currentOrganizationName}</span>
-              <ChevronsUpDownIcon className="text-muted-foreground" />
-            </Button>
+            <button
+              type="button"
+              disabled={pending}
+              className="flex items-center gap-2.5 rounded-xl py-1.5 pr-2.5 pl-1.5 transition-colors hover:bg-muted"
+            >
+              <span className="bg-brand-gradient flex size-8 items-center justify-center rounded-lg font-heading text-xs font-bold text-white">
+                {orgInitials}
+              </span>
+              <span className="hidden text-left sm:block">
+                <span className="block max-w-44 truncate text-sm font-medium">{currentOrganizationName}</span>
+                <span className="block text-[0.7rem] text-muted-foreground">{ROLE_LABELS[currentRole] ?? currentRole}</span>
+              </span>
+              <ChevronsUpDownIcon className="size-4 text-muted-foreground" />
+            </button>
           }
         />
-        <DropdownMenuContent align="start" className="w-60">
-          <DropdownMenuLabel>Suas organizações</DropdownMenuLabel>
+        <DropdownMenuContent align="start" className="w-64">
+          <DropdownMenuLabel className="text-xs text-muted-foreground">Suas organizações</DropdownMenuLabel>
           {organizations.map((org) => (
             <DropdownMenuItem key={org.id} onClick={() => startTransition(() => switchOrganization(org.id))}>
               <span className="flex-1 truncate">{org.name}</span>
-              <span className="text-xs text-muted-foreground">{org.role}</span>
-              {org.id === currentOrganizationId && <CheckIcon className="size-3.5" />}
+              {org.id === currentOrganizationId && <CheckIcon className="size-3.5 text-primary" />}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
@@ -73,16 +89,18 @@ export function Topbar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-1.5">
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button variant="ghost" size="icon-sm" aria-label="Conta">
-                <Avatar className="size-7">
-                  <AvatarFallback className="text-[0.65rem]">{initials}</AvatarFallback>
-                </Avatar>
-              </Button>
+              <button
+                type="button"
+                aria-label="Conta"
+                className="flex size-9 items-center justify-center rounded-xl bg-muted font-heading text-xs font-semibold text-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                {initials}
+              </button>
             }
           />
           <DropdownMenuContent align="end" className="w-60">
@@ -91,7 +109,10 @@ export function Topbar({
               <span className="truncate text-xs font-normal text-muted-foreground">{userEmail}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link href="/settings" />}>Configurações</DropdownMenuItem>
+            <DropdownMenuItem render={<Link href="/settings" />}>
+              <SettingsIcon />
+              Configurações
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               render={

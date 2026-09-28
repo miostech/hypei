@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getPaymentStatus } from "../actions";
 
-/** Polls the Hypei payment status until the provider webhook settles it. */
+/** Polls the Ripay payment status until the provider webhook settles it. */
 export function PaymentStatusWatcher({ paymentId }: { paymentId: string }) {
   const router = useRouter();
 

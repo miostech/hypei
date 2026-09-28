@@ -123,7 +123,7 @@ export class PaymentService {
       if (isCaptured(payment.status)) return "duplicate";
 
       if (event.currency !== payment.currency || event.amount !== payment.amount) {
-        throw new ProviderError(provider, "Captured amount does not match the Hypei payment", {
+        throw new ProviderError(provider, "Captured amount does not match the Ripay payment", {
           paymentId: payment.id,
           expected: `${payment.amount} ${payment.currency}`,
           received: `${event.amount} ${event.currency}`,
@@ -190,7 +190,7 @@ export class PaymentService {
         lines: [
           { account: "PLATFORM_CASH", direction: "DEBIT", amount: fees.grossAmount.amount, description: "Valor bruto da venda" },
           { account: "PROCESSOR_FEES", direction: "CREDIT", amount: fees.processorFeeAmount.amount, description: "Taxa de processamento" },
-          { account: "PLATFORM_REVENUE", direction: "CREDIT", amount: fees.platformFeeAmount.amount, description: "Taxa Hypei" },
+          { account: "PLATFORM_REVENUE", direction: "CREDIT", amount: fees.platformFeeAmount.amount, description: "Taxa Ripay" },
           { account: "PRODUCER_PENDING", direction: "CREDIT", amount: fees.producerNetAmount.amount, description: "Saldo pendente do produtor" },
         ],
       });

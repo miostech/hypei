@@ -3,7 +3,7 @@ import { createPrismaClient } from "../src/lib/database/postgres/client";
 
 /**
  * Seeds the financial POLICIES the platform needs to operate.
- * Values here are placeholders for development — Hypei's real pricing is not defined yet.
+ * Values here are placeholders for development — Ripay's real pricing is not defined yet.
  */
 async function main() {
   const prisma = createPrismaClient(process.env.DATABASE_URL!);

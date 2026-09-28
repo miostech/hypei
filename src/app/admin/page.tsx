@@ -14,7 +14,7 @@ const MODULES = [
   { title: "Disputas", description: "Chargebacks abertos e prazos de evidência." },
   { title: "Risco", description: "Sinais, reservas e bloqueios." },
   { title: "Compliance", description: "KYC/KYB, AML e sanções." },
-  { title: "Receita da plataforma", description: "Taxas Hypei por período e por país." },
+  { title: "Receita da plataforma", description: "Taxas Ripay por período e por país." },
 ];
 
 export default async function AdminHomePage() {
@@ -28,7 +28,7 @@ export default async function AdminHomePage() {
 
   return (
     <>
-      <PageHeader title="Visão da plataforma" description="Números agregados de toda a Hypei." />
+      <PageHeader title="Visão da plataforma" description="Números agregados de toda a Ripay." />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Organizações" value={String(organizations)} />

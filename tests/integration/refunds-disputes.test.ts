@@ -25,7 +25,7 @@ describe("Refunds", () => {
     app = await createTestApp();
   });
 
-  it("full refund reverses producer + Hypei shares and only moves the ledger after provider confirmation", async () => {
+  it("full refund reverses producer + Ripay shares and only moves the ledger after provider confirmation", async () => {
     const { organization, payment } = await paidSale(app);
     const refund = await app.services.refunds.request({ organizationId: organization.id, paymentId: payment.id, amount: 10_000n, idempotencyKey: "r1" });
     expect(refund.status).toBe("PROCESSING");
