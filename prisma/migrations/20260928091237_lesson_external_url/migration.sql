@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Lesson" ADD COLUMN     "externalUrl" TEXT,
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

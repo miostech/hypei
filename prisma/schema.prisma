@@ -969,6 +969,8 @@ model Module {
 }
 
 /// Lesson metadata only — media files live in S3-compatible storage.
+/// The player reads `storageKey` first (uploaded media), then `externalUrl`
+/// (YouTube/Vimeo/any link), and `content` holds the body of TEXT lessons.
 model Lesson {
   id              String     @id @default(cuid())
   moduleId        String
@@ -977,8 +979,10 @@ model Lesson {
   position        Int
   durationSeconds Int?
   storageKey      String?
+  externalUrl     String?
   content         String?
   createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt @default(now())
 
   module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 

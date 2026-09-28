@@ -1,8 +1,15 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useId, type ReactNode } from "react";
 import { cn } from "cn";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/**
+ * Field ids are generated, never derived from the field name: the same form can be
+ * rendered twice on a page (a dialog over a settings form) without the labels
+ * pointing at the wrong input.
+ */
 export function FormRow({
   label,
   htmlFor,
@@ -38,11 +45,14 @@ export function TextField({
   error,
   hint,
   className,
+  id,
   ...props
 }: React.ComponentProps<typeof Input> & { label: string; name: string; error?: string; hint?: string }) {
+  const generated = useId();
+  const fieldId = id ?? `${name}-${generated}`;
   return (
-    <FormRow label={label} htmlFor={name} error={error} hint={hint} className={className}>
-      <Input id={name} name={name} aria-invalid={Boolean(error)} aria-describedby={error ? `${name}-error` : undefined} {...props} />
+    <FormRow label={label} htmlFor={fieldId} error={error} hint={hint} className={className}>
+      <Input id={fieldId} name={name} aria-invalid={Boolean(error)} aria-describedby={error ? `${fieldId}-error` : undefined} {...props} />
     </FormRow>
   );
 }
@@ -55,14 +65,18 @@ export function SelectField({
   hint,
   children,
   className,
+  id,
   ...props
 }: React.ComponentProps<"select"> & { label: string; name: string; error?: string; hint?: string }) {
+  const generated = useId();
+  const fieldId = id ?? `${name}-${generated}`;
   return (
-    <FormRow label={label} htmlFor={name} error={error} hint={hint} className={className}>
+    <FormRow label={label} htmlFor={fieldId} error={error} hint={hint} className={className}>
       <select
-        id={name}
+        id={fieldId}
         name={name}
         aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${fieldId}-error` : undefined}
         className={cn(
           "flex h-8 w-full items-center rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors",
           "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30",

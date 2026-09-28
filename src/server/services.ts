@@ -16,6 +16,7 @@ import type { CheckoutConfigRepository } from "@/modules/checkout/checkout-confi
 import { CheckoutService } from "@/modules/checkout/checkout.service";
 import { DisputeService } from "@/modules/disputes/dispute.service";
 import type { ProviderSnapshotRepository } from "@/modules/integrations/provider-snapshot.repository";
+import { CourseService } from "@/modules/members/course.service";
 import { LedgerService } from "@/modules/ledger/ledger.service";
 import { MerchantAccountService } from "@/modules/merchant-accounts/merchant-account.service";
 import { OfferService } from "@/modules/offers/offer.service";
@@ -77,6 +78,7 @@ export function buildServices(deps: ServiceDependencies) {
   const subscriptions = new SubscriptionService(uow);
   const organizations = new OrganizationService(uow, merchantAccounts, deps.config.dataHashSecret);
   const products = new ProductService(uow);
+  const courses = new CourseService(uow);
   const offers = new OfferService(uow);
   const tracking = new TrackingService(deps.mongo.analyticsEvents);
   const idempotency = new IdempotencyService(uow.repos.idempotency);
@@ -112,6 +114,7 @@ export function buildServices(deps: ServiceDependencies) {
     organizations,
     products,
     offers,
+    courses,
     tracking,
     checkouts,
     finance,

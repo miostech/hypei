@@ -104,6 +104,67 @@ async function main() {
 
   const pool = catalogue.flatMap((entry) => Array<(typeof catalogue)[number]>(entry.weight).fill(entry));
 
+  // Member area: one published course with real modules and lessons -------
+  const mainProduct = (await services.products.list(organization.id)).find((p) => p.slug === PRODUCTS[0].slug);
+  if (mainProduct && !(await services.uow.repos.courses.findByProductId(mainProduct.id))) {
+    const course = await services.courses.create(organization.id, user.id, {
+      productId: mainProduct.id,
+      title: PRODUCTS[0].name,
+      slug: PRODUCTS[0].slug,
+      description: "Do equipamento à edição final: tudo que você precisa para fotografar à noite.",
+    });
+
+    const curriculum = [
+      {
+        title: "Comece por aqui",
+        lessons: [
+          { title: "Boas-vindas ao curso", type: "VIDEO" as const, durationMinutes: 4 },
+          { title: "Como aproveitar o curso", type: "TEXT" as const, content: "Assista na ordem dos módulos e refaça os exercícios de cada aula." },
+        ],
+      },
+      {
+        title: "Equipamento e configuração",
+        lessons: [
+          { title: "Câmera, lente e tripé", type: "VIDEO" as const, durationMinutes: 18 },
+          { title: "ISO, abertura e velocidade à noite", type: "VIDEO" as const, durationMinutes: 26 },
+          { title: "Checklist de campo", type: "PDF" as const, durationMinutes: 0 },
+        ],
+      },
+      {
+        title: "Na rua",
+        lessons: [
+          { title: "Luz urbana e reflexos", type: "VIDEO" as const, durationMinutes: 31 },
+          { title: "Longa exposição na prática", type: "VIDEO" as const, durationMinutes: 42 },
+          { title: "Encontro ao vivo: análise de fotos", type: "LIVE" as const, durationMinutes: 60 },
+        ],
+      },
+      {
+        title: "Edição",
+        lessons: [
+          { title: "Revelando o RAW", type: "VIDEO" as const, durationMinutes: 38 },
+          { title: "Presets do curso", type: "DOWNLOAD" as const, durationMinutes: 0 },
+        ],
+      },
+    ];
+
+    let lessonCount = 0;
+    for (const item of curriculum) {
+      const courseModule = await services.courses.addModule(organization.id, course.id, item.title);
+      for (const entry of item.lessons) {
+        await services.courses.addLesson(organization.id, courseModule.id, {
+          title: entry.title,
+          type: entry.type,
+          durationMinutes: entry.durationMinutes || undefined,
+          content: entry.type === "TEXT" ? entry.content : "",
+          externalUrl: entry.type === "TEXT" ? "" : "https://cdn.example.com/aulas/fotografia-noturna.mp4",
+        });
+        lessonCount++;
+      }
+    }
+    await services.courses.setPublished(organization.id, user.id, course.id, true);
+    console.log(`✔ curso publicado: ${curriculum.length} módulos, ${lessonCount} aulas`);
+  }
+
   // Sales -------------------------------------------------------------------
   const existingOrders = await prisma.order.count({ where: { organizationId: organization.id } });
   if (existingOrders > 0) {
