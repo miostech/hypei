@@ -984,7 +984,8 @@ model Lesson {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt @default(now())
 
-  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  module   Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
 
   @@index([moduleId, position])
 }
@@ -997,10 +998,28 @@ model Enrollment {
   status     EnrollmentStatus @default(ACTIVE)
   createdAt  DateTime         @default(now())
 
-  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  customer Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
 
   @@unique([courseId, customerId])
+}
+
+/// One row per lesson the student opened; `completedAt` marks it as watched.
+/// The most recently updated row is where "continuar de onde parei" resumes.
+model LessonProgress {
+  id           String    @id @default(cuid())
+  enrollmentId String
+  lessonId     String
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, lessonId])
+  @@index([enrollmentId, updatedAt])
 }
 
 // ─────────────────────────── Platform ────────────────────────────

@@ -18,6 +18,7 @@ import { PrismaDisputeRepository, type DisputeRepository } from "@/modules/dispu
 import { PrismaWebhookEventRepository, type WebhookEventRepository } from "@/modules/webhooks/webhook-event.repository";
 import { PrismaAuditRepository, type AuditRepository } from "@/modules/audit/audit.repository";
 import { PrismaCourseRepository, type CourseRepository } from "@/modules/members/course.repository";
+import { PrismaProgressRepository, type ProgressRepository } from "@/modules/members/progress.repository";
 import { PrismaSubscriptionRepository, type SubscriptionRepository } from "@/modules/subscriptions/subscription.repository";
 import { PrismaOutboxRepository, type OutboxRepository } from "@/lib/events/outbox.repository";
 import { PrismaIdempotencyRepository, type IdempotencyRepository } from "@/lib/idempotency/idempotency.repository";
@@ -43,6 +44,7 @@ export interface Repositories {
   webhookEvents: WebhookEventRepository;
   audit: AuditRepository;
   courses: CourseRepository;
+  progress: ProgressRepository;
   subscriptions: SubscriptionRepository;
   outbox: OutboxRepository;
   idempotency: IdempotencyRepository;
@@ -69,6 +71,7 @@ export function createRepositories(db: DbClient): Repositories {
     webhookEvents: new PrismaWebhookEventRepository(db),
     audit: new PrismaAuditRepository(db),
     courses: new PrismaCourseRepository(db),
+    progress: new PrismaProgressRepository(db),
     subscriptions: new PrismaSubscriptionRepository(db),
     outbox: new PrismaOutboxRepository(db),
     idempotency: new PrismaIdempotencyRepository(db),

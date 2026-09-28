@@ -20,7 +20,13 @@ import { MongoRiskEventRepository } from "@/modules/risk/risk-event.repository";
 import { MongoWebhookPayloadRepository } from "@/modules/webhooks/webhook-payload.repository";
 import { buildServices, type Services } from "./services";
 
-const globalForContainer = globalThis as unknown as { __ripayServices?: Services };
+const globalForContainer = globalThis as unknown as { __ripayServices?: Services; __ripayServicesStamp?: string };
+
+/**
+ * Re-evaluated whenever this module or anything it imports is reloaded, so a dev-server
+ * hot reload rebuilds the container instead of serving services wired before the edit.
+ */
+const MODULE_STAMP = process.env.NODE_ENV === "production" ? "production" : String(Date.now());
 
 /** Mongo indexes are created lazily once per process (idempotent). */
 let indexesReady: Promise<void> | undefined;
@@ -91,6 +97,9 @@ function createContainer(): Services {
 }
 
 export function getServices(): Services {
-  globalForContainer.__ripayServices ??= createContainer();
+  if (!globalForContainer.__ripayServices || globalForContainer.__ripayServicesStamp !== MODULE_STAMP) {
+    globalForContainer.__ripayServices = createContainer();
+    globalForContainer.__ripayServicesStamp = MODULE_STAMP;
+  }
   return globalForContainer.__ripayServices;
 }
