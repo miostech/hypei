@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -74,13 +75,15 @@ export function Topbar({
           }
         />
         <DropdownMenuContent align="start" className="w-64">
-          <DropdownMenuLabel className="text-xs text-muted-foreground">Suas organizações</DropdownMenuLabel>
-          {organizations.map((org) => (
-            <DropdownMenuItem key={org.id} onClick={() => startTransition(() => switchOrganization(org.id))}>
-              <span className="flex-1 truncate">{org.name}</span>
-              {org.id === currentOrganizationId && <CheckIcon className="size-3.5 text-primary" />}
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="text-xs text-muted-foreground">Suas organizações</DropdownMenuLabel>
+            {organizations.map((org) => (
+              <DropdownMenuItem key={org.id} onClick={() => startTransition(() => switchOrganization(org.id))}>
+                <span className="flex-1 truncate">{org.name}</span>
+                {org.id === currentOrganizationId && <CheckIcon className="size-3.5 text-primary" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem render={<Link href="/onboarding?new=1" />}>
             <PlusIcon />
@@ -104,10 +107,12 @@ export function Topbar({
             }
           />
           <DropdownMenuContent align="end" className="w-60">
-            <DropdownMenuLabel className="flex flex-col gap-0.5">
-              <span className="truncate font-medium">{userName || "Minha conta"}</span>
-              <span className="truncate text-xs font-normal text-muted-foreground">{userEmail}</span>
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="flex flex-col gap-0.5">
+                <span className="truncate font-medium">{userName || "Minha conta"}</span>
+                <span className="truncate text-xs font-normal text-muted-foreground">{userEmail}</span>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem render={<Link href="/settings" />}>
               <SettingsIcon />

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RipayLogo } from "@/components/brand/logo";
 import { CourseProgressBar } from "@/components/members/course-outline";
+import { MembersHeader } from "@/components/members/members-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,15 +25,12 @@ export default async function MembersHomePage({ params }: PageProps<"/members/[o
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">
-      <header className="border-b bg-card">
-        <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4">
-          <div>
-            <p className="font-heading font-semibold">{organization.name}</p>
-            <p className="text-xs text-muted-foreground">Área de membros</p>
-          </div>
-          <RipayLogo className="h-6 opacity-70" />
-        </div>
-      </header>
+      <MembersHeader
+        title={organization.name}
+        subtitle="Área de membros"
+        user={user}
+        meta={<RipayLogo className="mr-1 hidden h-5 opacity-60 sm:block" />}
+      />
 
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-5 p-4 sm:p-6">
         <div>

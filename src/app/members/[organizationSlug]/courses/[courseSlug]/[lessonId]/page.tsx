@@ -2,6 +2,7 @@ import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, ListIcon, RotateCcwIcon } fro
 import Link from "next/link";
 import { forbidden, notFound } from "next/navigation";
 import { CourseOutlineList, LESSON_ICON } from "@/components/members/course-outline";
+import { MembersHeader } from "@/components/members/members-header";
 import { LessonMedia } from "@/components/members/lesson-media";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,24 +42,22 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">
-      <header className="sticky top-0 z-20 border-b bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4">
-          <Button variant="ghost" size="icon-sm" aria-label="Voltar ao curso" render={<Link href={memberCourseHref(organizationSlug, courseSlug)} />}>
-            <ArrowLeftIcon />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{course.title}</p>
-            <p className="truncate text-xs text-muted-foreground">{view.moduleTitle}</p>
-          </div>
-          {access.kind === "enrolled" ? (
+      <MembersHeader
+        sticky
+        title={course.title}
+        subtitle={view.moduleTitle}
+        backHref={memberCourseHref(organizationSlug, courseSlug)}
+        user={user}
+        meta={
+          access.kind === "enrolled" ? (
             <span className="tabular hidden text-xs text-muted-foreground sm:block">
               {outline.completedLessons}/{outline.totalLessons} concluídas
             </span>
           ) : (
             <Badge variant="outline">Prévia da equipe</Badge>
-          )}
-        </div>
-      </header>
+          )
+        }
+      />
 
       <main className="mx-auto grid w-full max-w-6xl flex-1 gap-6 p-4 sm:p-6 lg:grid-cols-[1fr_340px]">
         <section className="space-y-5">

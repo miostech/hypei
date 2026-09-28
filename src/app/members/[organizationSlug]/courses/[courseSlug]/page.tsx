@@ -1,7 +1,8 @@
-import { ArrowLeftIcon, PlayCircleIcon } from "lucide-react";
+import { PlayCircleIcon } from "lucide-react";
 import Link from "next/link";
 import { forbidden, notFound } from "next/navigation";
 import { CourseOutlineList } from "@/components/members/course-outline";
+import { MembersHeader } from "@/components/members/members-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NotFoundError } from "@/lib/errors";
@@ -32,20 +33,13 @@ export default async function CoursePage({ params }: PageProps<"/members/[organi
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">
-      <header className="border-b bg-card">
-        <div className="mx-auto flex h-16 w-full max-w-4xl items-center gap-3 px-4">
-          <Button variant="ghost" size="icon-sm" aria-label="Voltar" render={<Link href={memberHomeHref(organizationSlug)} />}>
-            <ArrowLeftIcon />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-heading font-semibold">{course.title}</p>
-            <p className="text-xs text-muted-foreground">
-              {outline.modules.length} módulo(s) · {outline.totalLessons} aula(s)
-            </p>
-          </div>
-          {access.kind === "preview" && <Badge variant="outline">Prévia da equipe</Badge>}
-        </div>
-      </header>
+      <MembersHeader
+        title={course.title}
+        subtitle={`${outline.modules.length} módulo(s) · ${outline.totalLessons} aula(s)`}
+        backHref={memberHomeHref(organizationSlug)}
+        user={user}
+        meta={access.kind === "preview" ? <Badge variant="outline">Prévia da equipe</Badge> : undefined}
+      />
 
       <main className="mx-auto w-full max-w-4xl flex-1 space-y-6 p-4 sm:p-6">
         <section className="bg-brand-gradient relative isolate overflow-hidden rounded-2xl p-6 text-white shadow-lift sm:p-8">
