@@ -35,6 +35,12 @@ export interface OrderRepository {
   setStatus(id: string, status: OrderStatus): Promise<void>;
   productIds(orderId: string): Promise<string[]>;
   list(organizationId: string, options: { limit: number }): Promise<OrderListItem[]>;
+  /**
+   * Finds a sale the way a producer looks for one: by who bought, what they
+   * bought, the reference on the receipt, or the id the provider reported.
+   * Always scoped to the organization — support searching must not cross tenants.
+   */
+  search(organizationId: string, query: string, limit: number): Promise<OrderListItem[]>;
   paidSummary(organizationId: string, sinceDays: number): Promise<{ currency: string; total: bigint; count: number }[]>;
   /** Paid orders inside an explicit window, used for "today" on the dashboard. */
   paidBetween(organizationId: string, from: Date, to: Date): Promise<{ currency: string; total: bigint; count: number }[]>;
@@ -88,6 +94,29 @@ export class PrismaOrderRepository implements OrderRepository {
       include: { customer: true, items: true, payments: { select: { id: true, status: true, paymentMethod: true } } },
       orderBy: { createdAt: "desc" },
       take: options.limit,
+    });
+  }
+
+  search(organizationId: string, query: string, limit: number) {
+    const term = query.trim();
+    // The receipt shows the last 8 characters of the id, upper-cased.
+    const reference = term.toLowerCase();
+
+    return this.db.order.findMany({
+      where: {
+        organizationId,
+        OR: [
+          { id: term },
+          { id: { endsWith: reference } },
+          { customer: { name: { contains: term, mode: "insensitive" } } },
+          { customer: { email: { contains: term, mode: "insensitive" } } },
+          { items: { some: { productName: { contains: term, mode: "insensitive" } } } },
+          { payments: { some: { providerPaymentId: term } } },
+        ],
+      },
+      include: { customer: true, items: true, payments: { select: { id: true, status: true, paymentMethod: true } } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
     });
   }
 
