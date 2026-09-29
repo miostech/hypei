@@ -2,6 +2,7 @@ import Link from "next/link";
 import { RipayLogo } from "@/components/brand/logo";
 import { Badge } from "@/components/ui/badge";
 import { requirePlatformAdmin } from "@/modules/auth/current-user";
+import { AdminNav } from "./admin-nav";
 
 /** Ripay staff area. Requires the platform_admin realm role, re-checked against the DB. */
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
@@ -19,6 +20,11 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </Link>
         </div>
       </header>
+      <div className="border-b bg-background">
+        <div className="mx-auto w-full max-w-6xl px-4 pb-2">
+          <AdminNav />
+        </div>
+      </div>
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 p-4 sm:p-6">{children}</main>
     </div>
   );
