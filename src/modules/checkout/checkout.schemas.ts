@@ -37,6 +37,7 @@ export const startCheckoutSchema = z.object({
   email: z.string().trim().email("E-mail inválido"),
   phone: z.string().trim().max(32).optional().or(z.literal("")),
   country: z.string().length(2).optional(),
+  couponCode: z.string().trim().max(32).optional().or(z.literal("")),
   tracking: trackingSchema,
 });
 

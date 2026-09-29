@@ -15,6 +15,7 @@ import { BalanceService } from "@/modules/balances/balance.service";
 import { FinanceOverviewService } from "@/modules/balances/finance-overview.service";
 import type { CheckoutConfigRepository } from "@/modules/checkout/checkout-config.repository";
 import { CheckoutService } from "@/modules/checkout/checkout.service";
+import { CouponService } from "@/modules/coupons/coupon.service";
 import { DisputeService } from "@/modules/disputes/dispute.service";
 import type { ProviderSnapshotRepository } from "@/modules/integrations/provider-snapshot.repository";
 import { CourseService } from "@/modules/members/course.service";
@@ -92,7 +93,8 @@ export function buildServices(deps: ServiceDependencies) {
   const offers = new OfferService(uow);
   const tracking = new TrackingService(deps.mongo.analyticsEvents);
   const idempotency = new IdempotencyService(uow.repos.idempotency);
-  const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, deps.paymentProvider.type);
+  const coupons = new CouponService(uow);
+  const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, deps.paymentProvider.type);
   const finance = new FinanceOverviewService(uow);
   const outboxPublisher = new OutboxPublisher(uow.repos.outbox, deps.eventBus);
 
@@ -132,6 +134,7 @@ export function buildServices(deps: ServiceDependencies) {
     notifications,
     tracking,
     checkouts,
+    coupons,
     finance,
     outboxPublisher,
     webhookIngestion,

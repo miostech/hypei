@@ -130,13 +130,19 @@ export async function createSeller(app: TestApp, options: { amount?: bigint; cur
 }
 
 /** Buyer goes through the public checkout; returns the Ripay payment (status PENDING). */
-export async function startPurchase(app: TestApp, checkoutSlug: string, email = `buyer-${randomUUID().slice(0, 6)}@example.com`) {
+export async function startPurchase(
+  app: TestApp,
+  checkoutSlug: string,
+  email = `buyer-${randomUUID().slice(0, 6)}@example.com`,
+  options: { couponCode?: string } = {},
+) {
   const result = await app.services.checkouts.start({
     slug: checkoutSlug,
     attemptId: randomUUID(),
     sessionId: `sess-${randomUUID()}`,
     name: "Comprador",
     email,
+    couponCode: options.couponCode,
     tracking: { utm_source: "test" },
   });
   const payment = await app.prisma.payment.findUniqueOrThrow({ where: { id: result.paymentId } });

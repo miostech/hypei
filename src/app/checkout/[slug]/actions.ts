@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getRedis } from "@/lib/database/redis/client";
 import { ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { formatAmount } from "@/lib/ui/format";
 import { InMemoryRateLimiter, RedisRateLimiter, type RateLimiter } from "@/lib/security/rate-limit";
 import { startCheckoutSchema, trackingSchema } from "@/modules/checkout/checkout.schemas";
 import { CHECKOUT_EVENT_TYPES } from "@/modules/analytics/analytics-event.repository";
@@ -49,6 +50,43 @@ export async function startCheckoutAction(input: unknown): Promise<StartCheckout
     if (error instanceof ValidationError) return { ok: false, message: error.message };
     logger.error({ err: error }, "checkout start failed");
     return { ok: false, message: "Não foi possível iniciar o pagamento. Tente novamente." };
+  }
+}
+
+const couponSchema = z.object({ slug: z.string().min(1).max(64), code: z.string().trim().min(1).max(32) });
+
+export interface ApplyCouponResult {
+  ok: boolean;
+  message?: string;
+  code?: string;
+  discount?: string;
+  total?: string;
+}
+
+/**
+ * Public endpoint, so it is rate limited harder than the checkout itself: without
+ * that, this is a free oracle for guessing discount codes.
+ */
+export async function applyCouponAction(input: unknown): Promise<ApplyCouponResult> {
+  try {
+    const { slug, code } = couponSchema.parse(input);
+    const headerList = await headers();
+    const ip = headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const { allowed } = await rateLimiter().consume(`coupon:${ip}`, 10, 60);
+    if (!allowed) return { ok: false, message: "Muitas tentativas. Aguarde um instante." };
+
+    const result = await getServices().checkouts.previewCoupon(slug, code);
+    return {
+      ok: true,
+      code: result.code,
+      discount: formatAmount(result.discount, result.currency),
+      total: formatAmount(result.total, result.currency),
+    };
+  } catch (error) {
+    if (error instanceof z.ZodError) return { ok: false, message: "Código inválido" };
+    if (error instanceof ValidationError) return { ok: false, message: error.message };
+    logger.error({ err: error }, "coupon preview failed");
+    return { ok: false, message: "Não foi possível validar o cupom." };
   }
 }
 

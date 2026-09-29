@@ -9,6 +9,7 @@ import type { PaymentService } from "@/modules/payments/payment.service";
 import type { UnitOfWork } from "@/server/unit-of-work";
 import type { CheckoutConfigRepository } from "./checkout-config.repository";
 import { checkoutConfigSchema, type CheckoutConfig } from "./checkout-config.schema";
+import { CouponNotUsableError, type CouponService } from "@/modules/coupons/coupon.service";
 import type { CheckoutBuilderInput, StartCheckoutInput } from "./checkout.schemas";
 
 export interface StartCheckoutResult {
@@ -29,6 +30,7 @@ export class CheckoutService {
     private readonly payments: PaymentService,
     private readonly tracking: TrackingService,
     private readonly idempotency: IdempotencyService,
+    private readonly coupons: CouponService,
     private readonly providerType: PaymentProviderType,
   ) {}
 
@@ -116,18 +118,53 @@ export class CheckoutService {
     return { orderId: stored.orderId, paymentId: stored.paymentId, provider: stored.provider, clientSecret };
   }
 
+  /**
+   * Validates a code against the public checkout so the buyer sees the discount
+   * before paying. Nothing is reserved: the redemption is only claimed on submit.
+   */
+  async previewCoupon(slug: string, code: string) {
+    const checkout = await this.getPublic(slug);
+    if (!checkout) throw new NotFoundError("Checkout", slug);
+    const { coupon, discount, total } = await this.coupons.check(checkout.organization.id, code, {
+      amount: checkout.offer.amount,
+      currency: checkout.offer.currency,
+      productId: checkout.product.id,
+    });
+    return { code: coupon.code, discount, total, currency: checkout.offer.currency };
+  }
+
   private async createOrderAndPayment(input: StartCheckoutInput): Promise<StartCheckoutResult> {
     const checkout = await this.getPublic(input.slug);
     if (!checkout) throw new NotFoundError("Checkout", input.slug);
     const { organization, offer } = checkout;
 
-    const { customer, order } = await this.uow.transaction(async (repos) => {
+    const { customer, order, total } = await this.uow.transaction(async (repos) => {
       const customer = await repos.customers.upsertByEmail(organization.id, {
         name: input.name,
         email: input.email,
         phone: input.phone || null,
         country: input.country ?? null,
       });
+
+      // The discount is recomputed here from the offer price: whatever the browser
+      // sent is only a code, never an amount.
+      const applied = input.couponCode
+        ? await this.coupons.check(organization.id, input.couponCode, {
+            amount: offer.amount,
+            currency: offer.currency,
+            productId: checkout.product.id,
+            customerId: customer.id,
+          })
+        : null;
+
+      if (applied) {
+        const claimed = await repos.coupons.claimRedemption(applied.coupon.id);
+        if (!claimed) throw new CouponNotUsableError("Este cupom atingiu o limite de usos");
+      }
+
+      const discount = applied?.discount ?? 0n;
+      const total = offer.amount - discount;
+
       const order = await repos.orders.create({
         organizationId: organization.id,
         customerId: customer.id,
@@ -135,14 +172,26 @@ export class CheckoutService {
         checkoutVersion: checkout.version,
         currency: offer.currency,
         subtotalAmount: offer.amount,
-        discountAmount: 0n,
+        discountAmount: discount,
+        couponId: applied?.coupon.id ?? null,
+        couponCode: applied?.coupon.code ?? null,
         taxAmount: 0n,
-        totalAmount: offer.amount,
+        totalAmount: total,
         tracking: { ...input.tracking, sessionId: input.sessionId },
-        items: [{ offerId: offer.id, productName: checkout.product.name, offerName: offer.name, quantity: 1, unitAmount: offer.amount, totalAmount: offer.amount }],
+        items: [{ offerId: offer.id, productName: checkout.product.name, offerName: offer.name, quantity: 1, unitAmount: offer.amount, totalAmount: total }],
       });
-      await repos.outbox.add(createDomainEvent("order.created", order.id, organization.id, { total: offer.amount, currency: offer.currency }));
-      return { customer, order };
+
+      if (applied) {
+        await repos.coupons.recordRedemption({
+          couponId: applied.coupon.id,
+          orderId: order.id,
+          customerId: customer.id,
+          amount: discount,
+        });
+      }
+
+      await repos.outbox.add(createDomainEvent("order.created", order.id, organization.id, { total, currency: offer.currency }));
+      return { customer, order, total };
     });
 
     const base = { organizationId: organization.id, checkoutId: checkout.checkoutId, sessionId: input.sessionId, tracking: input.tracking };
@@ -152,7 +201,7 @@ export class CheckoutService {
       organizationId: organization.id,
       orderId: order.id,
       customer: { id: customer.id, email: customer.email, name: customer.name, country: customer.country },
-      amount: offer.amount,
+      amount: total,
       currency: offer.currency,
       paymentMethods: checkout.paymentMethods,
       description: `${checkout.product.name} — ${offer.name}`,

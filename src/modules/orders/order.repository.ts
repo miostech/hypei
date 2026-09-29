@@ -9,6 +9,8 @@ export interface CreateOrderRecord {
   currency: string;
   subtotalAmount: bigint;
   discountAmount: bigint;
+  couponId?: string | null;
+  couponCode?: string | null;
   taxAmount: bigint;
   totalAmount: bigint;
   tracking?: Record<string, string | null> | null;

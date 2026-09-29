@@ -431,6 +431,7 @@ model Product {
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
+  coupons Coupon[]
 }
 
 /// The official price of anything sold on Ripay. Checkout presentation (MongoDB) never overrides it.
@@ -516,6 +517,7 @@ model Customer {
   enrollments       Enrollment[]
 
   @@unique([organizationId, email])
+  couponRedemptions CouponRedemption[]
 }
 
 model ProviderCustomer {
@@ -541,6 +543,9 @@ model Order {
   status          OrderStatus @default(CREATED)
   subtotalAmount  BigInt
   discountAmount  BigInt      @default(0)
+  couponId        String?
+  /// Snapshot of the code typed by the buyer, kept even if the coupon is deleted.
+  couponCode      String?
   taxAmount       BigInt      @default(0)
   totalAmount     BigInt
   currency        String      @db.Char(3)
@@ -554,6 +559,7 @@ model Order {
   items        OrderItem[]
   payments     Payment[]
   commissions  AffiliateCommission[]
+  couponRedemption CouponRedemption?
 
   @@index([organizationId, createdAt])
   @@index([organizationId, status])
@@ -927,14 +933,42 @@ model Coupon {
   amount         BigInt?
   currency       String?    @db.Char(3)
   maxRedemptions Int?
+  /// Counter kept in step with the redemption rows by a conditional update.
   redemptions    Int        @default(0)
+  /// Smallest order value the coupon applies to.
+  minAmount      BigInt?
+  /// When set, the coupon only works for this product.
+  productId      String?
+  /// Blocks a second use by the same customer.
+  oncePerCustomer Boolean  @default(false)
   expiresAt      DateTime?
   active         Boolean    @default(true)
   createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
+  redemptionsList CouponRedemption[]
 
   @@unique([organizationId, code])
+  @@index([organizationId, active])
+}
+
+/// One row per order that used a coupon: the audit trail behind the counter.
+model CouponRedemption {
+  id         String   @id @default(cuid())
+  couponId   String
+  orderId    String   @unique
+  customerId String
+  /// Discount actually granted, in minor units.
+  amount     BigInt
+  createdAt  DateTime @default(now())
+
+  coupon   Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([couponId, customerId])
 }
 
 // ──────────────────────────── Members ────────────────────────────
