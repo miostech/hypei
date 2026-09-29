@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatAmount, formatDate } from "@/lib/ui/format";
+import { timezoneForCountry, todayAgainstYesterday } from "@/lib/time/day-window";
 import { buildDailySeries } from "@/lib/ui/series";
 import { requireOrganization } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
@@ -25,7 +26,10 @@ export default async function DashboardPage() {
   const services = getServices();
   const currency = organization.defaultCurrency;
 
-  const [summary, orders, products, nextAvailable, paid, daily, verification] = await Promise.all([
+  // "Hoje" segue o fuso do produtor, não o do servidor.
+  const day = todayAgainstYesterday(timezoneForCountry(organization.country));
+
+  const [summary, orders, products, nextAvailable, paid, daily, verification, today, yesterday] = await Promise.all([
     services.finance.summary(organization.id, currency),
     services.uow.repos.orders.list(organization.id, { limit: 6 }),
     services.products.list(organization.id),
@@ -33,7 +37,23 @@ export default async function DashboardPage() {
     services.uow.repos.orders.paidSummary(organization.id, WINDOW_DAYS),
     services.uow.repos.orders.dailyPaidTotals(organization.id, WINDOW_DAYS),
     services.verification.overview(organization.id),
+    services.uow.repos.orders.paidBetween(organization.id, day.todayStart, day.now),
+    services.uow.repos.orders.paidBetween(organization.id, day.yesterdayStart, day.yesterdayEnd),
   ]);
+
+  const todaySales = today.find((row) => row.currency === currency);
+  const todayTotal = todaySales?.total ?? 0n;
+  const todayCount = todaySales?.count ?? 0;
+  const yesterdayTotal = yesterday.find((row) => row.currency === currency)?.total ?? 0n;
+  // Compared against the same stretch of yesterday, so a morning meets a morning.
+  // With nothing to compare against, a percentage would be invented.
+  const dayOverDay = yesterdayTotal > 0n ? Number(((todayTotal - yesterdayTotal) * 100n) / yesterdayTotal) : null;
+  const todayHint =
+    todayCount === 0
+      ? "Nenhuma venda confirmada ainda hoje"
+      : `${todayCount} ${todayCount === 1 ? "pedido pago" : "pedidos pagos"} · ${
+          dayOverDay === null ? "ontem não houve vendas até agora" : `${dayOverDay >= 0 ? "+" : ""}${dayOverDay}% vs. ontem até agora`
+        }`;
 
   const sales = paid.find((row) => row.currency === currency);
   const salesTotal = sales?.total ?? 0n;
@@ -90,6 +110,13 @@ export default async function DashboardPage() {
         />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+          <StatCard
+            label="Vendas hoje"
+            value={formatAmount(todayTotal, currency)}
+            icon={ShoppingBagIcon}
+            tone={todayCount > 0 ? "positive" : "muted"}
+            hint={todayHint}
+          />
           <StatCard
             label={`Vendas (${WINDOW_DAYS} dias)`}
             value={formatAmount(salesTotal, currency)}

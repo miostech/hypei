@@ -36,6 +36,8 @@ export interface OrderRepository {
   productIds(orderId: string): Promise<string[]>;
   list(organizationId: string, options: { limit: number }): Promise<OrderListItem[]>;
   paidSummary(organizationId: string, sinceDays: number): Promise<{ currency: string; total: bigint; count: number }[]>;
+  /** Paid orders inside an explicit window, used for "today" on the dashboard. */
+  paidBetween(organizationId: string, from: Date, to: Date): Promise<{ currency: string; total: bigint; count: number }[]>;
   dailyPaidTotals(organizationId: string, sinceDays: number): Promise<{ day: Date; currency: string; total: bigint }[]>;
 }
 
@@ -94,6 +96,16 @@ export class PrismaOrderRepository implements OrderRepository {
     const rows = await this.db.order.groupBy({
       by: ["currency"],
       where: { organizationId, status: { in: ["PAID", "PARTIALLY_REFUNDED"] }, createdAt: { gte: since } },
+      _sum: { totalAmount: true },
+      _count: true,
+    });
+    return rows.map((r) => ({ currency: r.currency, total: r._sum.totalAmount ?? 0n, count: r._count }));
+  }
+
+  async paidBetween(organizationId: string, from: Date, to: Date) {
+    const rows = await this.db.order.groupBy({
+      by: ["currency"],
+      where: { organizationId, status: { in: ["PAID", "PARTIALLY_REFUNDED"] }, createdAt: { gte: from, lt: to } },
       _sum: { totalAmount: true },
       _count: true,
     });
