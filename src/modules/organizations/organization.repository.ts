@@ -4,6 +4,7 @@ import type {
   Organization,
   OrganizationMember,
   OrganizationRole,
+  OrganizationVerification,
   TaxIdType,
   VerificationStatus,
   PaymentProviderType,
@@ -41,6 +42,9 @@ export interface OrganizationRepository {
   }): Promise<void>;
   latestVerification(organizationId: string): Promise<{ status: VerificationStatus; type: BusinessType; provider: PaymentProviderType } | null>;
   updateVerificationStatus(organizationId: string, status: VerificationStatus, requirements: unknown): Promise<void>;
+  findVerification(organizationId: string): Promise<OrganizationVerification | null>;
+  /** Records that the producer opened the provider's verification flow. */
+  markVerificationSubmitted(organizationId: string, provider: PaymentProviderType, providerVerificationId: string): Promise<void>;
   taxIdentities(organizationId: string): Promise<{ type: TaxIdType; maskedValue: string; country: string }[]>;
 }
 
@@ -115,6 +119,41 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
         status,
         requirements: requirements as object,
         ...(status === "VERIFIED" ? { verifiedAt: new Date() } : {}),
+      },
+    });
+  }
+
+  findVerification(organizationId: string) {
+    return this.db.organizationVerification.findFirst({ where: { organizationId }, orderBy: { createdAt: "desc" } });
+  }
+
+  async markVerificationSubmitted(organizationId: string, provider: PaymentProviderType, providerVerificationId: string) {
+    const existing = await this.db.organizationVerification.findFirst({ where: { organizationId }, orderBy: { createdAt: "desc" } });
+    const organization = await this.db.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { businessType: true } });
+
+    if (!existing) {
+      // An organization onboarded before verification existed still gets a record.
+      await this.db.organizationVerification.create({
+        data: {
+          organizationId,
+          type: organization.businessType,
+          provider,
+          providerVerificationId,
+          status: "PENDING",
+          submittedAt: new Date(),
+        },
+      });
+      return;
+    }
+
+    // A verified account stays verified: reopening the flow only updates data.
+    await this.db.organizationVerification.update({
+      where: { id: existing.id },
+      data: {
+        provider,
+        providerVerificationId,
+        submittedAt: existing.submittedAt ?? new Date(),
+        ...(existing.status === "NOT_STARTED" ? { status: "PENDING" as const } : {}),
       },
     });
   }

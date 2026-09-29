@@ -25,13 +25,14 @@ export default async function DashboardPage() {
   const services = getServices();
   const currency = organization.defaultCurrency;
 
-  const [summary, orders, products, nextAvailable, paid, daily] = await Promise.all([
+  const [summary, orders, products, nextAvailable, paid, daily, verification] = await Promise.all([
     services.finance.summary(organization.id, currency),
     services.uow.repos.orders.list(organization.id, { limit: 6 }),
     services.products.list(organization.id),
     services.finance.nextAvailableDate(organization.id, currency),
     services.uow.repos.orders.paidSummary(organization.id, WINDOW_DAYS),
     services.uow.repos.orders.dailyPaidTotals(organization.id, WINDOW_DAYS),
+    services.verification.overview(organization.id),
   ]);
 
   const sales = paid.find((row) => row.currency === currency);
@@ -132,7 +133,7 @@ export default async function DashboardPage() {
             <Step done={products.length > 0} href="/products/new" label="Criar seu primeiro produto" />
             <Step done={products.some((p) => p._count.offers > 0)} href="/offers/new" label="Definir uma oferta e preço" />
             <Step done={orders.length > 0} href="/checkouts/new" label="Publicar um checkout" />
-            <Step done={summary.available > 0n} href="/integrations" label="Concluir verificação para receber" />
+            <Step done={verification.canWithdraw} href="/verification" label="Concluir verificação para receber" />
           </CardContent>
         </Card>
       </section>

@@ -12,6 +12,7 @@ import {
   RepeatIcon,
   RotateCcwIcon,
   SettingsIcon,
+  ShieldCheckIcon,
   ShoppingBagIcon,
   TagIcon,
   TicketIcon,
@@ -72,6 +73,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Conta",
     items: [
+      { href: "/verification", label: "Verificação", icon: ShieldCheckIcon, permission: "organization:read" },
       { href: "/integrations", label: "Integrações", icon: PlugIcon, permission: "organization:read" },
       { href: "/settings", label: "Configurações", icon: SettingsIcon, permission: "organization:read" },
     ],

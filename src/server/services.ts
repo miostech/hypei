@@ -17,6 +17,7 @@ import { FinanceOverviewService } from "@/modules/balances/finance-overview.serv
 import type { CheckoutConfigRepository } from "@/modules/checkout/checkout-config.repository";
 import { CheckoutService } from "@/modules/checkout/checkout.service";
 import { AffiliateService } from "@/modules/affiliates/affiliate.service";
+import { VerificationService } from "@/modules/compliance/verification.service";
 import { CouponService } from "@/modules/coupons/coupon.service";
 import { DisputeService } from "@/modules/disputes/dispute.service";
 import type { ProviderSnapshotRepository } from "@/modules/integrations/provider-snapshot.repository";
@@ -98,6 +99,7 @@ export function buildServices(deps: ServiceDependencies) {
   const tracking = new TrackingService(deps.mongo.analyticsEvents);
   const idempotency = new IdempotencyService(uow.repos.idempotency);
   const coupons = new CouponService(uow);
+  const verification = new VerificationService(uow, merchantAccounts);
   const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, subscriptions, deps.paymentProvider.type);
   const finance = new FinanceOverviewService(uow);
   const outboxPublisher = new OutboxPublisher(uow.repos.outbox, deps.eventBus);
@@ -129,6 +131,7 @@ export function buildServices(deps: ServiceDependencies) {
     settlements,
     payouts,
     merchantAccounts,
+    verification,
     subscriptions,
     organizations,
     products,
