@@ -1,5 +1,7 @@
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, ListIcon, RotateCcwIcon } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { forbidden, notFound } from "next/navigation";
 import { CourseOutlineList, LESSON_ICON } from "@/components/members/course-outline";
 import { MembersHeader } from "@/components/members/members-header";
@@ -75,14 +77,13 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
           </div>
 
           <div className="flex flex-wrap items-center gap-2 border-t pt-5">
-            <Button
+            <LessonNavButton
               variant="outline"
-              disabled={!view.previousLessonId}
-              render={view.previousLessonId ? <Link href={memberLessonHref(organizationSlug, courseSlug, view.previousLessonId)} /> : <button type="button" />}
+              href={view.previousLessonId ? memberLessonHref(organizationSlug, courseSlug, view.previousLessonId) : null}
             >
               <ArrowLeftIcon />
               Anterior
-            </Button>
+            </LessonNavButton>
 
             {access.kind === "enrolled" && (
               <form action={setLessonCompleted}>
@@ -102,15 +103,14 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
               </form>
             )}
 
-            <Button
+            <LessonNavButton
               variant="ghost"
               className="ml-auto"
-              disabled={!view.nextLessonId}
-              render={view.nextLessonId ? <Link href={memberLessonHref(organizationSlug, courseSlug, view.nextLessonId)} /> : <button type="button" />}
+              href={view.nextLessonId ? memberLessonHref(organizationSlug, courseSlug, view.nextLessonId) : null}
             >
               Próxima
               <ArrowRightIcon />
-            </Button>
+            </LessonNavButton>
           </div>
         </section>
 
@@ -130,5 +130,35 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
         </aside>
       </main>
     </div>
+  );
+}
+
+/**
+ * Previous/next navigation. With a target it renders a link; without one it stays a
+ * plain disabled button — passing a native <button> through `render` makes Base UI
+ * treat it as a custom element and strip the behaviour it already has.
+ */
+function LessonNavButton({
+  href,
+  variant,
+  className,
+  children,
+}: {
+  href: Route | null;
+  variant: "outline" | "ghost";
+  className?: string;
+  children: ReactNode;
+}) {
+  if (!href) {
+    return (
+      <Button variant={variant} className={className} disabled>
+        {children}
+      </Button>
+    );
+  }
+  return (
+    <Button variant={variant} className={className} render={<Link href={href} />}>
+      {children}
+    </Button>
   );
 }
