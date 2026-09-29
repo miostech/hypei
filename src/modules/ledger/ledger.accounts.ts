@@ -11,6 +11,7 @@ import type { LedgerAccount, LedgerDirection } from "@/generated/prisma/enums";
  * - REFUNDS             expense   refund losses absorbed by the platform (non-returned processor fees)
  * - CHARGEBACKS         expense   chargeback losses absorbed by the platform
  * - RESERVES            liability producer funds held (disputes, risk)
+ * - AFFILIATE_PAYABLE   liability owed to affiliates for referred sales
  * - TAXES               liability taxes collected on behalf of authorities
  * - PAYOUTS             liability producer funds in transit to their bank
  */
@@ -23,6 +24,7 @@ export const ACCOUNT_NORMAL_SIDE: Record<LedgerAccount, LedgerDirection> = {
   REFUNDS: "DEBIT",
   CHARGEBACKS: "DEBIT",
   RESERVES: "CREDIT",
+  AFFILIATE_PAYABLE: "CREDIT",
   TAXES: "CREDIT",
   PAYOUTS: "CREDIT",
 };

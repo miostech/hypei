@@ -19,24 +19,46 @@ export interface FeeBreakdown {
   grossAmount: Money;
   processorFeeAmount: Money;
   platformFeeAmount: Money;
+  /** Commission owed to the affiliate who referred the sale; zero without one. */
+  affiliateCommissionAmount: Money;
   producerNetAmount: Money;
 }
 
 /**
- * gross = processorFee + platformFee + producerNet — always exact, never floats.
- * Processor fee (what the PSP charged) and platform fee (Ripay) are kept separate.
+ * gross = processorFee + platformFee + affiliateCommission + producerNet — always
+ * exact, never floats. The commission is charged against the producer's share, as
+ * the producer is the one who hired the affiliate; the platform fee is untouched.
+ *
+ * `affiliateBps` is applied to the gross sale value, the number the affiliate was
+ * promised, and is capped at whatever is left for the producer so the split can
+ * never go negative.
  */
-export function calculateFeeBreakdown(gross: Money, processorFee: Money, rule: PlatformFeeRule): FeeBreakdown {
+export function calculateFeeBreakdown(
+  gross: Money,
+  processorFee: Money,
+  rule: PlatformFeeRule,
+  affiliateBps = 0,
+): FeeBreakdown {
   if (gross.amount <= 0n) throw new ValidationError("Gross amount must be positive");
   if (processorFee.amount < 0n) throw new ValidationError("Processor fee cannot be negative");
   const platformFee = calculatePlatformFee(gross, rule);
-  const producerNet = subtractMoney(subtractMoney(gross, processorFee), platformFee);
-  if (producerNet.amount < 0n) {
+  const beforeCommission = subtractMoney(subtractMoney(gross, processorFee), platformFee);
+  if (beforeCommission.amount < 0n) {
     throw new ValidationError("Fees exceed the gross amount", {
       gross: gross.amount.toString(),
       processorFee: processorFee.amount.toString(),
       platformFee: platformFee.amount.toString(),
     });
   }
-  return { grossAmount: gross, processorFeeAmount: processorFee, platformFeeAmount: platformFee, producerNetAmount: producerNet };
+
+  const requested = affiliateBps > 0 ? calculatePercentage(gross, affiliateBps) : money(0n, gross.currency);
+  const commission = requested.amount > beforeCommission.amount ? beforeCommission : requested;
+
+  return {
+    grossAmount: gross,
+    processorFeeAmount: processorFee,
+    platformFeeAmount: platformFee,
+    affiliateCommissionAmount: commission,
+    producerNetAmount: subtractMoney(beforeCommission, commission),
+  };
 }

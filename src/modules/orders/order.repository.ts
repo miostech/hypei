@@ -11,6 +11,8 @@ export interface CreateOrderRecord {
   discountAmount: bigint;
   couponId?: string | null;
   couponCode?: string | null;
+  affiliateId?: string | null;
+  affiliateLinkId?: string | null;
   taxAmount: bigint;
   totalAmount: bigint;
   tracking?: Record<string, string | null> | null;

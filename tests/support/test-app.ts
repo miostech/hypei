@@ -134,7 +134,7 @@ export async function startPurchase(
   app: TestApp,
   checkoutSlug: string,
   email = `buyer-${randomUUID().slice(0, 6)}@example.com`,
-  options: { couponCode?: string } = {},
+  options: { couponCode?: string; referralCode?: string } = {},
 ) {
   const result = await app.services.checkouts.start({
     slug: checkoutSlug,
@@ -143,6 +143,7 @@ export async function startPurchase(
     name: "Comprador",
     email,
     couponCode: options.couponCode,
+    referralCode: options.referralCode,
     tracking: { utm_source: "test" },
   });
   const payment = await app.prisma.payment.findUniqueOrThrow({ where: { id: result.paymentId } });

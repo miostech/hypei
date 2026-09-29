@@ -3,6 +3,7 @@ import { NotFoundError, RefundNotAllowedError, ValidationError } from "@/lib/err
 import { createDomainEvent } from "@/lib/events/domain-event";
 import { assertSupportedCurrency } from "@/lib/money";
 import type { NormalizedProviderEvent, PaymentProvider } from "@/lib/providers/payment/types";
+import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import { producerAccountFor, splitByOriginalShares } from "@/modules/payments/payment-shares";
 import type { Repositories } from "@/server/repositories";
@@ -31,6 +32,7 @@ export class RefundService {
     private readonly uow: UnitOfWork,
     private readonly provider: PaymentProvider,
     private readonly ledger: LedgerService,
+    private readonly affiliates: AffiliateService,
   ) {}
 
   async request(input: RequestRefundInput) {
@@ -152,6 +154,7 @@ export class RefundService {
     amount: bigint,
   ) {
     const shares = splitByOriginalShares(payment, amount);
+    await this.affiliates.reverseCommission(repos, payment.orderId, shares.affiliate);
     await this.ledger.post(repos, {
       organizationId: payment.organizationId,
       idempotencyKey: `refund:${refundId}`,
@@ -165,6 +168,17 @@ export class RefundService {
         { account: producerAccountFor(payment), direction: "DEBIT", amount: shares.producer, description: "Estorno da parte do produtor" },
         { account: "PLATFORM_REVENUE", direction: "DEBIT", amount: shares.platform, description: "Estorno da taxa Ripay" },
         { account: "REFUNDS", direction: "DEBIT", amount: shares.processor, description: "Taxa de processamento não recuperada" },
+        // The affiliate does not keep a commission on a sale that was given back.
+        ...(shares.affiliate > 0n
+          ? [
+              {
+                account: "AFFILIATE_PAYABLE" as const,
+                direction: "DEBIT" as const,
+                amount: shares.affiliate,
+                description: "Estorno da comissão do afiliado",
+              },
+            ]
+          : []),
         { account: "PLATFORM_CASH", direction: "CREDIT", amount, description: "Devolução ao comprador" },
       ],
     });

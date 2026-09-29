@@ -7,6 +7,8 @@ export interface PaymentShares {
   producer: bigint;
   platform: bigint;
   processor: bigint;
+  /** Part of the refunded amount that came out of the affiliate's commission. */
+  affiliate: bigint;
 }
 
 /**
@@ -17,12 +19,19 @@ export function splitByOriginalShares(payment: Payment, amount: bigint): Payment
   if (payment.producerNetAmount === null || payment.platformFeeAmount === null || payment.processorFeeAmount === null) {
     throw new ValidationError("Payment has no fee breakdown (not captured)");
   }
-  const [producer, platform, processor] = allocateProportionally(money(amount, payment.currency), [
+  const commission = payment.affiliateCommissionAmount ?? 0n;
+  const [producer, platform, processor, affiliate] = allocateProportionally(money(amount, payment.currency), [
     payment.producerNetAmount,
     payment.platformFeeAmount,
     payment.processorFeeAmount,
+    commission,
   ]);
-  return { producer: producer.amount, platform: platform.amount, processor: processor.amount };
+  return {
+    producer: producer.amount,
+    platform: platform.amount,
+    processor: processor.amount,
+    affiliate: affiliate.amount,
+  };
 }
 
 /** Where the producer's share of this payment currently sits. */

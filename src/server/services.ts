@@ -15,6 +15,7 @@ import { BalanceService } from "@/modules/balances/balance.service";
 import { FinanceOverviewService } from "@/modules/balances/finance-overview.service";
 import type { CheckoutConfigRepository } from "@/modules/checkout/checkout-config.repository";
 import { CheckoutService } from "@/modules/checkout/checkout.service";
+import { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import { CouponService } from "@/modules/coupons/coupon.service";
 import { DisputeService } from "@/modules/disputes/dispute.service";
 import type { ProviderSnapshotRepository } from "@/modules/integrations/provider-snapshot.repository";
@@ -70,11 +71,12 @@ export function buildServices(deps: ServiceDependencies) {
   const uow = new PrismaUnitOfWork(deps.prisma);
   const balances = new BalanceService();
   const ledger = new LedgerService(balances);
-  const payments = new PaymentService(uow, deps.paymentProvider, ledger, deps.clock, {
+  const affiliates = new AffiliateService(uow, ledger);
+  const payments = new PaymentService(uow, deps.paymentProvider, ledger, affiliates, deps.clock, {
     defaultSettlementDelayDays: deps.config.defaultSettlementDelayDays,
   });
-  const refunds = new RefundService(uow, deps.paymentProvider, ledger);
-  const disputes = new DisputeService(uow, ledger);
+  const refunds = new RefundService(uow, deps.paymentProvider, ledger, affiliates);
+  const disputes = new DisputeService(uow, ledger, affiliates);
   const settlements = new SettlementService(uow, ledger, deps.clock);
   const risk = new RiskService(deps.mongo.riskEvents);
   const payouts = new PayoutService(uow, deps.paymentProvider, ledger, balances, risk, deps.clock, {
@@ -94,7 +96,7 @@ export function buildServices(deps: ServiceDependencies) {
   const tracking = new TrackingService(deps.mongo.analyticsEvents);
   const idempotency = new IdempotencyService(uow.repos.idempotency);
   const coupons = new CouponService(uow);
-  const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, deps.paymentProvider.type);
+  const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, deps.paymentProvider.type);
   const finance = new FinanceOverviewService(uow);
   const outboxPublisher = new OutboxPublisher(uow.repos.outbox, deps.eventBus);
 
@@ -135,6 +137,7 @@ export function buildServices(deps: ServiceDependencies) {
     tracking,
     checkouts,
     coupons,
+    affiliates,
     finance,
     outboxPublisher,
     webhookIngestion,

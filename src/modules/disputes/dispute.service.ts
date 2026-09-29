@@ -7,6 +7,7 @@ import type { NormalizedProviderEvent } from "@/lib/providers/payment/types";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import { producerAccountFor, splitByOriginalShares } from "@/modules/payments/payment-shares";
 import type { Repositories } from "@/server/repositories";
+import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import type { UnitOfWork } from "@/server/unit-of-work";
 
 type DisputeEvent = Extract<NormalizedProviderEvent, { kind: "dispute.updated" }>;
@@ -29,6 +30,7 @@ export class DisputeService {
   constructor(
     private readonly uow: UnitOfWork,
     private readonly ledger: LedgerService,
+    private readonly affiliates: AffiliateService,
   ) {}
 
   async apply(provider: PaymentProviderType, event: DisputeEvent): Promise<void> {
@@ -114,9 +116,13 @@ export class DisputeService {
         { account: "RESERVES", direction: "DEBIT", amount: dispute.heldAmount },
         { account: "PLATFORM_REVENUE", direction: "DEBIT", amount: shares.platform },
         { account: "CHARGEBACKS", direction: "DEBIT", amount: shares.processor },
+        ...(shares.affiliate > 0n
+          ? [{ account: "AFFILIATE_PAYABLE" as const, direction: "DEBIT" as const, amount: shares.affiliate }]
+          : []),
         { account: "PLATFORM_CASH", direction: "CREDIT", amount: dispute.amount },
       ],
     });
+    await this.affiliates.reverseCommission(repos, payment.orderId, shares.affiliate);
     await repos.disputes.update(dispute.id, { status: "LOST", closedAt: new Date() });
     await repos.payments.update(payment.id, { status: "CHARGEBACK" });
     await repos.transactions.record({

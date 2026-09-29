@@ -5,6 +5,7 @@ import { createDomainEvent } from "@/lib/events/domain-event";
 import { logger } from "@/lib/logger";
 import { assertSupportedCurrency, money } from "@/lib/money";
 import type { NormalizedProviderEvent, PaymentProvider } from "@/lib/providers/payment/types";
+import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import { calculateFeeBreakdown, NO_PLATFORM_FEE } from "@/modules/fees/fee.calculator";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import type { Repositories } from "@/server/repositories";
@@ -43,6 +44,7 @@ export class PaymentService {
     private readonly uow: UnitOfWork,
     private readonly provider: PaymentProvider,
     private readonly ledger: LedgerService,
+    private readonly affiliates: AffiliateService,
     private readonly clock: Clock,
     private readonly config: PaymentServiceConfig,
   ) {}
@@ -137,7 +139,18 @@ export class PaymentService {
       const delayDays = (await repos.policies.findSettlementDelayDays(scope)) ?? this.config.defaultSettlementDelayDays;
 
       const gross = money(payment.amount, payment.currency);
-      const fees = calculateFeeBreakdown(gross, money(event.processorFeeAmount, payment.currency), feeRule);
+      // A referred sale pays the affiliate out of the producer's share, so the
+      // commission has to be known before the split is written anywhere.
+      const order = await repos.orders.findById(payment.organizationId, payment.orderId);
+      const affiliate = order?.affiliateId
+        ? await repos.affiliates.findById(payment.organizationId, order.affiliateId)
+        : null;
+      const fees = calculateFeeBreakdown(
+        gross,
+        money(event.processorFeeAmount, payment.currency),
+        feeRule,
+        affiliate?.active ? affiliate.commissionBps : 0,
+      );
       const paidAt = event.occurredAt;
 
       await repos.payments.update(payment.id, {
@@ -147,6 +160,7 @@ export class PaymentService {
         providerChargeId: event.providerChargeId,
         processorFeeAmount: fees.processorFeeAmount.amount,
         platformFeeAmount: fees.platformFeeAmount.amount,
+        affiliateCommissionAmount: fees.affiliateCommissionAmount.amount,
         producerNetAmount: fees.producerNetAmount.amount,
         settleAt: addDays(paidAt, delayDays),
       });
@@ -191,9 +205,27 @@ export class PaymentService {
           { account: "PLATFORM_CASH", direction: "DEBIT", amount: fees.grossAmount.amount, description: "Valor bruto da venda" },
           { account: "PROCESSOR_FEES", direction: "CREDIT", amount: fees.processorFeeAmount.amount, description: "Taxa de processamento" },
           { account: "PLATFORM_REVENUE", direction: "CREDIT", amount: fees.platformFeeAmount.amount, description: "Taxa Ripay" },
+          ...(fees.affiliateCommissionAmount.amount > 0n
+            ? [
+                {
+                  account: "AFFILIATE_PAYABLE" as const,
+                  direction: "CREDIT" as const,
+                  amount: fees.affiliateCommissionAmount.amount,
+                  description: "Comissão do afiliado",
+                },
+              ]
+            : []),
           { account: "PRODUCER_PENDING", direction: "CREDIT", amount: fees.producerNetAmount.amount, description: "Saldo pendente do produtor" },
         ],
       });
+
+      if (order?.affiliateId && fees.affiliateCommissionAmount.amount > 0n) {
+        await this.affiliates.recordCommission(repos, payment, {
+          affiliateId: order.affiliateId,
+          orderId: order.id,
+          amount: fees.affiliateCommissionAmount.amount,
+        });
+      }
 
       await this.grantAccess(repos, payment.orderId, payment.customerId);
       await repos.outbox.add(

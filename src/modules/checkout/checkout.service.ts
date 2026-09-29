@@ -9,6 +9,7 @@ import type { PaymentService } from "@/modules/payments/payment.service";
 import type { UnitOfWork } from "@/server/unit-of-work";
 import type { CheckoutConfigRepository } from "./checkout-config.repository";
 import { checkoutConfigSchema, type CheckoutConfig } from "./checkout-config.schema";
+import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import { CouponNotUsableError, type CouponService } from "@/modules/coupons/coupon.service";
 import type { CheckoutBuilderInput, StartCheckoutInput } from "./checkout.schemas";
 
@@ -31,6 +32,7 @@ export class CheckoutService {
     private readonly tracking: TrackingService,
     private readonly idempotency: IdempotencyService,
     private readonly coupons: CouponService,
+    private readonly affiliates: AffiliateService,
     private readonly providerType: PaymentProviderType,
   ) {}
 
@@ -165,6 +167,12 @@ export class CheckoutService {
       const discount = applied?.discount ?? 0n;
       const total = offer.amount - discount;
 
+      // Attribution is resolved now and frozen on the order: changing the
+      // affiliate's rate later must not rewrite what an old sale owed.
+      const attribution = input.referralCode
+        ? await this.affiliates.resolveAttribution(organization.id, input.referralCode)
+        : null;
+
       const order = await repos.orders.create({
         organizationId: organization.id,
         customerId: customer.id,
@@ -175,6 +183,8 @@ export class CheckoutService {
         discountAmount: discount,
         couponId: applied?.coupon.id ?? null,
         couponCode: applied?.coupon.code ?? null,
+        affiliateId: attribution?.affiliateId ?? null,
+        affiliateLinkId: attribution?.linkId ?? null,
         taxAmount: 0n,
         totalAmount: total,
         tracking: { ...input.tracking, sessionId: input.sessionId },

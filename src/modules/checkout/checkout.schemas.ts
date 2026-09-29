@@ -38,6 +38,7 @@ export const startCheckoutSchema = z.object({
   phone: z.string().trim().max(32).optional().or(z.literal("")),
   country: z.string().length(2).optional(),
   couponCode: z.string().trim().max(32).optional().or(z.literal("")),
+  referralCode: z.string().trim().max(24).optional().or(z.literal("")),
   tracking: trackingSchema,
 });
 

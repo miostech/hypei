@@ -90,6 +90,17 @@ export async function applyCouponAction(input: unknown): Promise<ApplyCouponResu
   }
 }
 
+/** Counts a visit that arrived through a referral link. Best effort, never blocks. */
+export async function registerAffiliateClick(code: unknown): Promise<void> {
+  const parsed = z.string().trim().min(4).max(24).safeParse(code);
+  if (!parsed.success) return;
+  const headerList = await headers();
+  const ip = headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = await rateLimiter().consume(`ref:${ip}`, 30, 60);
+  if (!allowed) return;
+  await getServices().affiliates.registerClick(parsed.data).catch((err) => logger.warn({ err }, "click tracking failed"));
+}
+
 const trackSchema = z.object({
   eventType: z.enum(CHECKOUT_EVENT_TYPES),
   organizationId: z.string().min(1),

@@ -11,7 +11,7 @@ import type { PaymentMethodType } from "@/generated/prisma/enums";
 import { SUPPORTED_COUNTRIES, COUNTRY_INFO } from "@/modules/organizations/countries";
 import { PAYMENT_METHOD_LABELS } from "@/modules/payments/payment-method-resolver";
 import type { TrackingInput } from "@/modules/checkout/checkout.schemas";
-import { applyCouponAction, startCheckoutAction, trackCheckoutEvent } from "./actions";
+import { applyCouponAction, registerAffiliateClick, startCheckoutAction, trackCheckoutEvent } from "./actions";
 import { useCoupon } from "./coupon-context";
 import { MockPaymentPanel } from "./mock-payment-panel";
 import { StripePaymentPanel } from "./stripe-payment-panel";
@@ -66,6 +66,16 @@ export function CheckoutClient({
   const attemptId = useMemo(() => crypto.randomUUID(), []);
   const payLabel = coupon?.total ?? amountLabel;
 
+  // A referral survives for 30 days: people rarely buy on the first visit, and the
+  // affiliate who sent them should still get the credit when they come back.
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("ref");
+    if (!fromUrl) return;
+    const code = fromUrl.trim().toUpperCase();
+    document.cookie = `ripay_ref=${encodeURIComponent(code)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+    void registerAffiliateClick(code);
+  }, []);
+
   async function applyCoupon() {
     if (!couponInput.trim()) return;
     setCheckingCoupon(true);
@@ -92,6 +102,14 @@ export function CheckoutClient({
     });
   }, [organizationId, checkoutId, tracking]);
 
+  /** Read at submit time: the code lives in the URL or in the cookie, never in state. */
+  function currentReferral(): string | undefined {
+    const fromUrl = new URLSearchParams(window.location.search).get("ref");
+    if (fromUrl) return fromUrl.trim().toUpperCase();
+    const stored = document.cookie.match(/(?:^|;\s*)ripay_ref=([^;]+)/)?.[1];
+    return stored ? decodeURIComponent(stored) : undefined;
+  }
+
   async function handleSubmit(formData: FormData) {
     setSubmitting(true);
     setError(null);
@@ -105,6 +123,7 @@ export function CheckoutClient({
       phone: String(formData.get("phone") ?? ""),
       country: collectCountry ? String(formData.get("country") ?? "") : undefined,
       couponCode: coupon?.code,
+      referralCode: currentReferral(),
       tracking: { ...tracking, referrer },
     });
     setSubmitting(false);

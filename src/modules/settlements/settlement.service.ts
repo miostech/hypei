@@ -60,6 +60,8 @@ export class SettlementService {
           createDomainEvent("settlement.released", payment.id, payment.organizationId, { amount: pending, currency: payment.currency }),
         );
       }
+      // The producer's money is out of the window, so the affiliate's is too.
+      await repos.affiliates.markSettledCommissions([payment.id]);
       await repos.payments.update(payment.id, { settledAt: now });
       return pending > 0n ? pending : 0n;
     });
