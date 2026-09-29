@@ -165,6 +165,10 @@ export default async function CourseEditorPage({ params }: PageProps<"/members-a
                                     durationSeconds: lesson.durationSeconds,
                                     externalUrl: lesson.externalUrl,
                                     content: lesson.content,
+                                    storageKey: lesson.storageKey,
+                                    storageFilename: lesson.storageFilename,
+                                    storageType: lesson.storageType,
+                                    storageBytes: lesson.storageBytes,
                                   }}
                                 />
                                 <DeleteButton action={deleteLesson} idName="lessonId" id={lesson.id} courseId={course.id} label="Excluir aula" />

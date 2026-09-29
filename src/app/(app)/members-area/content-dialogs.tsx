@@ -13,6 +13,7 @@ import { LessonType } from "@/generated/prisma/enums";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
 import { LESSON_TYPE_LABELS } from "@/modules/members/course.schemas";
 import { addLesson, addModule, renameModule, updateLesson } from "./actions";
+import { LessonFileField, type UploadedFile } from "./lesson-file-field";
 
 /** Dialog that closes itself once the action succeeds, without syncing state in an effect. */
 function useDialogAction(action: (prev: ActionState, formData: FormData) => Promise<ActionState>) {
@@ -75,11 +76,25 @@ export interface LessonValues {
   durationSeconds: number | null;
   externalUrl: string | null;
   content: string | null;
+  storageKey: string | null;
+  storageFilename: string | null;
+  storageType: string | null;
+  storageBytes: number | null;
 }
 
 export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string; moduleId: string; lesson?: LessonValues }) {
   const { open, setOpened, state, formAction } = useDialogAction(lesson ? updateLesson : addLesson);
   const [type, setType] = useState<keyof typeof LessonType>(lesson?.type ?? "VIDEO");
+  const [file, setFile] = useState<UploadedFile | null>(
+    lesson?.storageKey
+      ? {
+          key: lesson.storageKey,
+          filename: lesson.storageFilename ?? "arquivo",
+          contentType: lesson.storageType ?? "application/octet-stream",
+          bytes: lesson.storageBytes ?? 0,
+        }
+      : null,
+  );
   // One dialog per lesson lives in the DOM, so the field ids must be unique.
   const fieldId = useId();
   const fieldError = (field: string) => (state.status === "error" ? state.fieldErrors?.[field] : undefined);
@@ -104,7 +119,7 @@ export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string;
         <DialogHeader>
           <DialogTitle>{lesson ? "Editar aula" : "Nova aula"}</DialogTitle>
           <DialogDescription>
-            O upload de arquivos chega na próxima fase — por enquanto, aponte para o link do vídeo ou do material.
+            Envie o arquivo ou aponte para um link, se o vídeo já estiver hospedado em outro lugar.
           </DialogDescription>
         </DialogHeader>
 
@@ -150,15 +165,28 @@ export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string;
               {fieldError("content") && <p className="text-xs text-destructive">{fieldError("content")}</p>}
             </div>
           ) : (
-            <TextField
-              label="Link do arquivo ou vídeo"
-              name="externalUrl"
-              type="url"
-              placeholder="https://…"
-              defaultValue={lesson?.externalUrl ?? ""}
-              hint="YouTube, Vimeo ou qualquer URL acessível ao aluno."
-              error={fieldError("externalUrl")}
-            />
+            <div className="space-y-3">
+              <LessonFileField moduleId={moduleId} type={type} value={file} onChange={setFile} fieldId={fieldId} />
+
+              {!file && (
+                <>
+                  <p className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="h-px flex-1 bg-border" />
+                    ou use um link
+                    <span className="h-px flex-1 bg-border" />
+                  </p>
+                  <TextField
+                    label="Link do arquivo ou vídeo"
+                    name="externalUrl"
+                    type="url"
+                    placeholder="https://…"
+                    defaultValue={lesson?.externalUrl ?? ""}
+                    hint="YouTube, Vimeo ou qualquer URL acessível ao aluno."
+                    error={fieldError("externalUrl")}
+                  />
+                </>
+              )}
+            </div>
           )}
 
           {state.status === "error" && !state.fieldErrors && <p className="text-xs text-destructive">{state.message}</p>}

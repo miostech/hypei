@@ -8,6 +8,7 @@ import { InMemoryCheckoutConfigRepository } from "@/modules/checkout/checkout-co
 import { InMemoryWebhookPayloadRepository } from "@/modules/webhooks/webhook-payload.repository";
 import { buildServices, type Services } from "@/server/services";
 import { FakeEmailProvider } from "./fake-email-provider";
+import { FakeStorageProvider } from "./fake-storage-provider";
 import { ManualQueue } from "./manual-queue";
 
 export const VALID_CPF = "529.982.247-25";
@@ -30,6 +31,7 @@ export interface TestApp {
   services: Services;
   mock: MockPaymentProvider;
   email: FakeEmailProvider;
+  storage: FakeStorageProvider;
   queue: ManualQueue;
   clock: { now: Date; advanceDays(days: number): void };
   deliver(event: MockEvent, eventId?: string): Promise<{ duplicate: boolean }>;
@@ -52,6 +54,7 @@ export async function createTestApp(options: { platformFeeBps?: number; settleme
   const mock = new MockPaymentProvider({ webhookSecret: "test-secret", processorFeeBps: options.processorFeeBps ?? 400 });
   const queue = new ManualQueue();
   const email = new FakeEmailProvider();
+  const storage = new FakeStorageProvider();
 
   const services = buildServices({
     prisma,
@@ -65,6 +68,7 @@ export async function createTestApp(options: { platformFeeBps?: number; settleme
     queue,
     eventBus: new InProcessEventBus(),
     emailProvider: email,
+    storageProvider: storage,
     clock: () => clock.now,
     config: {
       appUrl: "https://app.ripay.test",
@@ -82,7 +86,7 @@ export async function createTestApp(options: { platformFeeBps?: number; settleme
     return { duplicate: result.duplicate };
   }
 
-  return { prisma, services, mock, email, queue, clock, deliver };
+  return { prisma, services, mock, email, storage, queue, clock, deliver };
 }
 
 /** Creates user + organization (via real onboarding) + product + offer + checkout. */

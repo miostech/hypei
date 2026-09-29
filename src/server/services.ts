@@ -7,6 +7,7 @@ import { IdempotencyService } from "@/lib/idempotency/idempotency.service";
 import { logger } from "@/lib/logger";
 import type { CurrencyCode } from "@/lib/money";
 import type { EmailProvider } from "@/lib/providers/email/email-provider";
+import type { StorageProvider } from "@/lib/providers/storage";
 import type { PaymentProvider } from "@/lib/providers/payment/types";
 import type { JobQueue } from "@/lib/providers/queue/job-queue";
 import type { AnalyticsEventRepository } from "@/modules/analytics/analytics-event.repository";
@@ -55,6 +56,7 @@ export interface ServiceDependencies {
   queue: JobQueue;
   eventBus: EventBus;
   emailProvider: EmailProvider;
+  storageProvider: StorageProvider;
   clock: Clock;
   config: {
     appUrl: string;
@@ -86,7 +88,7 @@ export function buildServices(deps: ServiceDependencies) {
   const subscriptions = new SubscriptionService(uow, deps.paymentProvider, payments);
   const organizations = new OrganizationService(uow, merchantAccounts, deps.config.dataHashSecret);
   const products = new ProductService(uow);
-  const courses = new CourseService(uow);
+  const courses = new CourseService(uow, deps.storageProvider);
   const memberArea = new MemberAreaService(uow);
 
   // Transactional e-mail listens to committed domain events, never to the request path.
@@ -143,5 +145,6 @@ export function buildServices(deps: ServiceDependencies) {
     webhookIngestion,
     webhookProcessor,
     paymentProvider: deps.paymentProvider,
+    storageProvider: deps.storageProvider,
   };
 }

@@ -10,7 +10,20 @@ export { S3StorageProvider } from "./s3-storage-provider";
  * `local` keeps files on disk with signed URLs (development); `s3`, `r2` and `minio`
  * talk to real object storage; anything else disables uploads.
  */
-export function createStorageProvider(env: NodeJS.ProcessEnv): StorageProvider {
+export interface StorageEnv {
+  STORAGE_PROVIDER: string;
+  STORAGE_LOCAL_DIR?: string;
+  STORAGE_BUCKET?: string;
+  STORAGE_REGION?: string;
+  STORAGE_ENDPOINT?: string;
+  STORAGE_ACCESS_KEY_ID?: string;
+  STORAGE_SECRET_ACCESS_KEY?: string;
+  APP_URL?: string;
+  DATA_HASH_SECRET?: string;
+  SESSION_SECRET?: string;
+}
+
+export function createStorageProvider(env: StorageEnv): StorageProvider {
   if (env.STORAGE_PROVIDER === "local") {
     return new LocalStorageProvider({
       directory: env.STORAGE_LOCAL_DIR || ".storage",

@@ -31,7 +31,8 @@ const envSchema = z.object({
   MOCK_WEBHOOK_SECRET: z.string().default("mock-webhook-local-dev-secret"),
   MOCK_PROCESSOR_FEE_BPS: z.coerce.number().int().min(0).max(10_000).default(400),
 
-  STORAGE_PROVIDER: z.enum(["s3", "r2", "minio", "none"]).default("none"),
+  STORAGE_PROVIDER: z.enum(["local", "s3", "r2", "minio", "none"]).default("none"),
+  STORAGE_LOCAL_DIR: z.string().default(".storage"),
   EMAIL_PROVIDER: z.enum(["console", "preview", "resend", "ses", "postmark"]).default("console"),
   EMAIL_PREVIEW_DIR: z.string().default(".mail"),
   EMAIL_FROM: z.string().default("Ripay <no-reply@ripay.local>"),

@@ -39,6 +39,8 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
 
   const { lesson } = view;
   const Icon = LESSON_ICON[lesson.type];
+  // Uploaded media is never public: each view signs a URL that expires.
+  const mediaUrl = (await services.courses.lessonMediaUrl(lesson)) ?? lesson.externalUrl;
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">
@@ -61,7 +63,7 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
 
       <main className="mx-auto grid w-full max-w-6xl flex-1 gap-6 p-4 sm:p-6 lg:grid-cols-[1fr_340px]">
         <section className="space-y-5">
-          <LessonMedia type={lesson.type} externalUrl={lesson.externalUrl} content={lesson.content} />
+          <LessonMedia type={lesson.type} externalUrl={mediaUrl} content={lesson.content} mediaType={lesson.storageType} />
 
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-xs text-muted-foreground">

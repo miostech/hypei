@@ -52,7 +52,14 @@ export class NoopStorageProvider implements StorageProvider {
   }
 }
 
-export function resolveStorageConfig(env: NodeJS.ProcessEnv): S3CompatibleConfig | null {
+export function resolveStorageConfig(env: {
+  STORAGE_PROVIDER?: string;
+  STORAGE_BUCKET?: string;
+  STORAGE_REGION?: string;
+  STORAGE_ENDPOINT?: string;
+  STORAGE_ACCESS_KEY_ID?: string;
+  STORAGE_SECRET_ACCESS_KEY?: string;
+}): S3CompatibleConfig | null {
   const provider = env.STORAGE_PROVIDER;
   if (provider !== "s3" && provider !== "r2" && provider !== "minio") return null;
   return {

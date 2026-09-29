@@ -43,6 +43,8 @@ export interface CourseRepository {
   deleteLesson(organizationId: string, lessonId: string): Promise<boolean>;
   moveLesson(organizationId: string, lessonId: string, direction: "up" | "down"): Promise<boolean>;
 
+  /** Module scoped to the organization that owns its course. */
+  findModule(organizationId: string, moduleId: string): Promise<{ id: string; courseId: string } | null>;
   countEnrollments(courseId: string): Promise<number>;
   /** Used when a subscription stops being paid; the row is kept for the history. */
   revokeEnrollment(courseId: string, customerId: string): Promise<void>;
@@ -198,6 +200,13 @@ export class PrismaCourseRepository implements CourseRepository {
   }
 
   // ── Enrollment ───────────────────────────────────────────────────────────
+  findModule(organizationId: string, moduleId: string) {
+    return this.db.module.findFirst({
+      where: { id: moduleId, course: { organizationId } },
+      select: { id: true, courseId: true },
+    });
+  }
+
   async revokeEnrollment(courseId: string, customerId: string) {
     await this.db.enrollment.updateMany({ where: { courseId, customerId, status: "ACTIVE" }, data: { status: "REVOKED" } });
   }

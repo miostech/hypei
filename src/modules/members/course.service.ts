@@ -1,4 +1,7 @@
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+import { randomUUID } from "node:crypto";
+import type { LessonType } from "@/generated/prisma/enums";
+import { buildStorageKey, type StorageProvider } from "@/lib/providers/storage";
 import type { UnitOfWork } from "@/server/unit-of-work";
 import type { CourseInput, CourseSettingsInput, LessonInput } from "./course.schemas";
 
@@ -7,8 +10,65 @@ import type { CourseInput, CourseSettingsInput, LessonInput } from "./course.sch
  * course can only go live once it actually has a lesson — an empty course in the
  * member area looks like a broken purchase.
  */
+/**
+ * What each lesson type accepts. Limits are generous but finite: without them a
+ * single upload could fill the bucket, and the producer would only find out from
+ * the invoice.
+ */
+const UPLOAD_LIMITS: Partial<Record<LessonType, { accepts: string[]; maxBytes: number }>> = {
+  VIDEO: { accepts: ["video/"], maxBytes: 2_000_000_000 },
+  AUDIO: { accepts: ["audio/"], maxBytes: 300_000_000 },
+  PDF: { accepts: ["application/pdf"], maxBytes: 100_000_000 },
+  DOWNLOAD: { accepts: ["application/", "image/", "text/", "audio/", "video/"], maxBytes: 300_000_000 },
+};
+
 export class CourseService {
-  constructor(private readonly uow: UnitOfWork) {}
+  constructor(
+    private readonly uow: UnitOfWork,
+    private readonly storage: StorageProvider,
+  ) {}
+
+  /**
+   * Authorizes a direct upload to storage. The browser never chooses the object
+   * key and never uploads through us: it asks here, gets a URL that expires, and
+   * sends the bytes straight to the bucket.
+   */
+  async createLessonUpload(
+    organizationId: string,
+    moduleId: string,
+    input: { filename: string; contentType: string; sizeBytes: number; type: LessonType },
+  ) {
+    const courseModule = await this.uow.repos.courses.findModule(organizationId, moduleId);
+    if (!courseModule) throw new NotFoundError("Module", moduleId);
+
+    const limit = UPLOAD_LIMITS[input.type];
+    if (!limit) throw new ValidationError("Esta aula não aceita arquivo");
+    if (input.sizeBytes <= 0) throw new ValidationError("Arquivo vazio");
+    if (input.sizeBytes > limit.maxBytes) {
+      throw new ValidationError(`O arquivo passa do limite de ${Math.round(limit.maxBytes / 1_000_000)} MB para este tipo de aula`);
+    }
+    if (!limit.accepts.some((prefix) => input.contentType.startsWith(prefix))) {
+      throw new ValidationError("Formato de arquivo não aceito para este tipo de aula");
+    }
+
+    const key = buildStorageKey({
+      organizationId,
+      courseId: courseModule.courseId,
+      filename: input.filename,
+      id: randomUUID(),
+    });
+    const target = await this.storage.createUpload({ key, contentType: input.contentType });
+    return { ...target, filename: input.filename.slice(0, 180), contentType: input.contentType, sizeBytes: input.sizeBytes };
+  }
+
+  /** Short-lived URL for playing or downloading a lesson stored in the bucket. */
+  async lessonMediaUrl(lesson: { storageKey: string | null; storageFilename: string | null; type: LessonType }) {
+    if (!lesson.storageKey) return null;
+    return this.storage.getDownloadUrl({
+      key: lesson.storageKey,
+      downloadName: lesson.type === "DOWNLOAD" || lesson.type === "PDF" ? (lesson.storageFilename ?? undefined) : undefined,
+    });
+  }
 
   list(organizationId: string) {
     return this.uow.repos.courses.list(organizationId);
@@ -141,11 +201,19 @@ export class CourseService {
 }
 
 function toLessonRecord(input: LessonInput) {
+  const isText = input.type === "TEXT";
+  // An uploaded file wins over a pasted link: the producer just replaced one.
+  const uploaded = !isText && input.storageKey ? input.storageKey : null;
+
   return {
     title: input.title,
     type: input.type,
     durationSeconds: input.durationMinutes ? input.durationMinutes * 60 : null,
-    externalUrl: input.type === "TEXT" ? null : input.externalUrl || null,
-    content: input.type === "TEXT" ? input.content || null : null,
+    externalUrl: isText || uploaded ? null : input.externalUrl || null,
+    content: isText ? input.content || null : null,
+    storageKey: uploaded,
+    storageFilename: uploaded ? input.storageFilename || null : null,
+    storageType: uploaded ? input.storageType || null : null,
+    storageBytes: uploaded ? (input.storageBytes ?? null) : null,
   };
 }

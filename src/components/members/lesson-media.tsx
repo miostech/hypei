@@ -37,7 +37,18 @@ function embedUrl(url: URL): string | null {
 const VIDEO_FILE = /\.(mp4|webm|ogg|mov|m3u8)$/i;
 const AUDIO_FILE = /\.(mp3|wav|ogg|m4a|aac)$/i;
 
-export function LessonMedia({ type, externalUrl, content }: { type: LessonType; externalUrl: string | null; content: string | null }) {
+export function LessonMedia({
+  type,
+  externalUrl,
+  content,
+  mediaType,
+}: {
+  type: LessonType;
+  externalUrl: string | null;
+  content: string | null;
+  /** MIME type of an uploaded file, when the lesson has one. */
+  mediaType?: string | null;
+}) {
   if (type === "TEXT") {
     return (
       <article className="rounded-2xl border bg-card p-6 text-sm leading-relaxed whitespace-pre-wrap shadow-soft sm:p-8">
@@ -70,13 +81,17 @@ export function LessonMedia({ type, externalUrl, content }: { type: LessonType; 
     );
   }
 
-  if (type === "VIDEO" && VIDEO_FILE.test(url.pathname)) {
+  // An uploaded file is identified by its MIME type; a link, by its extension.
+  const uploadedVideo = mediaType?.startsWith("video/") ?? false;
+  const uploadedAudio = mediaType?.startsWith("audio/") ?? false;
+
+  if (type === "VIDEO" && (uploadedVideo || VIDEO_FILE.test(url.pathname))) {
     return (
       <video controls preload="metadata" src={url.toString()} className="aspect-video w-full rounded-2xl border bg-black shadow-soft" />
     );
   }
 
-  if (type === "AUDIO" && AUDIO_FILE.test(url.pathname)) {
+  if (type === "AUDIO" && (uploadedAudio || AUDIO_FILE.test(url.pathname))) {
     return (
       <div className="rounded-2xl border bg-card p-6 shadow-soft">
         <audio controls preload="metadata" src={url.toString()} className="w-full" />

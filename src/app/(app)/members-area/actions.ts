@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { LessonType } from "@/generated/prisma/enums";
+import { isDomainError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { redirect } from "next/navigation";
 import { courseInputSchema, courseSettingsSchema, lessonInputSchema, moduleInputSchema } from "@/modules/members/course.schemas";
 import { requirePermission } from "@/modules/organizations/current-organization";
@@ -91,6 +94,33 @@ export async function moveModule(formData: FormData): Promise<void> {
   revalidateCourse(String(formData.get("courseId")));
 }
 
+/**
+ * Hands the browser a short-lived upload URL. The file never goes through the
+ * server: this only says "you may put this object there, for the next minutes".
+ */
+export async function requestLessonUpload(input: {
+  moduleId: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  type: LessonType;
+}): Promise<{ ok: true; url: string; key: string; headers: Record<string, string> } | { ok: false; message: string }> {
+  try {
+    const { organization } = await requirePermission(EDIT);
+    const target = await getServices().courses.createLessonUpload(organization.id, input.moduleId, {
+      filename: input.filename,
+      contentType: input.contentType,
+      sizeBytes: input.sizeBytes,
+      type: input.type,
+    });
+    return { ok: true, url: target.url, key: target.key, headers: target.headers };
+  } catch (error) {
+    if (isDomainError(error)) return { ok: false, message: error.message };
+    logger.error({ err: error }, "lesson upload authorization failed");
+    return { ok: false, message: "Não foi possível preparar o envio do arquivo." };
+  }
+}
+
 // ── Lessons ────────────────────────────────────────────────────────────────
 function parseLesson(formData: FormData) {
   return lessonInputSchema.parse({
@@ -99,6 +129,10 @@ function parseLesson(formData: FormData) {
     durationMinutes: formData.get("durationMinutes") || undefined,
     externalUrl: formData.get("externalUrl") ?? "",
     content: formData.get("content") ?? "",
+    storageKey: formData.get("storageKey") ?? "",
+    storageFilename: formData.get("storageFilename") ?? "",
+    storageType: formData.get("storageType") ?? "",
+    storageBytes: formData.get("storageBytes") || undefined,
   });
 }
 

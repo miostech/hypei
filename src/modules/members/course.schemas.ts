@@ -18,7 +18,10 @@ export const moduleInputSchema = z.object({
   title: z.string().trim().min(2, "Informe o título do módulo").max(120),
 });
 
-/** Media lessons point at an external URL until the storage adapter lands (Fase 2). */
+/**
+ * A media lesson carries either an uploaded file (storageKey) or an external link
+ * — hosting on YouTube or Vimeo stays a first-class option, not a fallback.
+ */
 export const lessonInputSchema = z
   .object({
     title: z.string().trim().min(2, "Informe o título da aula").max(160),
@@ -26,13 +29,18 @@ export const lessonInputSchema = z
     durationMinutes: z.coerce.number().int().min(0).max(1440).optional(),
     externalUrl: z.string().trim().url("URL inválida").optional().or(z.literal("")),
     content: z.string().trim().max(20_000).optional().or(z.literal("")),
+    /** Object key returned by the upload the browser just completed. */
+    storageKey: z.string().trim().max(400).optional().or(z.literal("")),
+    storageFilename: z.string().trim().max(180).optional().or(z.literal("")),
+    storageType: z.string().trim().max(120).optional().or(z.literal("")),
+    storageBytes: z.coerce.number().int().min(0).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.type === "TEXT" && !value.content) {
       ctx.addIssue({ code: "custom", path: ["content"], message: "Escreva o conteúdo da aula" });
     }
-    if (value.type !== "TEXT" && !value.externalUrl) {
-      ctx.addIssue({ code: "custom", path: ["externalUrl"], message: "Informe o link do arquivo ou do vídeo" });
+    if (value.type !== "TEXT" && !value.externalUrl && !value.storageKey) {
+      ctx.addIssue({ code: "custom", path: ["externalUrl"], message: "Envie um arquivo ou informe o link" });
     }
   });
 
