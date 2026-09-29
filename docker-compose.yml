@@ -74,7 +74,8 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
     restart: unless-stopped
-    command: ["start-dev", "--import-realm"]
+    # Theme caching off: the Ripay login theme is edited live during development.
+    command: ["start-dev", "--import-realm", "--spi-theme-static-max-age=-1", "--spi-theme-cache-themes=false", "--spi-theme-cache-templates=false"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
@@ -92,6 +93,7 @@ services:
       - "8080:8080"
     volumes:
       - ./docker/keycloak/realm-ripay.json:/opt/keycloak/data/import/realm-ripay.json:ro
+      - ./docker/keycloak/themes/ripay:/opt/keycloak/themes/ripay:ro
     depends_on:
       keycloak-db:
         condition: service_healthy

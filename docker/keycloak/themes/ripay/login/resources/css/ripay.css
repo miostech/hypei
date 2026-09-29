@@ -1,0 +1,415 @@
+/*
+ * Ripay look for the Keycloak login pages.
+ *
+ * Loaded after PatternFly, so it overrides it. Written against the real markup
+ * of keycloak.v2 (body#keycloak-bg > .pf-v5-c-login > .pf-v5-c-login__container
+ * > header#kc-header + main.pf-v5-c-login__main), and the tokens below mirror
+ * src/app/globals.css so this screen belongs to the same product as the app.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap");
+
+:root {
+  --ripay-purple: #4b168c;
+  --ripay-purple-deep: #220a45;
+  --ripay-purple-vivid: #7c3aed;
+  --ripay-background: #f6f5f8;
+  --ripay-foreground: #17121f;
+  --ripay-muted: #8b8793;
+  --ripay-border: #e7e4ee;
+  --ripay-input-border: #ded9e8;
+  --ripay-destructive: #d92d20;
+  --ripay-success: #12805c;
+  --ripay-radius: 0.875rem;
+}
+
+/* ── Page shell ─────────────────────────────────────────────────────────── */
+body#keycloak-bg {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--ripay-background) !important;
+  background-image: none !important;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  color: var(--ripay-foreground);
+}
+
+/* The brand band the card sits on — same gradient as the app's hero surfaces. */
+body#keycloak-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 40vh;
+  min-height: 240px;
+  background-image: linear-gradient(135deg, var(--ripay-purple-deep) 0%, var(--ripay-purple) 45%, var(--ripay-purple-vivid) 100%);
+}
+
+/* Transparent on purpose: the band above has to show through. */
+.pf-v5-c-login {
+  position: relative;
+  display: block;
+  max-width: none;
+  padding: clamp(2.5rem, 7vh, 4.5rem) 1rem 3rem;
+  background: transparent !important;
+}
+
+.pf-v5-c-login__container {
+  width: 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+  display: block;
+  grid-template-columns: none;
+  gap: 0;
+}
+
+/* ── Brand header ───────────────────────────────────────────────────────── */
+#kc-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  padding: 0;
+}
+
+#kc-header-wrapper {
+  /* Keycloak prints the realm name here; the wordmark replaces it. */
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  padding: 0;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+#kc-header-wrapper::after {
+  content: "";
+  display: block;
+  width: 7.5rem;
+  height: 1.9rem;
+  background-image: url("../img/ripay-wordmark-light.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+/* ── Card ───────────────────────────────────────────────────────────────── */
+.pf-v5-c-login__main {
+  background: #ffffff;
+  border: 1px solid var(--ripay-border);
+  border-top: 1px solid var(--ripay-border);
+  border-radius: calc(var(--ripay-radius) * 1.6);
+  box-shadow: 0 20px 45px -25px rgba(34, 10, 69, 0.5);
+  padding: 1.75rem;
+  overflow: hidden;
+}
+
+/* PatternFly paints a blue accent bar on the card; the brand does not use it. */
+.pf-v5-c-login__main::before,
+.pf-v5-c-login__main::after {
+  display: none !important;
+}
+
+.pf-v5-c-login__main-header,
+.pf-v5-c-login__main-body,
+.pf-v5-c-login__main-footer {
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.pf-v5-c-login__main-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+#kc-page-title {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--ripay-foreground);
+  margin: 0;
+}
+
+/* ── Language picker ────────────────────────────────────────────────────── */
+.pf-v5-c-login__main-header-utilities {
+  flex-shrink: 0;
+}
+
+.pf-v5-c-login__main-header-utilities .pf-v5-c-form-control {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  height: auto;
+}
+
+#login-select-toggle {
+  height: 2rem;
+  max-width: 9rem;
+  padding: 0 1.75rem 0 0.625rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--ripay-muted);
+  background-color: transparent;
+  border: 1px solid var(--ripay-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+#login-select-toggle:focus {
+  outline: none;
+  border-color: var(--ripay-purple-vivid);
+}
+
+/* ── Fields ─────────────────────────────────────────────────────────────── */
+#kc-form-wrapper {
+  /* Plain container: the card around it is the only surface. */
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* PatternFly lays the form out as a grid; this is the gap between fields. */
+.pf-v5-c-form {
+  --pf-v5-c-form--GridGap: 1rem;
+}
+
+.pf-v5-c-form__group-label {
+  padding-bottom: 0.375rem;
+}
+
+.pf-v5-c-form__label-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ripay-foreground);
+}
+
+.pf-v5-c-form-control {
+  --pf-v5-c-form-control--BorderBottomColor: transparent;
+  width: 100%;
+  height: 2.75rem;
+  padding: 0;
+  background: #ffffff;
+  border: 1px solid var(--ripay-input-border);
+  border-radius: calc(var(--ripay-radius) * 0.85);
+  box-shadow: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pf-v5-c-form-control::before,
+.pf-v5-c-form-control::after {
+  display: none !important;
+}
+
+.pf-v5-c-form-control > input,
+.pf-v5-c-form-control > select {
+  height: 100%;
+  padding: 0 0.875rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  color: var(--ripay-foreground);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.pf-v5-c-form-control:focus-within {
+  border-color: var(--ripay-purple-vivid);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+}
+
+/*
+ * Password field: Keycloak splits it into an input-group (field + reveal button),
+ * which would draw two separate boxes. The group becomes the single bordered
+ * field, and the pieces inside it go borderless.
+ */
+.pf-v5-c-input-group {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 2.75rem;
+  background: #ffffff;
+  border: 1px solid var(--ripay-input-border);
+  border-radius: calc(var(--ripay-radius) * 0.85);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pf-v5-c-input-group:focus-within {
+  border-color: var(--ripay-purple-vivid);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+}
+
+.pf-v5-c-input-group__item {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.pf-v5-c-input-group__item.pf-m-fill {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The field inside the group must not repeat the border. */
+.pf-v5-c-input-group .pf-v5-c-form-control {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.pf-v5-c-input-group .pf-v5-c-form-control:focus-within {
+  border: 0;
+  box-shadow: none;
+}
+
+.pf-v5-c-input-group__item .pf-v5-c-button {
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  color: var(--ripay-muted);
+  background: transparent;
+  border: 0;
+}
+
+.pf-v5-c-input-group__item .pf-v5-c-button:hover {
+  color: var(--ripay-foreground);
+}
+
+/* ── Options row (remember me / forgot password) ────────────────────────── */
+#kc-form-options {
+  margin-top: 0.25rem;
+}
+
+.pf-v5-c-form__group:has(#kc-form-options),
+.pf-v5-c-login__main-body .pf-v5-c-form__group.pf-m-action {
+  margin-top: 0.875rem;
+}
+
+.pf-v5-c-check__label,
+.pf-v5-c-check {
+  font-size: 0.875rem;
+  color: var(--ripay-foreground);
+}
+
+.pf-v5-c-check__input {
+  accent-color: var(--ripay-purple-vivid);
+}
+
+a {
+  color: var(--ripay-purple);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ── Submit ─────────────────────────────────────────────────────────────── */
+.pf-v5-c-button.pf-m-primary {
+  width: 100%;
+  height: 2.75rem;
+  margin-top: 1.25rem;
+  font-family: "Inter", sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: var(--ripay-purple) !important;
+  background-image: linear-gradient(135deg, var(--ripay-purple) 0%, var(--ripay-purple-vivid) 100%) !important;
+  border: 0;
+  border-radius: calc(var(--ripay-radius) * 0.85);
+  box-shadow: 0 12px 22px -14px rgba(75, 22, 140, 0.95);
+  transition: opacity 0.15s ease;
+}
+
+.pf-v5-c-button.pf-m-primary:hover {
+  opacity: 0.93;
+}
+
+.pf-v5-c-button.pf-m-secondary,
+.pf-v5-c-button.pf-m-link {
+  color: var(--ripay-purple);
+  background: transparent;
+  border-color: var(--ripay-input-border);
+}
+
+/* ── Footer (register / back to login) ──────────────────────────────────── */
+.pf-v5-c-login__main-footer:empty,
+.pf-v5-c-login__main-footer-band:empty {
+  display: none;
+}
+
+#kc-info {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--ripay-border);
+  font-size: 0.875rem;
+  color: var(--ripay-muted);
+  text-align: center;
+}
+
+#kc-info .pf-v5-c-login__main-footer-band-item {
+  color: inherit;
+}
+
+/* ── Messages ───────────────────────────────────────────────────────────── */
+.pf-v5-c-alert {
+  margin-bottom: 1rem;
+  border: 1px solid var(--ripay-border);
+  border-radius: calc(var(--ripay-radius) * 0.85);
+  box-shadow: none;
+  font-size: 0.875rem;
+}
+
+.pf-v5-c-alert.pf-m-danger {
+  border-color: rgba(217, 45, 32, 0.35);
+  background: rgba(217, 45, 32, 0.06);
+}
+
+.pf-v5-c-alert.pf-m-danger .pf-v5-c-alert__title {
+  color: var(--ripay-destructive);
+}
+
+.pf-v5-c-alert.pf-m-success {
+  border-color: rgba(18, 128, 92, 0.35);
+  background: rgba(18, 128, 92, 0.07);
+}
+
+.pf-v5-c-alert.pf-m-success .pf-v5-c-alert__title {
+  color: var(--ripay-success);
+}
+
+.pf-v5-c-form__helper-text.pf-m-error,
+#input-error,
+#input-error-username,
+#input-error-password {
+  display: block;
+  margin-top: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--ripay-destructive);
+}
+
+.pf-v5-c-form-control.pf-m-error,
+.pf-v5-c-form-control:has(input[aria-invalid="true"]) {
+  border-color: var(--ripay-destructive);
+}
+
+/* ── Small screens ──────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .pf-v5-c-login__main {
+    padding: 1.375rem;
+  }
+
+  body#keycloak-bg::before {
+    height: 28vh;
+    min-height: 170px;
+  }
+
+  .pf-v5-c-login__main-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

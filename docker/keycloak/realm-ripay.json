@@ -11,6 +11,7 @@
   "rememberMe": true,
   "verifyEmail": false,
   "bruteForceProtected": true,
+  "loginTheme": "ripay",
   "internationalizationEnabled": true,
   "supportedLocales": ["pt-BR", "en", "es", "fr", "de", "it"],
   "defaultLocale": "pt-BR",
