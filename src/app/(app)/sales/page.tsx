@@ -54,7 +54,9 @@ export default async function SalesPage() {
                     <TableRow key={order.id}>
                       <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(order.createdAt)}</TableCell>
                       <TableCell>
-                        <span className="font-medium">{order.customer.name}</span>
+                        <Link href={`/sales/${order.id}`} className="font-medium hover:underline">
+                          {order.customer.name}
+                        </Link>
                         <span className="block text-xs text-muted-foreground">{order.customer.email}</span>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{order.items[0]?.productName ?? "—"}</TableCell>

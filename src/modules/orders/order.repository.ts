@@ -1,5 +1,5 @@
 import type { DbClient } from "@/lib/database/postgres/client";
-import type { Customer, Order, OrderItem, OrderStatus, Payment } from "@/generated/prisma/client";
+import type { Customer, Dispute, Order, OrderItem, OrderStatus, Payment, Refund } from "@/generated/prisma/client";
 
 export interface CreateOrderRecord {
   organizationId: string;
@@ -17,9 +17,17 @@ export interface CreateOrderRecord {
 
 export type OrderListItem = Order & { customer: Customer; items: OrderItem[]; payments: Pick<Payment, "id" | "status" | "paymentMethod">[] };
 
+/** Everything the sale page shows: who bought, what was charged, and what came after. */
+export type OrderDetail = Order & {
+  customer: Customer;
+  items: OrderItem[];
+  payments: (Payment & { refunds: Refund[]; disputes: Dispute[] })[];
+};
+
 export interface OrderRepository {
   create(record: CreateOrderRecord): Promise<Order>;
   findById(organizationId: string, id: string): Promise<Order | null>;
+  findDetail(organizationId: string, id: string): Promise<OrderDetail | null>;
   setStatus(id: string, status: OrderStatus): Promise<void>;
   productIds(orderId: string): Promise<string[]>;
   list(organizationId: string, options: { limit: number }): Promise<OrderListItem[]>;
@@ -43,6 +51,20 @@ export class PrismaOrderRepository implements OrderRepository {
 
   findById(organizationId: string, id: string) {
     return this.db.order.findFirst({ where: { id, organizationId } });
+  }
+
+  findDetail(organizationId: string, id: string) {
+    return this.db.order.findFirst({
+      where: { id, organizationId },
+      include: {
+        customer: true,
+        items: true,
+        payments: {
+          include: { refunds: { orderBy: { createdAt: "desc" } }, disputes: { orderBy: { createdAt: "desc" } } },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
   }
 
   async setStatus(id: string, status: OrderStatus) {

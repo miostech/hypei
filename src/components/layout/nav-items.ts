@@ -10,6 +10,7 @@ import {
   PlugIcon,
   ReceiptIcon,
   RepeatIcon,
+  RotateCcwIcon,
   SettingsIcon,
   ShoppingBagIcon,
   TagIcon,
@@ -39,6 +40,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, permission: "organization:read" },
       { href: "/sales", label: "Vendas", icon: ShoppingBagIcon, permission: "sales:read" },
+      { href: "/refunds", label: "Reembolsos", icon: RotateCcwIcon, permission: "sales:read" },
       { href: "/analytics", label: "Analytics", icon: BarChart3Icon, permission: "analytics:read" },
     ],
   },

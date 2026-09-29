@@ -1,7 +1,12 @@
 import type { DbClient } from "@/lib/database/postgres/client";
 import type { Prisma, Refund } from "@/generated/prisma/client";
 
+export type RefundListItem = Refund & {
+  payment: { id: string; orderId: string; customer: { name: string; email: string }; order: { items: { productName: string }[] } };
+};
+
 export interface RefundRepository {
+  listForOrganization(organizationId: string, limit: number): Promise<RefundListItem[]>;
   findByIdempotencyKey(key: string): Promise<Refund | null>;
   findByProviderRefundId(providerRefundId: string): Promise<Refund | null>;
   findById(id: string): Promise<Refund | null>;
@@ -21,6 +26,24 @@ export interface RefundRepository {
 
 export class PrismaRefundRepository implements RefundRepository {
   constructor(private readonly db: DbClient) {}
+
+  listForOrganization(organizationId: string, limit: number) {
+    return this.db.refund.findMany({
+      where: { organizationId },
+      include: {
+        payment: {
+          select: {
+            id: true,
+            orderId: true,
+            customer: { select: { name: true, email: true } },
+            order: { select: { items: { select: { productName: true }, take: 1 } } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+  }
 
   findByIdempotencyKey(key: string) {
     return this.db.refund.findUnique({ where: { idempotencyKey: key } });
