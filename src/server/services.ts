@@ -6,6 +6,7 @@ import { OutboxPublisher } from "@/lib/events/outbox-publisher";
 import { IdempotencyService } from "@/lib/idempotency/idempotency.service";
 import { logger } from "@/lib/logger";
 import type { CurrencyCode } from "@/lib/money";
+import type { EmailProvider } from "@/lib/providers/email/email-provider";
 import type { PaymentProvider } from "@/lib/providers/payment/types";
 import type { JobQueue } from "@/lib/providers/queue/job-queue";
 import type { AnalyticsEventRepository } from "@/modules/analytics/analytics-event.repository";
@@ -18,6 +19,7 @@ import { DisputeService } from "@/modules/disputes/dispute.service";
 import type { ProviderSnapshotRepository } from "@/modules/integrations/provider-snapshot.repository";
 import { CourseService } from "@/modules/members/course.service";
 import { MemberAreaService } from "@/modules/members/member-area.service";
+import { NotificationService } from "@/modules/notifications/notification.service";
 import { LedgerService } from "@/modules/ledger/ledger.service";
 import { MerchantAccountService } from "@/modules/merchant-accounts/merchant-account.service";
 import { OfferService } from "@/modules/offers/offer.service";
@@ -50,8 +52,10 @@ export interface ServiceDependencies {
   };
   queue: JobQueue;
   eventBus: EventBus;
+  emailProvider: EmailProvider;
   clock: Clock;
   config: {
+    appUrl: string;
     dataHashSecret: string;
     defaultSettlementDelayDays: number;
     minimumPayout: Partial<Record<CurrencyCode, bigint>>;
@@ -81,6 +85,10 @@ export function buildServices(deps: ServiceDependencies) {
   const products = new ProductService(uow);
   const courses = new CourseService(uow);
   const memberArea = new MemberAreaService(uow);
+
+  // Transactional e-mail listens to committed domain events, never to the request path.
+  const notifications = new NotificationService(uow, deps.emailProvider, { appUrl: deps.config.appUrl });
+  notifications.register(deps.eventBus);
   const offers = new OfferService(uow);
   const tracking = new TrackingService(deps.mongo.analyticsEvents);
   const idempotency = new IdempotencyService(uow.repos.idempotency);
@@ -99,7 +107,10 @@ export function buildServices(deps: ServiceDependencies) {
 
   deps.queue.process<{ webhookEventId: string }>(WEBHOOK_JOB, async ({ webhookEventId }) => {
     await webhookProcessor.process(webhookEventId);
-    void outboxPublisher.publishPending().catch((err) => logger.warn({ err }, "outbox relay failed"));
+    // Awaited on purpose: a detached relay outlives the job and can publish events
+    // committed by whatever runs next. A relay failure must not fail the job — the
+    // outbox keeps the event and the next relay retries it.
+    await outboxPublisher.publishPending().catch((err) => logger.warn({ err }, "outbox relay failed"));
   });
 
   return {
@@ -118,6 +129,7 @@ export function buildServices(deps: ServiceDependencies) {
     offers,
     courses,
     memberArea,
+    notifications,
     tracking,
     checkouts,
     finance,

@@ -268,6 +268,8 @@ enum WebhookEventStatus {
 
 enum OutboxStatus {
   PENDING
+  /// Claimed by a relay and being published right now.
+  PUBLISHING
   PUBLISHED
   FAILED
 }
@@ -311,6 +313,7 @@ model Organization {
   merchantAccounts   MerchantAccount[]
   payoutDestinations PayoutDestination[]
   products           Product[]
+  emailDeliveries    EmailDelivery[]
   offers             Offer[]
   checkouts          Checkout[]
   customers          Customer[]
@@ -979,6 +982,9 @@ model Lesson {
   position        Int
   durationSeconds Int?
   storageKey      String?
+  storageFilename String?
+  storageType     String?
+  storageBytes    Int?
   externalUrl     String?
   content         String?
   createdAt       DateTime   @default(now())
@@ -1075,6 +1081,8 @@ model OutboxEvent {
   status      OutboxStatus @default(PENDING)
   attempts    Int          @default(0)
   createdAt   DateTime     @default(now())
+  /// When a relay claimed the row; a stale claim is picked up again.
+  claimedAt   DateTime?
   processedAt DateTime?
 
   @@index([status, createdAt])
@@ -1112,4 +1120,33 @@ model ApiKey {
   createdAt      DateTime  @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+/// One row per transactional e-mail we attempted to send.
+/// The unique key on (domain event, template, recipient) is what stops a retried
+/// event — the outbox is at-least-once — from mailing the same person twice.
+model EmailDelivery {
+  id             String              @id @default(cuid())
+  organizationId String?
+  /// Domain event that triggered the send; null for e-mails sent on demand.
+  eventId        String?
+  template       String
+  recipient      String
+  subject        String
+  status         EmailDeliveryStatus @default(SENDING)
+  providerId     String?
+  error          String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, template, recipient])
+  @@index([organizationId, createdAt])
+}
+
+enum EmailDeliveryStatus {
+  SENDING
+  SENT
+  FAILED
 }

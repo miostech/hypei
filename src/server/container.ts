@@ -7,6 +7,7 @@ import { getPrisma } from "@/lib/database/postgres/client";
 import { getEnv } from "@/lib/env";
 import { InProcessEventBus } from "@/lib/events/event-bus";
 import { logger } from "@/lib/logger";
+import { createEmailProvider } from "@/lib/providers/email/email-provider";
 import { MockPaymentProvider } from "@/lib/providers/payment/mock/mock-payment-provider";
 import { StripePaymentProvider } from "@/lib/providers/payment/stripe/stripe-payment-provider";
 import type { PaymentProvider } from "@/lib/providers/payment/types";
@@ -75,8 +76,10 @@ function createContainer(): Services {
     },
     queue,
     eventBus,
+    emailProvider: createEmailProvider(env),
     clock: systemClock,
     config: {
+      appUrl: env.APP_URL,
       dataHashSecret: env.DATA_HASH_SECRET,
       // Fallback only when no SettlementPolicy matches (policies are data, see prisma/seed.ts).
       defaultSettlementDelayDays: 30,
@@ -92,7 +95,7 @@ function createContainer(): Services {
   eventBus.subscribe("*", (event) => logger.debug({ type: event.type, aggregateId: event.aggregateId }, "domain event"));
 
   holder.services = services;
-  logger.info({ paymentProvider: paymentProvider.type, queue: env.QUEUE_DRIVER }, "ripay container initialized");
+  logger.info({ paymentProvider: paymentProvider.type, queue: env.QUEUE_DRIVER, email: env.EMAIL_PROVIDER }, "ripay container initialized");
   return services;
 }
 

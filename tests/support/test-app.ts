@@ -7,6 +7,7 @@ import { InMemoryAnalyticsEventRepository } from "@/modules/analytics/analytics-
 import { InMemoryCheckoutConfigRepository } from "@/modules/checkout/checkout-config.repository";
 import { InMemoryWebhookPayloadRepository } from "@/modules/webhooks/webhook-payload.repository";
 import { buildServices, type Services } from "@/server/services";
+import { FakeEmailProvider } from "./fake-email-provider";
 import { ManualQueue } from "./manual-queue";
 
 export const VALID_CPF = "529.982.247-25";
@@ -28,6 +29,7 @@ export interface TestApp {
   prisma: PrismaClient;
   services: Services;
   mock: MockPaymentProvider;
+  email: FakeEmailProvider;
   queue: ManualQueue;
   clock: { now: Date; advanceDays(days: number): void };
   deliver(event: MockEvent, eventId?: string): Promise<{ duplicate: boolean }>;
@@ -49,6 +51,7 @@ export async function createTestApp(options: { platformFeeBps?: number; settleme
   };
   const mock = new MockPaymentProvider({ webhookSecret: "test-secret", processorFeeBps: options.processorFeeBps ?? 400 });
   const queue = new ManualQueue();
+  const email = new FakeEmailProvider();
 
   const services = buildServices({
     prisma,
@@ -61,18 +64,25 @@ export async function createTestApp(options: { platformFeeBps?: number; settleme
     },
     queue,
     eventBus: new InProcessEventBus(),
+    emailProvider: email,
     clock: () => clock.now,
-    config: { dataHashSecret: "test-hash-secret-with-at-least-32-chars!!", defaultSettlementDelayDays: 30, minimumPayout: { BRL: 1000n } },
+    config: {
+      appUrl: "https://app.ripay.test",
+      dataHashSecret: "test-hash-secret-with-at-least-32-chars!!",
+      defaultSettlementDelayDays: 30,
+      minimumPayout: { BRL: 1000n },
+    },
   });
 
   async function deliver(event: MockEvent, eventId?: string) {
     const { rawBody, headers } = mock.buildWebhook(event, eventId);
     const result = await services.webhookIngestion.ingest("MOCK", rawBody, headers);
+    // The job itself relays the outbox, so events are settled when drain resolves.
     await queue.drain();
     return { duplicate: result.duplicate };
   }
 
-  return { prisma, services, mock, queue, clock, deliver };
+  return { prisma, services, mock, email, queue, clock, deliver };
 }
 
 /** Creates user + organization (via real onboarding) + product + offer + checkout. */
@@ -138,6 +148,11 @@ export async function confirmPayment(app: TestApp, payment: { providerPaymentId:
     { type: "payment.succeeded", providerPaymentId: payment.providerPaymentId!, amount: payment.amount.toString(), currency: payment.currency },
     eventId,
   );
+}
+
+/** Runs one relay pass: publishes events still pending, and retries failed ones. */
+export async function flushEvents(app: TestApp): Promise<number> {
+  return app.services.outboxPublisher.publishPending();
 }
 
 /** Sum of each account (normal side) across ALL organizations. */

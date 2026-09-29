@@ -32,7 +32,8 @@ const envSchema = z.object({
   MOCK_PROCESSOR_FEE_BPS: z.coerce.number().int().min(0).max(10_000).default(400),
 
   STORAGE_PROVIDER: z.enum(["s3", "r2", "minio", "none"]).default("none"),
-  EMAIL_PROVIDER: z.enum(["console", "resend", "ses", "postmark"]).default("console"),
+  EMAIL_PROVIDER: z.enum(["console", "preview", "resend", "ses", "postmark"]).default("console"),
+  EMAIL_PREVIEW_DIR: z.string().default(".mail"),
   EMAIL_FROM: z.string().default("Ripay <no-reply@ripay.local>"),
   QUEUE_DRIVER: z.enum(["memory", "bullmq", "redis-streams"]).default("memory"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),

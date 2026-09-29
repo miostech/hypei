@@ -14,7 +14,7 @@ export class OutboxPublisher {
   ) {}
 
   async publishPending(limit = 100): Promise<number> {
-    const pending = await this.outbox.fetchPending(limit);
+    const pending = await this.outbox.claimPending(limit);
     let published = 0;
     for (const row of pending) {
       const payload = row.payload as Record<string, unknown>;
