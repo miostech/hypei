@@ -162,6 +162,18 @@ export type NormalizedProviderEvent =
       occurredAt: Date;
     }
   | {
+      /** A billing cycle was charged: the renewal that keeps the subscription alive. */
+      kind: "subscription.invoice_paid";
+      providerSubscriptionId: string;
+      providerPaymentId: string;
+      amount: bigint;
+      currency: string;
+      processorFeeAmount: bigint;
+      currentPeriodStart: Date | null;
+      currentPeriodEnd: Date | null;
+      occurredAt: Date;
+    }
+  | {
       kind: "subscription.updated";
       providerSubscriptionId: string;
       status: "trialing" | "active" | "past_due" | "paused" | "canceled" | "unpaid";

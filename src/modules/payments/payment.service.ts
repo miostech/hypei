@@ -17,6 +17,8 @@ type SucceededEvent = Extract<NormalizedProviderEvent, { kind: "payment.succeede
 export interface StartPaymentInput {
   organizationId: string;
   orderId: string;
+  /** Set when this payment is the first cycle of a subscription. */
+  subscriptionId?: string | null;
   customer: { id: string; email: string; name: string; country: string | null };
   amount: bigint;
   currency: string;
@@ -57,6 +59,7 @@ export class PaymentService {
         organizationId: input.organizationId,
         orderId: input.orderId,
         customerId: input.customer.id,
+        subscriptionId: input.subscriptionId ?? null,
         provider: this.provider.type,
         amount: input.amount,
         currency,

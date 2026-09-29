@@ -83,7 +83,7 @@ export function buildServices(deps: ServiceDependencies) {
     minimumPayout: deps.config.minimumPayout,
   });
   const merchantAccounts = new MerchantAccountService(uow, deps.paymentProvider, deps.mongo.providerSnapshots);
-  const subscriptions = new SubscriptionService(uow);
+  const subscriptions = new SubscriptionService(uow, deps.paymentProvider, payments);
   const organizations = new OrganizationService(uow, merchantAccounts, deps.config.dataHashSecret);
   const products = new ProductService(uow);
   const courses = new CourseService(uow);
@@ -96,7 +96,7 @@ export function buildServices(deps: ServiceDependencies) {
   const tracking = new TrackingService(deps.mongo.analyticsEvents);
   const idempotency = new IdempotencyService(uow.repos.idempotency);
   const coupons = new CouponService(uow);
-  const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, deps.paymentProvider.type);
+  const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, subscriptions, deps.paymentProvider.type);
   const finance = new FinanceOverviewService(uow);
   const outboxPublisher = new OutboxPublisher(uow.repos.outbox, deps.eventBus);
 

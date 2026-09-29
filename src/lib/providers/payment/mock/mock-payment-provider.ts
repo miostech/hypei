@@ -28,7 +28,24 @@ export type MockEvent =
   | { type: "refund.succeeded"; providerRefundId: string; providerPaymentId: string; amount: string; currency: string }
   | { type: "dispute.updated"; providerDisputeId: string; providerPaymentId: string; amount: string; currency: string; status: "open" | "under_review" | "won" | "lost"; reason?: string }
   | { type: "payout.updated"; providerPayoutId: string; payoutId: string | null; status: "paid" | "failed" | "in_transit"; failureReason?: string }
-  | { type: "merchant_account.updated"; providerAccountId: string };
+  | { type: "merchant_account.updated"; providerAccountId: string }
+  | {
+      type: "subscription.updated";
+      providerSubscriptionId: string;
+      status: "trialing" | "active" | "past_due" | "paused" | "canceled" | "unpaid";
+      currentPeriodStart?: string;
+      currentPeriodEnd?: string;
+      cancelAtPeriodEnd?: boolean;
+    }
+  | {
+      type: "subscription.invoice_paid";
+      providerSubscriptionId: string;
+      providerPaymentId?: string;
+      amount: string;
+      currency: string;
+      currentPeriodStart?: string;
+      currentPeriodEnd?: string;
+    };
 
 export interface MockEventEnvelope {
   id: string;
@@ -274,6 +291,35 @@ export class MockPaymentProvider implements PaymentProvider {
             occurredAt,
           },
         ];
+      case "subscription.updated":
+        return [
+          {
+            kind: "subscription.updated",
+            providerSubscriptionId: event.providerSubscriptionId,
+            status: event.status,
+            currentPeriodStart: event.currentPeriodStart ? new Date(event.currentPeriodStart) : null,
+            currentPeriodEnd: event.currentPeriodEnd ? new Date(event.currentPeriodEnd) : null,
+            cancelAtPeriodEnd: event.cancelAtPeriodEnd ?? false,
+            occurredAt,
+          },
+        ];
+      case "subscription.invoice_paid": {
+        const amount = BigInt(event.amount);
+        const fee = calculatePercentage(money(amount, event.currency), this.options.processorFeeBps);
+        return [
+          {
+            kind: "subscription.invoice_paid",
+            providerSubscriptionId: event.providerSubscriptionId,
+            providerPaymentId: event.providerPaymentId ?? `mock_pi_${randomUUID()}`,
+            amount,
+            currency: event.currency,
+            processorFeeAmount: fee.amount,
+            currentPeriodStart: event.currentPeriodStart ? new Date(event.currentPeriodStart) : null,
+            currentPeriodEnd: event.currentPeriodEnd ? new Date(event.currentPeriodEnd) : null,
+            occurredAt,
+          },
+        ];
+      }
       case "payout.updated": {
         const p = this.payouts.get(event.providerPayoutId);
         if (p) p.status = event.status;

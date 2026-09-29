@@ -10,6 +10,7 @@ import type { UnitOfWork } from "@/server/unit-of-work";
 import type { CheckoutConfigRepository } from "./checkout-config.repository";
 import { checkoutConfigSchema, type CheckoutConfig } from "./checkout-config.schema";
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
+import type { SubscriptionService } from "@/modules/subscriptions/subscription.service";
 import { CouponNotUsableError, type CouponService } from "@/modules/coupons/coupon.service";
 import type { CheckoutBuilderInput, StartCheckoutInput } from "./checkout.schemas";
 
@@ -33,6 +34,7 @@ export class CheckoutService {
     private readonly idempotency: IdempotencyService,
     private readonly coupons: CouponService,
     private readonly affiliates: AffiliateService,
+    private readonly subscriptions: SubscriptionService,
     private readonly providerType: PaymentProviderType,
   ) {}
 
@@ -100,7 +102,16 @@ export class CheckoutService {
       organization: { id: checkout.organization.id, name: checkout.organization.name, slug: checkout.organization.slug, country: checkout.organization.country, supportEmail: checkout.organization.supportEmail },
       product: { id: checkout.offer.product.id, name: checkout.offer.product.name, description: checkout.offer.product.description, type: checkout.offer.product.type, thumbnailUrl: checkout.offer.product.thumbnailUrl },
       // Official price: ALWAYS from the Offer in PostgreSQL.
-      offer: { id: checkout.offer.id, name: checkout.offer.name, amount: checkout.offer.amount, currency: checkout.offer.currency, billingType: checkout.offer.billingType, installments: checkout.offer.installments },
+      offer: {
+        id: checkout.offer.id,
+        name: checkout.offer.name,
+        amount: checkout.offer.amount,
+        currency: checkout.offer.currency,
+        billingType: checkout.offer.billingType,
+        billingInterval: checkout.offer.billingInterval,
+        trialDays: checkout.offer.trialDays,
+        installments: checkout.offer.installments,
+      },
       config,
       paymentMethods,
     };
@@ -140,7 +151,7 @@ export class CheckoutService {
     if (!checkout) throw new NotFoundError("Checkout", input.slug);
     const { organization, offer } = checkout;
 
-    const { customer, order, total } = await this.uow.transaction(async (repos) => {
+    const { customer, order, total, subscription } = await this.uow.transaction(async (repos) => {
       const customer = await repos.customers.upsertByEmail(organization.id, {
         name: input.name,
         email: input.email,
@@ -200,8 +211,24 @@ export class CheckoutService {
         });
       }
 
+      // A recurring offer starts a subscription right here; the payment created
+      // below is its first cycle, and the provider drives the ones after that.
+      const subscription =
+        offer.billingType === "SUBSCRIPTION" && offer.billingInterval
+          ? await this.subscriptions.createFromCheckout(repos, {
+              organizationId: organization.id,
+              customerId: customer.id,
+              offerId: offer.id,
+              amount: total,
+              currency: offer.currency,
+              billingInterval: offer.billingInterval,
+              trialDays: offer.trialDays ?? null,
+              startedAt: new Date(),
+            })
+          : null;
+
       await repos.outbox.add(createDomainEvent("order.created", order.id, organization.id, { total, currency: offer.currency }));
-      return { customer, order, total };
+      return { customer, order, total, subscription };
     });
 
     const base = { organizationId: organization.id, checkoutId: checkout.checkoutId, sessionId: input.sessionId, tracking: input.tracking };
@@ -210,6 +237,7 @@ export class CheckoutService {
     const payment = await this.payments.start({
       organizationId: organization.id,
       orderId: order.id,
+      subscriptionId: subscription?.id ?? null,
       customer: { id: customer.id, email: customer.email, name: customer.name, country: customer.country },
       amount: total,
       currency: offer.currency,

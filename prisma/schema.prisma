@@ -596,6 +596,8 @@ model Payment {
   organizationId     String
   orderId            String
   customerId         String
+  /// Set on the first charge and on every renewal of a subscription.
+  subscriptionId     String?
   provider           PaymentProviderType
   providerPaymentId  String?
   providerCustomerId String?
@@ -624,6 +626,7 @@ model Payment {
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   order        Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
   customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   transactions Transaction[]
   refunds      Refund[]
   disputes     Dispute[]
@@ -669,12 +672,16 @@ model Subscription {
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
   cancelAtPeriodEnd      Boolean             @default(false)
+  canceledAt             DateTime?
+  /// Charges already collected, first one included.
+  billingCycles          Int                 @default(0)
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
   offer        Offer        @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  payments     Payment[]
 
   @@unique([provider, providerSubscriptionId])
   @@index([organizationId, status])

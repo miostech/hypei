@@ -105,6 +105,8 @@ export class WebhookProcessor {
         return (await h.merchantAccounts.applySnapshot(event.snapshot)) === "applied";
       case "subscription.updated":
         return h.subscriptions.applyProviderUpdate(provider, event);
+      case "subscription.invoice_paid":
+        return h.subscriptions.applyInvoicePaid(provider, event);
       case "ignored":
         logger.debug({ reason: event.reason }, "webhook event ignored");
         return false;

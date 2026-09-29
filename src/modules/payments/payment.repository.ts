@@ -6,6 +6,7 @@ export interface PaymentRepository {
     organizationId: string;
     orderId: string;
     customerId: string;
+    subscriptionId?: string | null;
     provider: PaymentProviderType;
     amount: bigint;
     currency: string;

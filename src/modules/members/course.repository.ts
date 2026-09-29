@@ -44,6 +44,9 @@ export interface CourseRepository {
   moveLesson(organizationId: string, lessonId: string, direction: "up" | "down"): Promise<boolean>;
 
   countEnrollments(courseId: string): Promise<number>;
+  /** Used when a subscription stops being paid; the row is kept for the history. */
+  revokeEnrollment(courseId: string, customerId: string): Promise<void>;
+  restoreEnrollment(courseId: string, customerId: string): Promise<void>;
   hasEnrollment(courseId: string, email: string): Promise<boolean>;
   enroll(input: { courseId: string; customerId: string; orderId: string }): Promise<void>;
   /** Grants access to everyone who already paid for the product before the course existed. */
@@ -195,6 +198,14 @@ export class PrismaCourseRepository implements CourseRepository {
   }
 
   // ── Enrollment ───────────────────────────────────────────────────────────
+  async revokeEnrollment(courseId: string, customerId: string) {
+    await this.db.enrollment.updateMany({ where: { courseId, customerId, status: "ACTIVE" }, data: { status: "REVOKED" } });
+  }
+
+  async restoreEnrollment(courseId: string, customerId: string) {
+    await this.db.enrollment.updateMany({ where: { courseId, customerId, status: "REVOKED" }, data: { status: "ACTIVE" } });
+  }
+
   countEnrollments(courseId: string) {
     return this.db.enrollment.count({ where: { courseId, status: "ACTIVE" } });
   }
