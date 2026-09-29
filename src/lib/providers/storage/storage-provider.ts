@@ -1,11 +1,24 @@
 /**
  * S3-compatible storage abstraction (AWS S3, Cloudflare R2, MinIO share the same API).
  * Lesson media, thumbnails and downloads go here; the database only stores the object key.
+ *
+ * Uploads never pass through the app server: the browser receives a short-lived signed
+ * URL and sends the bytes straight to storage.
  */
+export interface UploadTarget {
+  /** Where the browser sends the file. */
+  url: string;
+  method: "PUT";
+  headers: Record<string, string>;
+  key: string;
+  expiresInSeconds: number;
+}
+
 export interface StorageProvider {
   readonly name: string;
-  getUploadUrl(input: { key: string; contentType: string; expiresInSeconds?: number }): Promise<{ url: string; key: string }>;
-  getDownloadUrl(input: { key: string; expiresInSeconds?: number }): Promise<string>;
+  createUpload(input: { key: string; contentType: string; expiresInSeconds?: number }): Promise<UploadTarget>;
+  /** Short-lived read URL. Media is never public: every playback signs a fresh URL. */
+  getDownloadUrl(input: { key: string; expiresInSeconds?: number; downloadName?: string }): Promise<string>;
   deleteObject(key: string): Promise<void>;
 }
 
@@ -28,7 +41,7 @@ export class StorageNotConfiguredError extends Error {
 
 export class NoopStorageProvider implements StorageProvider {
   readonly name = "none";
-  getUploadUrl(): Promise<{ url: string; key: string }> {
+  createUpload(): Promise<UploadTarget> {
     throw new StorageNotConfiguredError();
   }
   getDownloadUrl(): Promise<string> {
@@ -53,9 +66,8 @@ export function resolveStorageConfig(env: NodeJS.ProcessEnv): S3CompatibleConfig
   };
 }
 
-/** Phase 1 ships without media uploads; the S3 client adapter lands with the member-area uploads (Phase 2). */
-export function createStorageProvider(env: NodeJS.ProcessEnv): StorageProvider {
-  const config = resolveStorageConfig(env);
-  if (!config) return new NoopStorageProvider();
-  throw new Error(`Storage adapter for "${config.provider}" is planned for Phase 2`);
+/** Builds a collision-free object key that also reads well in a bucket listing. */
+export function buildStorageKey(parts: { organizationId: string; courseId: string; filename: string; id: string }): string {
+  const extension = parts.filename.includes(".") ? `.${parts.filename.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "")}` : "";
+  return `organizations/${parts.organizationId}/courses/${parts.courseId}/${parts.id}${extension}`;
 }
