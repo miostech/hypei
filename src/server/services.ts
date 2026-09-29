@@ -17,6 +17,8 @@ import { FinanceOverviewService } from "@/modules/balances/finance-overview.serv
 import type { CheckoutConfigRepository } from "@/modules/checkout/checkout-config.repository";
 import { CheckoutService } from "@/modules/checkout/checkout.service";
 import { AffiliateService } from "@/modules/affiliates/affiliate.service";
+import { PrismaAwardRepository } from "@/modules/awards/award.repository";
+import { AwardService } from "@/modules/awards/award.service";
 import { PrismaPlatformAdminRepository } from "@/modules/admin/platform-admin.repository";
 import { PlatformAdminService } from "@/modules/admin/platform-admin.service";
 import { VerificationService } from "@/modules/compliance/verification.service";
@@ -94,6 +96,10 @@ export function buildServices(deps: ServiceDependencies) {
   const courses = new CourseService(uow, deps.storageProvider);
   const memberArea = new MemberAreaService(uow);
 
+  // Revenue milestones are granted from the payment event, not from a page render.
+  const awards = new AwardService(uow, new PrismaAwardRepository(deps.prisma));
+  awards.register(deps.eventBus);
+
   // Transactional e-mail listens to committed domain events, never to the request path.
   const notifications = new NotificationService(uow, deps.emailProvider, { appUrl: deps.config.appUrl });
   notifications.register(deps.eventBus);
@@ -137,6 +143,7 @@ export function buildServices(deps: ServiceDependencies) {
     merchantAccounts,
     verification,
     platformAdmin,
+    awards,
     subscriptions,
     organizations,
     products,

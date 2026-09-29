@@ -1,6 +1,6 @@
 import { PlayCircleIcon } from "lucide-react";
 import Link from "next/link";
-import { forbidden, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { CourseOutlineList } from "@/components/members/course-outline";
 import { MembersHeader } from "@/components/members/members-header";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,9 @@ export default async function CoursePage({ params }: PageProps<"/members/[organi
   });
 
   const access = await services.memberArea.resolveAccess(course.id, user, organization.id);
-  if (!access) forbidden();
+  // Someone without access is told the course does not exist, rather than that it
+  // exists and is closed to them. `forbidden()` would need an experimental flag.
+  if (!access) notFound();
 
   const outline = await services.memberArea.outline(organization.id, courseSlug, access);
   const started = outline.completedLessons > 0;

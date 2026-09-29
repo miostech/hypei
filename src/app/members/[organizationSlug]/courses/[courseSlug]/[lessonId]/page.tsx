@@ -2,7 +2,7 @@ import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, ListIcon, RotateCcwIcon } fro
 import type { Route } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { forbidden, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { CourseOutlineList, LESSON_ICON } from "@/components/members/course-outline";
 import { MembersHeader } from "@/components/members/members-header";
 import { LessonMedia } from "@/components/members/lesson-media";
@@ -31,7 +31,9 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
   });
 
   const access = await services.memberArea.resolveAccess(course.id, user, organization.id);
-  if (!access) forbidden();
+  // Someone without access is told the course does not exist, rather than that it
+  // exists and is closed to them. `forbidden()` would need an experimental flag.
+  if (!access) notFound();
 
   const view = await services.memberArea.openLesson(organization.id, courseSlug, lessonId, access).catch((error) => {
     if (error instanceof NotFoundError) notFound();

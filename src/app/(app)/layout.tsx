@@ -1,3 +1,4 @@
+import { AwardsProgressSlot } from "@/components/awards/awards-progress-slot";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { NAV_GROUPS } from "@/components/layout/nav-items";
 import { Topbar } from "@/components/layout/topbar";
@@ -35,6 +36,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           userName={user?.name ?? ""}
           userEmail={user?.email ?? ""}
           switchOrganization={switchOrganization}
+          awards={<AwardsProgressSlot organizationId={organization.id} />}
         />
         <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8">{children}</main>
       </SidebarInset>

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangleIcon, BanknoteIcon, BuildingIcon, type LucideIcon, LayoutDashboardIcon, ReceiptIcon, SearchIcon } from "lucide-react";
+import { AlertTriangleIcon, BanknoteIcon, BuildingIcon, GiftIcon, type LucideIcon, LayoutDashboardIcon, ReceiptIcon, SearchIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -13,6 +13,7 @@ const ITEMS: { href: Route; label: string; icon: LucideIcon }[] = [
   { href: "/admin/payouts", label: "Saques", icon: BanknoteIcon },
   { href: "/admin/disputes", label: "Disputas", icon: AlertTriangleIcon },
   { href: "/admin/revenue", label: "Receita", icon: ReceiptIcon },
+  { href: "/admin/awards", label: "Premiações", icon: GiftIcon },
 ];
 
 export function AdminNav() {

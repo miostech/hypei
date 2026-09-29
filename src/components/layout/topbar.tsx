@@ -2,7 +2,7 @@
 
 import { CheckIcon, ChevronsUpDownIcon, LogOutIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
-import { useTransition } from "react";
+import { useTransition, type ReactNode } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
@@ -38,6 +38,7 @@ export function Topbar({
   userName,
   userEmail,
   switchOrganization,
+  awards,
 }: {
   organizations: OrganizationOption[];
   currentOrganizationId: string;
@@ -46,6 +47,8 @@ export function Topbar({
   userName: string;
   userEmail: string;
   switchOrganization: (organizationId: string) => Promise<void>;
+  /** Rendered on the server so the topbar itself never loads data. */
+  awards?: ReactNode;
 }) {
   const [pending, startTransition] = useTransition();
   const initials = (userName || userEmail).slice(0, 2).toUpperCase();
@@ -92,7 +95,8 @@ export function Topbar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex items-center gap-2">
+        {awards}
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger

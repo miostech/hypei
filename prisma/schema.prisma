@@ -316,6 +316,7 @@ model Organization {
   payoutDestinations PayoutDestination[]
   products           Product[]
   emailDeliveries    EmailDelivery[]
+  awards             OrganizationAward[]
   offers             Offer[]
   checkouts          Checkout[]
   customers          Customer[]
@@ -1206,4 +1207,42 @@ enum EmailDeliveryStatus {
   SENDING
   SENT
   FAILED
+}
+
+/// Physical award a producer earns when lifetime net revenue crosses a milestone.
+/// One row per tier per organization: the unique key is what stops a replayed
+/// event from granting the same plaque twice.
+model OrganizationAward {
+  id             String      @id @default(cuid())
+  organizationId String
+  tier           AwardTier
+  /// Threshold that was crossed, in minor units of `currency`.
+  threshold      BigInt
+  currency       String      @db.Char(3)
+  achievedAt     DateTime    @default(now())
+  status         AwardStatus @default(ACHIEVED)
+  trackingCode   String?
+  shippedAt      DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, tier])
+  @@index([status, achievedAt])
+}
+
+enum AwardTier {
+  BRONZE
+  SILVER
+  GOLD
+  EMERALD
+  DIAMOND
+  ONYX
+}
+
+enum AwardStatus {
+  ACHIEVED
+  SHIPPED
+  DELIVERED
 }
