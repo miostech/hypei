@@ -72,3 +72,56 @@ describe("Sales search", () => {
     expect(await repos.orders.search(b.organization.id, "cliente-do-b@example.com", 50)).toHaveLength(1);
   });
 });
+
+describe("New students today", () => {
+  let app: TestApp;
+
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  it("counts people, not orders: a second purchase does not add a student", async () => {
+    const seller = await createSeller(app);
+    const from = new Date(Date.now() - 3_600_000);
+    const to = new Date(Date.now() + 3_600_000);
+
+    const first = await startPurchase(app, seller.checkout.slug, "recorrente@example.com");
+    await confirmPayment(app, first.payment);
+    const second = await startPurchase(app, seller.checkout.slug, "recorrente@example.com");
+    await confirmPayment(app, second.payment);
+
+    const { repos } = app.services.uow;
+    expect(await repos.orders.newCustomersBetween(seller.organization.id, from, to)).toBe(1);
+
+    const paid = await repos.orders.paidBetween(seller.organization.id, from, to);
+    expect(paid[0].count).toBe(2);
+  });
+
+  it("counts each first-time buyer once and ignores other organizations", async () => {
+    const a = await createSeller(app, { slug: "org-a" });
+    const b = await createSeller(app, { slug: "org-b" });
+    const from = new Date(Date.now() - 3_600_000);
+    const to = new Date(Date.now() + 3_600_000);
+
+    for (const email of ["ana@example.com", "bia@example.com"]) {
+      const { payment } = await startPurchase(app, a.checkout.slug, email);
+      await confirmPayment(app, payment);
+    }
+    const other = await startPurchase(app, b.checkout.slug, "carlos@example.com");
+    await confirmPayment(app, other.payment);
+
+    const { repos } = app.services.uow;
+    expect(await repos.orders.newCustomersBetween(a.organization.id, from, to)).toBe(2);
+    expect(await repos.orders.newCustomersBetween(b.organization.id, from, to)).toBe(1);
+  });
+
+  it("does not count someone whose first purchase was before the window", async () => {
+    const seller = await createSeller(app);
+    const { payment } = await startPurchase(app, seller.checkout.slug, "antiga@example.com");
+    await confirmPayment(app, payment);
+
+    // Window starting after the purchase: nobody is new in it.
+    const later = new Date(Date.now() + 60_000);
+    expect(await app.services.uow.repos.orders.newCustomersBetween(seller.organization.id, later, new Date(Date.now() + 3_600_000))).toBe(0);
+  });
+});

@@ -1,11 +1,11 @@
-import { ArrowRightIcon, ArrowUpRightIcon, BanknoteIcon, PackageIcon, ReceiptIcon, ShoppingBagIcon } from "lucide-react";
+import { ArrowRightIcon, ArrowUpRightIcon, PackageIcon, ReceiptIcon, ShoppingBagIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { RevenueChart } from "@/components/charts/revenue-chart";
-import { BalanceHero } from "@/components/shared/balance-hero";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
+import { TodaySalesHero } from "@/components/shared/today-sales-hero";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,16 +29,15 @@ export default async function DashboardPage() {
   // "Hoje" segue o fuso do produtor, não o do servidor.
   const day = todayAgainstYesterday(timezoneForCountry(organization.country));
 
-  const [summary, orders, products, nextAvailable, paid, daily, verification, today, yesterday] = await Promise.all([
-    services.finance.summary(organization.id, currency),
+  const [orders, products, paid, daily, verification, today, yesterday, newStudents] = await Promise.all([
     services.uow.repos.orders.list(organization.id, { limit: 6 }),
     services.products.list(organization.id),
-    services.finance.nextAvailableDate(organization.id, currency),
     services.uow.repos.orders.paidSummary(organization.id, WINDOW_DAYS),
     services.uow.repos.orders.dailyPaidTotals(organization.id, WINDOW_DAYS),
     services.verification.overview(organization.id),
     services.uow.repos.orders.paidBetween(organization.id, day.todayStart, day.now),
     services.uow.repos.orders.paidBetween(organization.id, day.yesterdayStart, day.yesterdayEnd),
+    services.uow.repos.orders.newCustomersBetween(organization.id, day.todayStart, day.now),
   ]);
 
   const todaySales = today.find((row) => row.currency === currency);
@@ -48,12 +47,7 @@ export default async function DashboardPage() {
   // Compared against the same stretch of yesterday, so a morning meets a morning.
   // With nothing to compare against, a percentage would be invented.
   const dayOverDay = yesterdayTotal > 0n ? Number(((todayTotal - yesterdayTotal) * 100n) / yesterdayTotal) : null;
-  const todayHint =
-    todayCount === 0
-      ? "Nenhuma venda confirmada ainda hoje"
-      : `${todayCount} ${todayCount === 1 ? "pedido pago" : "pedidos pagos"} · ${
-          dayOverDay === null ? "ontem não houve vendas até agora" : `${dayOverDay >= 0 ? "+" : ""}${dayOverDay}% vs. ontem até agora`
-        }`;
+  const todayAverageTicket = todayCount > 0 ? todayTotal / BigInt(todayCount) : 0n;
 
   const sales = paid.find((row) => row.currency === currency);
   const salesTotal = sales?.total ?? 0n;
@@ -69,7 +63,7 @@ export default async function DashboardPage() {
       <PageHeader
         eyebrow="Painel"
         title={`Olá, ${organization.name}`}
-        description="Acompanhe suas vendas, seu saldo e o que precisa da sua atenção."
+        description="Como está o seu dia e o que precisa da sua atenção. O saldo fica no Financeiro."
         actions={
           <>
             <Button variant="outline" render={<Link href="/checkouts" />}>
@@ -84,22 +78,20 @@ export default async function DashboardPage() {
       />
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <BalanceHero
+        <TodaySalesHero
           className="lg:col-span-2"
           currency={currency}
-          available={formatAmount(summary.available, currency)}
-          pending={formatAmount(summary.pending, currency)}
-          reserved={summary.reserved > 0n ? formatAmount(summary.reserved, currency) : undefined}
-          footnote={
-            nextAvailable
-              ? `Próxima liberação em ${formatDate(nextAvailable)}, conforme a política de settlement.`
-              : "Assim que uma venda for confirmada, o valor entra como saldo a liberar."
-          }
+          total={formatAmount(todayTotal, currency)}
+          count={todayCount}
+          newStudents={newStudents}
+          averageTicket={formatAmount(todayAverageTicket, currency)}
+          yesterday={formatAmount(yesterdayTotal, currency)}
+          changePercent={dayOverDay}
           actions={
             <>
-              <Button className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90" render={<Link href="/payouts" />}>
-                <BanknoteIcon />
-                Solicitar saque
+              <Button className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90" render={<Link href="/sales" />}>
+                <ShoppingBagIcon />
+                Ver vendas
               </Button>
               <Button variant="ghost" className="text-white hover:bg-white/12 hover:text-white" render={<Link href="/finance" />}>
                 Ver financeiro
@@ -110,13 +102,6 @@ export default async function DashboardPage() {
         />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-          <StatCard
-            label="Vendas hoje"
-            value={formatAmount(todayTotal, currency)}
-            icon={ShoppingBagIcon}
-            tone={todayCount > 0 ? "positive" : "muted"}
-            hint={todayHint}
-          />
           <StatCard
             label={`Vendas (${WINDOW_DAYS} dias)`}
             value={formatAmount(salesTotal, currency)}

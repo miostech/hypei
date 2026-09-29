@@ -44,6 +44,12 @@ export interface OrderRepository {
   paidSummary(organizationId: string, sinceDays: number): Promise<{ currency: string; total: bigint; count: number }[]>;
   /** Paid orders inside an explicit window, used for "today" on the dashboard. */
   paidBetween(organizationId: string, from: Date, to: Date): Promise<{ currency: string; total: bigint; count: number }[]>;
+  /**
+   * People whose FIRST paid order landed in the window. Someone buying a second
+   * course is a returning customer, not a new student, and the dashboard should
+   * not count them twice.
+   */
+  newCustomersBetween(organizationId: string, from: Date, to: Date): Promise<number>;
   dailyPaidTotals(organizationId: string, sinceDays: number): Promise<{ day: Date; currency: string; total: bigint }[]>;
 }
 
@@ -139,6 +145,20 @@ export class PrismaOrderRepository implements OrderRepository {
       _count: true,
     });
     return rows.map((r) => ({ currency: r.currency, total: r._sum.totalAmount ?? 0n, count: r._count }));
+  }
+
+  async newCustomersBetween(organizationId: string, from: Date, to: Date) {
+    const rows = await this.db.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*)::bigint AS count
+      FROM (
+        SELECT "customerId", MIN("createdAt") AS first_paid
+        FROM "Order"
+        WHERE "organizationId" = ${organizationId}
+          AND status IN ('PAID', 'PARTIALLY_REFUNDED')
+        GROUP BY "customerId"
+      ) AS first_orders
+      WHERE first_orders.first_paid >= ${from} AND first_orders.first_paid < ${to}`;
+    return Number(rows[0]?.count ?? 0n);
   }
 
   async dailyPaidTotals(organizationId: string, sinceDays: number) {
