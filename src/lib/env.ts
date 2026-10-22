@@ -33,14 +33,60 @@ const envSchema = z.object({
 
   STORAGE_PROVIDER: z.enum(["local", "s3", "r2", "minio", "none"]).default("none"),
   STORAGE_LOCAL_DIR: z.string().default(".storage"),
+  // Credentials for the s3/r2/minio providers. They must be part of the schema: `getEnv()`
+  // returns the parsed object, and Zod drops every key the schema does not declare.
+  STORAGE_BUCKET: optionalString,
+  STORAGE_REGION: optionalString,
+  STORAGE_ENDPOINT: optionalString,
+  STORAGE_ACCESS_KEY_ID: optionalString,
+  STORAGE_SECRET_ACCESS_KEY: optionalString,
   EMAIL_PROVIDER: z.enum(["console", "preview", "resend", "ses", "postmark"]).default("console"),
   EMAIL_PREVIEW_DIR: z.string().default(".mail"),
   EMAIL_FROM: z.string().default("Ripay <no-reply@ripay.local>"),
+  RESEND_API_KEY: optionalString,
   QUEUE_DRIVER: z.enum(["memory", "bullmq", "redis-streams"]).default("memory"),
-  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+/** Secrets shipped in `.env.example`; a real deployment must never run with them. */
+const EXAMPLE_SECRETS = new Set([
+  "change-me-to-a-long-random-string-with-32-plus-chars",
+  "change-me-to-another-long-random-string-32-plus",
+  "ripay-web-local-dev-secret",
+]);
+
+/**
+ * Refuses to boot a production deployment that is still wired to development stand-ins:
+ * mock money, mail that never leaves the box, uploads on the container disk, plain HTTP,
+ * or the example secrets. Each of these looks healthy at runtime and silently loses data.
+ */
+function assertProductionReady(env: Env): void {
+  const problems: string[] = [];
+
+  if (env.PAYMENT_PROVIDER === "mock") {
+    problems.push("PAYMENT_PROVIDER=mock never moves real money");
+  }
+  if (env.EMAIL_PROVIDER === "console" || env.EMAIL_PROVIDER === "preview") {
+    problems.push(`EMAIL_PROVIDER=${env.EMAIL_PROVIDER} does not deliver mail`);
+  }
+  if (env.STORAGE_PROVIDER === "local") {
+    problems.push(
+      "STORAGE_PROVIDER=local writes to the container disk and loses files on restart (use s3/r2/minio, or none to disable uploads)",
+    );
+  }
+  if (!env.APP_URL.startsWith("https://")) {
+    problems.push("APP_URL must use https, otherwise the session cookie is never sent");
+  }
+  for (const key of ["SESSION_SECRET", "DATA_HASH_SECRET", "KEYCLOAK_CLIENT_SECRET"] as const) {
+    if (EXAMPLE_SECRETS.has(env[key])) problems.push(`${key} is still the value from .env.example`);
+  }
+
+  if (problems.length > 0) {
+    throw new Error(`APP_ENV=production refuses these settings: ${problems.join("; ")}`);
+  }
+}
 
 let cached: Env | undefined;
 
@@ -60,6 +106,7 @@ export function getEnv(): Env {
       throw new Error("Live Stripe keys are not allowed outside production");
     }
   }
+  if (env.APP_ENV === "production") assertProductionReady(env);
   cached = env;
   return env;
 }
