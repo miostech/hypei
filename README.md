@@ -33,6 +33,7 @@ Mercados da Fase 1: **Brasil, União Europeia e Estados Unidos** (BRL, EUR, USD)
 - [Testes](#testes)
 - [Estrutura de diretórios](#estrutura-de-diretórios)
 - [Status da Fase 1](#status-da-fase-1)
+- [O que falta para produção](#o-que-falta-para-produção)
 
 ---
 
@@ -338,6 +339,11 @@ Destaques: `DATABASE_URL`, `MONGODB_URI`, `REDIS_URL`, `KEYCLOAK_*`, `APP_URL`, 
 Segredos nunca são commitados. A chave secreta da Stripe é exclusivamente server-side, e o app se
 recusa a subir com chave `sk_live_` fora de produção.
 
+Com `APP_ENV=production` o boot também é recusado se a configuração ainda aponta para os
+substitutos de desenvolvimento, porque todos eles parecem saudáveis em runtime e perdem dados em
+silêncio: `PAYMENT_PROVIDER=mock`, `EMAIL_PROVIDER=console|preview`, `STORAGE_PROVIDER=local`
+(disco do container), `APP_URL` sem https, ou os segredos ainda iguais aos do `.env.example`.
+
 ## Migrations, Mongo e Redis
 
 ```bash
@@ -411,8 +417,47 @@ Funciona de ponta a ponta: **login no Keycloak → onboarding → produto → of
 compra no checkout público → webhook assinado → pagamento PAID → ledger → saldo pendente →
 settlement → saldo disponível → saque → payout pago**, com o ledger fechando em cada etapa.
 
-Ainda não implementado (fases seguintes): assinaturas recorrentes de ponta a ponta, afiliados,
-cupons, editor de conteúdo da área de membros, upload para storage S3, telas internas do `/admin`,
-KYC/AML real, impostos (NF-e, VAT/OSS, sales tax), API pública e filas em BullMQ/Redis Streams.
+Também já implementados: assinaturas recorrentes (webhooks `customer.subscription.*` e `invoice.*`),
+afiliados, cupons, editor da área de membros com upload, storage S3/R2/MinIO e as telas do `/admin`.
+
+Ainda não implementado (fases seguintes): AML — monitoramento e triagem; o KYC/KYB é delegado ao
+Stripe Connect, que registra as pendências em Verificação —, impostos (NF-e, VAT/OSS, sales tax),
+API pública e os drivers de fila BullMQ/Redis Streams (`QUEUE_DRIVER` aceita só `memory`).
 
 Decisões arquiteturais estão registradas em [`docs/architecture`](docs/architecture).
+
+## O que falta para produção
+
+A Fase 1 roda de ponta a ponta em desenvolvimento, mas estes pontos ainda separam isso de um
+ambiente de produção. Não são dívidas de código soltas: cada um tem consequência direta.
+
+**Impedem o funcionamento**
+
+- **Nada roda o worker.** Liberar settlement (`PENDING → AVAILABLE`), publicar o outbox e repetir
+  webhooks falhados só acontece em [`src/workers/index.ts`](src/workers/index.ts) ou
+  [`scripts/run-settlement.ts`](scripts/run-settlement.ts) — ambos precisam de `tsx` e do `src/`,
+  que não existem no estágio `runner` do [`Dockerfile`](Dockerfile), e o `compose` só tem o serviço
+  `app`. Sem isso a venda entra no ledger como pendente e o produtor nunca consegue sacar.
+- **Nada aplica as migrations no deploy.** A imagem carrega o `prisma/` para que
+  `npm run db:deploy` possa rodar, mas nenhum entrypoint ou release command o executa.
+- **Fila em processo.** Só `QUEUE_DRIVER=memory` tem implementação, então os jobs se perdem a cada
+  restart e não é seguro subir mais de uma instância da app.
+
+**Infra e segurança**
+
+- Keycloak sobe em `start-dev` no compose; produção exige `kc start` com hostname e TLS, mais
+  backup do banco de identidades.
+- `GET /api/health` é só liveness: responde `ok` sem tocar em Postgres, Mongo, Redis ou Keycloak.
+- Nenhum header de segurança (CSP, HSTS, X-Frame-Options). Com checkout público e Stripe no fluxo,
+  CSP é requisito, e o valor de `X-Frame-Options` depende de permitir ou não o checkout em iframe.
+- `images.remotePatterns` libera `https://**` ([`next.config.ts`](next.config.ts)), o que torna o
+  domínio um proxy de imagem aberto.
+- Sem rastreio de erro, métrica ou rotina de backup do Postgres, que é a fonte de verdade do dinheiro.
+
+**Produto e regulatório**
+
+- Settlement entre moedas lança exceção
+  ([`stripe-payment-provider.ts`](src/lib/providers/payment/stripe/stripe-payment-provider.ts)): a
+  conta do produtor precisa liquidar na moeda da venda. Aparece rápido com BR, UE e EUA juntos.
+- AML, impostos e — dependendo da estrutura societária — licenciamento para receber e repassar
+  dinheiro de terceiros.
