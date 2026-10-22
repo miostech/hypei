@@ -78,11 +78,11 @@ export default async function SubscriptionsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Produto</TableHead>
-                    <TableHead>Recorrência</TableHead>
-                    <TableHead className="text-right">Ciclos</TableHead>
-                    <TableHead>Próxima cobrança</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="hidden lg:table-cell">Produto</TableHead>
+                    <TableHead className="hidden lg:table-cell">Recorrência</TableHead>
+                    <TableHead className="hidden text-right xl:table-cell">Ciclos</TableHead>
+                    <TableHead className="hidden md:table-cell">Próxima cobrança</TableHead>
+                    <TableHead className="hidden sm:table-cell">Status</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                     <TableHead className="w-px" />
                   </TableRow>
@@ -93,16 +93,25 @@ export default async function SubscriptionsPage() {
                     const canCancel = subscription.status !== "CANCELED";
                     return (
                       <TableRow key={subscription.id}>
-                        <TableCell>
-                          <span className="font-medium">{subscription.customer.name}</span>
-                          <span className="block text-xs text-muted-foreground">{subscription.customer.email}</span>
+                        <TableCell className="max-w-[46vw] sm:max-w-none">
+                          <span className="block truncate font-medium">{subscription.customer.name}</span>
+                          <span className="block truncate text-xs text-muted-foreground">{subscription.customer.email}</span>
+                          <span className="block truncate text-xs text-muted-foreground lg:hidden">
+                            {subscription.offer.product.name}
+                            {subscription.offer.billingInterval ? ` · ${BILLING_INTERVAL_LABELS[subscription.offer.billingInterval]}` : ""}
+                          </span>
+                          <Badge className="mt-1 sm:hidden" variant={badge.variant}>
+                            {badge.label}
+                          </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{subscription.offer.product.name}</TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="hidden text-muted-foreground lg:table-cell">{subscription.offer.product.name}</TableCell>
+                        <TableCell className="hidden text-muted-foreground lg:table-cell">
                           {subscription.offer.billingInterval ? BILLING_INTERVAL_LABELS[subscription.offer.billingInterval] : "—"}
                         </TableCell>
-                        <TableCell className="tabular text-right text-muted-foreground">{subscription._count.payments}</TableCell>
-                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                        <TableCell className="tabular hidden text-right text-muted-foreground xl:table-cell">
+                          {subscription._count.payments}
+                        </TableCell>
+                        <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
                           {subscription.cancelAtPeriodEnd ? (
                             <span className="text-warning">encerra em {subscription.currentPeriodEnd ? formatDate(subscription.currentPeriodEnd) : "—"}</span>
                           ) : subscription.currentPeriodEnd ? (
@@ -111,7 +120,7 @@ export default async function SubscriptionsPage() {
                             "—"
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Badge variant={badge.variant}>{badge.label}</Badge>
                         </TableCell>
                         <TableCell className="tabular text-right font-medium">

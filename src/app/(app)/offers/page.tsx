@@ -59,23 +59,29 @@ export default async function OffersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Oferta</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Cobrança</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Produto</TableHead>
+                  <TableHead className="hidden lg:table-cell">Cobrança</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="text-right">Preço</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {offers.map((offer) => (
                   <TableRow key={offer.id}>
-                    <TableCell>
-                      <Link href={`/offers/${offer.id}`} className="font-medium hover:underline">
+                    <TableCell className="max-w-[52vw] sm:max-w-none">
+                      <Link href={`/offers/${offer.id}`} className="block truncate font-medium hover:underline">
                         {offer.name}
                       </Link>
+                      <span className="block truncate text-xs text-muted-foreground lg:hidden">
+                        {offer.product.name} · {BILLING_TYPE_LABELS[offer.billingType]}
+                      </span>
+                      <Badge className="mt-1 sm:hidden" variant={offer.active ? "success" : "secondary"}>
+                        {offer.active ? "Ativa" : "Inativa"}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{offer.product.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{BILLING_TYPE_LABELS[offer.billingType]}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">{offer.product.name}</TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">{BILLING_TYPE_LABELS[offer.billingType]}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge variant={offer.active ? "success" : "secondary"}>{offer.active ? "Ativa" : "Inativa"}</Badge>
                     </TableCell>
                     <TableCell className="tabular text-right font-medium">{formatAmount(offer.amount, offer.currency)}</TableCell>

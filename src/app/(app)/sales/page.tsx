@@ -26,12 +26,13 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
     <>
       <PageHeader title="Vendas" description="Pedidos criados no checkout e o status do pagamento de cada um." />
 
-      <form className="flex gap-2">
+      <form className="flex flex-wrap gap-2">
         <Input
           name="q"
           defaultValue={query}
           placeholder="Buscar por cliente, e-mail, produto ou referência…"
           aria-label="Buscar vendas"
+          className="min-w-0 flex-1 basis-full sm:basis-auto"
         />
         <Button type="submit" variant="outline">
           <SearchIcon />
@@ -74,11 +75,11 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead>
+                  <TableHead className="hidden md:table-cell">Data</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Pedido</TableHead>
-                  <TableHead>Pagamento</TableHead>
+                  <TableHead className="hidden lg:table-cell">Produto</TableHead>
+                  <TableHead className="hidden lg:table-cell">Pedido</TableHead>
+                  <TableHead className="hidden sm:table-cell">Pagamento</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
@@ -87,23 +88,38 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                   const payment = order.payments.at(-1);
                   return (
                     <TableRow key={order.id}>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(order.createdAt)}</TableCell>
-                      <TableCell>
-                        <Link href={`/sales/${order.id}`} className="font-medium hover:underline">
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
+                        {formatDateTime(order.createdAt)}
+                      </TableCell>
+                      {/* Capped so the long e-mail truncates instead of pushing the amount off-screen. */}
+                      <TableCell className="max-w-[52vw] sm:max-w-none">
+                        <Link href={`/sales/${order.id}`} className="block truncate font-medium hover:underline">
                           {order.customer.name}
                         </Link>
-                        <span className="block text-xs text-muted-foreground">{order.customer.email}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{order.customer.email}</span>
+                        {/* The columns hidden on small screens come back as context here. */}
+                        <span className="block truncate text-xs text-muted-foreground lg:hidden">
+                          {order.items[0]?.productName ?? "—"}
+                        </span>
+                        <span className="block text-xs text-muted-foreground md:hidden">{formatDateTime(order.createdAt)}</span>
+                        {payment && (
+                          <Badge className="mt-1 sm:hidden" variant={PAYMENT_STATUS_BADGE[payment.status].variant}>
+                            {PAYMENT_STATUS_BADGE[payment.status].label}
+                          </Badge>
+                        )}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{order.items[0]?.productName ?? "—"}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden text-muted-foreground lg:table-cell">{order.items[0]?.productName ?? "—"}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <Badge variant={ORDER_STATUS_BADGE[order.status].variant}>{ORDER_STATUS_BADGE[order.status].label}</Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {payment ? (
                           <>
                             <Badge variant={PAYMENT_STATUS_BADGE[payment.status].variant}>{PAYMENT_STATUS_BADGE[payment.status].label}</Badge>
                             {payment.paymentMethod && (
-                              <span className="block text-xs text-muted-foreground">{PAYMENT_METHOD_LABELS[payment.paymentMethod]}</span>
+                              <span className="hidden text-xs text-muted-foreground sm:block">
+                                {PAYMENT_METHOD_LABELS[payment.paymentMethod]}
+                              </span>
                             )}
                           </>
                         ) : (

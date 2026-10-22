@@ -180,27 +180,33 @@ export default async function DashboardPage() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="pl-5">Cliente</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Produto</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="pr-5 text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {orders.map((order) => (
                   <TableRow key={order.id}>
-                    <TableCell className="pl-5">
+                    <TableCell className="max-w-[52vw] pl-5 sm:max-w-none">
                       <span className="flex items-center gap-3">
-                        <span className="flex size-9 items-center justify-center rounded-xl bg-accent font-heading text-xs font-semibold text-accent-foreground">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent font-heading text-xs font-semibold text-accent-foreground">
                           {order.customer.name.slice(0, 2).toUpperCase()}
                         </span>
-                        <span>
-                          <span className="block font-medium">{order.customer.name}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium">{order.customer.name}</span>
+                          <span className="block truncate text-xs text-muted-foreground lg:hidden">
+                            {order.items[0]?.productName ?? "—"}
+                          </span>
                           <span className="block text-xs text-muted-foreground">{formatDate(order.createdAt)}</span>
+                          <Badge className="mt-1 sm:hidden" variant={ORDER_STATUS_BADGE[order.status].variant}>
+                            {ORDER_STATUS_BADGE[order.status].label}
+                          </Badge>
                         </span>
                       </span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{order.items[0]?.productName ?? "—"}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">{order.items[0]?.productName ?? "—"}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge variant={ORDER_STATUS_BADGE[order.status].variant}>{ORDER_STATUS_BADGE[order.status].label}</Badge>
                     </TableCell>
                     <TableCell className="tabular pr-5 text-right font-medium">{formatAmount(order.totalAmount, order.currency)}</TableCell>

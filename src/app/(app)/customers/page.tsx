@@ -37,21 +37,22 @@ export default async function CustomersPage({ searchParams }: PageProps<"/custom
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>País</TableHead>
-                  <TableHead>Pedidos</TableHead>
-                  <TableHead>Desde</TableHead>
+                  <TableHead className="hidden sm:table-cell">País</TableHead>
+                  <TableHead className="text-right">Pedidos</TableHead>
+                  <TableHead className="hidden md:table-cell">Desde</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {customers.map((customer) => (
                   <TableRow key={customer.id}>
-                    <TableCell>
-                      <span className="font-medium">{customer.name}</span>
-                      <span className="block text-xs text-muted-foreground">{customer.email}</span>
+                    <TableCell className="max-w-[60vw] sm:max-w-none">
+                      <span className="block truncate font-medium">{customer.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{customer.email}</span>
+                      <span className="block text-xs text-muted-foreground md:hidden">desde {formatDate(customer.createdAt)}</span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{customer.country ?? "—"}</TableCell>
-                    <TableCell className="tabular text-muted-foreground">{customer._count.orders}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(customer.createdAt)}</TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">{customer.country ?? "—"}</TableCell>
+                    <TableCell className="tabular text-right text-muted-foreground">{customer._count.orders}</TableCell>
+                    <TableCell className="hidden text-muted-foreground md:table-cell">{formatDate(customer.createdAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -45,11 +45,11 @@ export default async function AdminAwardsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Conquistada</TableHead>
+                  <TableHead className="hidden md:table-cell">Conquistada</TableHead>
                   <TableHead>Produtor</TableHead>
                   <TableHead>Premiação</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Rastreio</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Rastreio</TableHead>
                   <TableHead className="w-px" />
                 </TableRow>
               </TableHeader>
@@ -59,23 +59,29 @@ export default async function AdminAwardsPage() {
                   const tier = AWARD_TIER_BY_NAME.get(award.tier);
                   return (
                     <TableRow key={award.id}>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(award.achievedAt)}</TableCell>
-                      <TableCell>
-                        <Link href={`/admin/organizations/${award.organizationId}`} className="font-medium hover:underline">
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
+                        {formatDate(award.achievedAt)}
+                      </TableCell>
+                      <TableCell className="max-w-[40vw] sm:max-w-none">
+                        <Link href={`/admin/organizations/${award.organizationId}`} className="block truncate font-medium hover:underline">
                           {award.organization.name}
                         </Link>
+                        <span className="block text-xs text-muted-foreground md:hidden">{formatDate(award.achievedAt)}</span>
+                        <Badge className="mt-1 sm:hidden" variant={badge.variant}>
+                          {badge.label}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <span className="flex items-center gap-2 font-medium">
                           <AwardMedal tier={award.tier} className="size-6" />
                           {formatCompactAmount(award.threshold, award.currency)}
-                          <span className="text-xs font-normal text-muted-foreground">{tier?.label}</span>
+                          <span className="hidden text-xs font-normal text-muted-foreground sm:inline">{tier?.label}</span>
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <Badge variant={badge.variant}>{badge.label}</Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{award.trackingCode ?? "—"}</TableCell>
+                      <TableCell className="hidden font-mono text-xs text-muted-foreground lg:table-cell">{award.trackingCode ?? "—"}</TableCell>
                       <TableCell>
                         {award.status === "ACHIEVED" && (
                           <ShipAwardDialog

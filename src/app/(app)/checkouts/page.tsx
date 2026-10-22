@@ -58,9 +58,9 @@ export default async function CheckoutsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Checkout</TableHead>
-                  <TableHead>Oferta</TableHead>
-                  <TableHead>Versão</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Oferta</TableHead>
+                  <TableHead className="hidden xl:table-cell">Versão</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="text-right">Preço</TableHead>
                   <TableHead />
                 </TableRow>
@@ -68,15 +68,19 @@ export default async function CheckoutsPage() {
               <TableBody>
                 {checkouts.map((checkout) => (
                   <TableRow key={checkout.id}>
-                    <TableCell>
-                      <Link href={`/checkouts/${checkout.id}`} className="font-medium hover:underline">
+                    <TableCell className="max-w-[46vw] sm:max-w-none">
+                      <Link href={`/checkouts/${checkout.id}`} className="block truncate font-medium hover:underline">
                         {checkout.name}
                       </Link>
-                      <span className="block text-xs text-muted-foreground">/checkout/{checkout.slug}</span>
+                      <span className="block truncate text-xs text-muted-foreground">/checkout/{checkout.slug}</span>
+                      <span className="block truncate text-xs text-muted-foreground lg:hidden">{checkout.offer.product.name}</span>
+                      <Badge className="mt-1 sm:hidden" variant={checkout.status === "ACTIVE" ? "success" : "secondary"}>
+                        {checkout.status === "ACTIVE" ? "Ativo" : "Inativo"}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{checkout.offer.product.name}</TableCell>
-                    <TableCell className="tabular text-muted-foreground">v{checkout.currentVersion}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">{checkout.offer.product.name}</TableCell>
+                    <TableCell className="tabular hidden text-muted-foreground xl:table-cell">v{checkout.currentVersion}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge variant={checkout.status === "ACTIVE" ? "success" : "secondary"}>{checkout.status === "ACTIVE" ? "Ativo" : "Inativo"}</Badge>
                     </TableCell>
                     <TableCell className="tabular text-right">{formatAmount(checkout.offer.amount, checkout.offer.currency)}</TableCell>

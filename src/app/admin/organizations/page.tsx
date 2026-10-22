@@ -43,12 +43,12 @@ export default async function AdminOrganizationsPage({ searchParams }: PageProps
               <TableHeader>
                 <TableRow>
                   <TableHead>Organização</TableHead>
-                  <TableHead>País</TableHead>
+                  <TableHead className="hidden lg:table-cell">País</TableHead>
                   <TableHead>Verificação</TableHead>
-                  <TableHead>Saques</TableHead>
-                  <TableHead className="text-right">Produtos</TableHead>
-                  <TableHead className="text-right">Pedidos</TableHead>
-                  <TableHead>Desde</TableHead>
+                  <TableHead className="hidden md:table-cell">Saques</TableHead>
+                  <TableHead className="hidden text-right xl:table-cell">Produtos</TableHead>
+                  <TableHead className="hidden text-right xl:table-cell">Pedidos</TableHead>
+                  <TableHead className="hidden lg:table-cell">Desde</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -56,24 +56,29 @@ export default async function AdminOrganizationsPage({ searchParams }: PageProps
                   const badge = VERIFICATION_BADGE[organization.verificationStatus ?? "NOT_STARTED"];
                   return (
                     <TableRow key={organization.id}>
-                      <TableCell>
-                        <Link href={`/admin/organizations/${organization.id}`} className="font-medium hover:underline">
+                      <TableCell className="max-w-[52vw] sm:max-w-none">
+                        <Link href={`/admin/organizations/${organization.id}`} className="block truncate font-medium hover:underline">
                           {organization.name}
                         </Link>
-                        <span className="block text-xs text-muted-foreground">/{organization.slug}</span>
+                        <span className="block truncate text-xs text-muted-foreground">/{organization.slug}</span>
+                        <span className="block text-xs text-muted-foreground lg:hidden">
+                          {organization.country} · {organization.products} produto(s) · {organization.orders} pedido(s)
+                        </span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{organization.country}</TableCell>
+                      <TableCell className="hidden text-muted-foreground lg:table-cell">{organization.country}</TableCell>
                       <TableCell>
                         <Badge variant={badge.variant}>{badge.label}</Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <Badge variant={organization.payoutsEnabled ? "success" : "outline"}>
                           {organization.payoutsEnabled ? "Liberados" : "Bloqueados"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="tabular text-right text-muted-foreground">{organization.products}</TableCell>
-                      <TableCell className="tabular text-right text-muted-foreground">{organization.orders}</TableCell>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(organization.createdAt)}</TableCell>
+                      <TableCell className="tabular hidden text-right text-muted-foreground xl:table-cell">{organization.products}</TableCell>
+                      <TableCell className="tabular hidden text-right text-muted-foreground xl:table-cell">{organization.orders}</TableCell>
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">
+                        {formatDate(organization.createdAt)}
+                      </TableCell>
                     </TableRow>
                   );
                 })}

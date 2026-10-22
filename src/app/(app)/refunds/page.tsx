@@ -64,29 +64,43 @@ export default async function RefundsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead>
+                  <TableHead className="hidden md:table-cell">Data</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Prazo para provas</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Produto</TableHead>
+                  <TableHead className="hidden lg:table-cell">Prazo para provas</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {disputes.map((dispute) => (
                   <TableRow key={dispute.id}>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(dispute.createdAt)}</TableCell>
-                    <TableCell>
-                      <Link href={`/sales/${dispute.payment.orderId}`} className="font-medium hover:underline">
+                    <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
+                      {formatDateTime(dispute.createdAt)}
+                    </TableCell>
+                    <TableCell className="max-w-[52vw] sm:max-w-none">
+                      <Link href={`/sales/${dispute.payment.orderId}`} className="block truncate font-medium hover:underline">
                         {dispute.payment.customer.name}
                       </Link>
-                      <span className="block text-xs text-muted-foreground">{dispute.payment.customer.email}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{dispute.payment.customer.email}</span>
+                      <span className="block truncate text-xs text-muted-foreground lg:hidden">
+                        {dispute.payment.order.items[0]?.productName ?? "—"}
+                      </span>
+                      <span className="block text-xs text-muted-foreground md:hidden">{formatDateTime(dispute.createdAt)}</span>
+                      <Badge
+                        className="mt-1 sm:hidden"
+                        variant={
+                          dispute.status === "WON" ? "success" : dispute.status === "LOST" ? "destructive" : OPEN_DISPUTE.has(dispute.status) ? "warning" : "outline"
+                        }
+                      >
+                        {DISPUTE_STATUS_LABELS[dispute.status]}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{dispute.payment.order.items[0]?.productName ?? "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">{dispute.payment.order.items[0]?.productName ?? "—"}</TableCell>
+                    <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">
                       {dispute.evidenceDueAt ? formatDateTime(dispute.evidenceDueAt) : "—"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge
                         variant={
                           dispute.status === "WON" ? "success" : dispute.status === "LOST" ? "destructive" : OPEN_DISPUTE.has(dispute.status) ? "warning" : "outline"
@@ -125,27 +139,39 @@ export default async function RefundsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead>
+                  <TableHead className="hidden md:table-cell">Data</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Motivo</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Produto</TableHead>
+                  <TableHead className="hidden lg:table-cell">Motivo</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {refunds.map((refund) => (
                   <TableRow key={refund.id}>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(refund.createdAt)}</TableCell>
-                    <TableCell>
-                      <Link href={`/sales/${refund.payment.orderId}`} className="font-medium hover:underline">
+                    <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
+                      {formatDateTime(refund.createdAt)}
+                    </TableCell>
+                    <TableCell className="max-w-[52vw] sm:max-w-none">
+                      <Link href={`/sales/${refund.payment.orderId}`} className="block truncate font-medium hover:underline">
                         {refund.payment.customer.name}
                       </Link>
-                      <span className="block text-xs text-muted-foreground">{refund.payment.customer.email}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{refund.payment.customer.email}</span>
+                      <span className="block truncate text-xs text-muted-foreground lg:hidden">
+                        {refund.payment.order.items[0]?.productName ?? "—"}
+                      </span>
+                      <span className="block text-xs text-muted-foreground md:hidden">{formatDateTime(refund.createdAt)}</span>
+                      <Badge
+                        className="mt-1 sm:hidden"
+                        variant={refund.status === "PAID" ? "success" : refund.status === "FAILED" ? "destructive" : "outline"}
+                      >
+                        {REFUND_STATUS_LABELS[refund.status]}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{refund.payment.order.items[0]?.productName ?? "—"}</TableCell>
-                    <TableCell className="max-w-48 truncate text-muted-foreground">{refund.reason ?? "—"}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">{refund.payment.order.items[0]?.productName ?? "—"}</TableCell>
+                    <TableCell className="hidden max-w-48 truncate text-muted-foreground lg:table-cell">{refund.reason ?? "—"}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge variant={refund.status === "PAID" ? "success" : refund.status === "FAILED" ? "destructive" : "outline"}>
                         {REFUND_STATUS_LABELS[refund.status]}
                       </Badge>

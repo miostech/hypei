@@ -66,11 +66,11 @@ export default async function AffiliatesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Afiliado</TableHead>
-                  <TableHead>Comissão</TableHead>
-                  <TableHead>Link</TableHead>
-                  <TableHead className="text-right">Vendas</TableHead>
+                  <TableHead className="hidden sm:table-cell">Comissão</TableHead>
+                  <TableHead className="hidden lg:table-cell">Link</TableHead>
+                  <TableHead className="hidden text-right xl:table-cell">Vendas</TableHead>
                   <TableHead className="text-right">A pagar</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Status</TableHead>
                   <TableHead className="w-px" />
                 </TableRow>
               </TableHeader>
@@ -90,12 +90,18 @@ export default async function AffiliatesPage() {
 
                   return (
                     <TableRow key={affiliate.id}>
-                      <TableCell>
-                        <span className="font-medium">{affiliate.name}</span>
-                        <span className="block text-xs text-muted-foreground">{affiliate.email}</span>
+                      <TableCell className="max-w-[46vw] sm:max-w-none">
+                        <span className="block truncate font-medium">{affiliate.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{affiliate.email}</span>
+                        <span className="block text-xs text-muted-foreground sm:hidden">
+                          {affiliate.commissionBps / 100}% de comissão
+                        </span>
+                        <span className="mt-1 block md:hidden">
+                          {affiliate.active ? <Badge variant="success">Ativo</Badge> : <Badge variant="outline">Inativo</Badge>}
+                        </span>
                       </TableCell>
-                      <TableCell className="font-medium">{affiliate.commissionBps / 100}%</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden font-medium sm:table-cell">{affiliate.commissionBps / 100}%</TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         {url ? (
                           <CopyLink url={url} label={affiliate.name} />
                         ) : (
@@ -105,9 +111,9 @@ export default async function AffiliatesPage() {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="tabular text-right text-muted-foreground">{entry?.sales ?? 0}</TableCell>
+                      <TableCell className="tabular hidden text-right text-muted-foreground xl:table-cell">{entry?.sales ?? 0}</TableCell>
                       <TableCell className="tabular text-right font-medium">{formatAmount(entry?.available ?? 0n, currency)}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {affiliate.active ? <Badge variant="success">Ativo</Badge> : <Badge variant="outline">Inativo</Badge>}
                       </TableCell>
                       <TableCell>
@@ -159,11 +165,11 @@ export default async function AffiliatesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead>
+                  <TableHead className="hidden md:table-cell">Data</TableHead>
                   <TableHead>Afiliado</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Cliente</TableHead>
+                  <TableHead className="hidden lg:table-cell">Produto</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="text-right">Comissão</TableHead>
                 </TableRow>
               </TableHeader>
@@ -172,11 +178,19 @@ export default async function AffiliatesPage() {
                   const net = commission.amount - commission.reversedAmount;
                   return (
                     <TableRow key={commission.id}>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(commission.createdAt)}</TableCell>
-                      <TableCell className="font-medium">{commission.affiliate.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{commission.order.customer.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{commission.order.items[0]?.productName ?? "—"}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
+                        {formatDateTime(commission.createdAt)}
+                      </TableCell>
+                      <TableCell className="max-w-[46vw] sm:max-w-none">
+                        <span className="block truncate font-medium">{commission.affiliate.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground lg:hidden">
+                          {commission.order.customer.name} · {commission.order.items[0]?.productName ?? "—"}
+                        </span>
+                        <span className="block text-xs text-muted-foreground md:hidden">{formatDateTime(commission.createdAt)}</span>
+                      </TableCell>
+                      <TableCell className="hidden text-muted-foreground lg:table-cell">{commission.order.customer.name}</TableCell>
+                      <TableCell className="hidden text-muted-foreground lg:table-cell">{commission.order.items[0]?.productName ?? "—"}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <Badge
                           variant={
                             commission.status === "PAID"

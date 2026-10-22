@@ -45,11 +45,11 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps<"/ad
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead>
+                  <TableHead className="hidden md:table-cell">Data</TableHead>
                   <TableHead>Organização</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Provedor</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Cliente</TableHead>
+                  <TableHead className="hidden xl:table-cell">Provedor</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
@@ -58,18 +58,25 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps<"/ad
                   const badge = PAYMENT_BADGE[payment.status] ?? { label: payment.status, variant: "outline" as const };
                   return (
                     <TableRow key={payment.id}>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(payment.createdAt)}</TableCell>
-                      <TableCell>
-                        <Link href={`/admin/organizations/${payment.organizationId}`} className="font-medium hover:underline">
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
+                        {formatDateTime(payment.createdAt)}
+                      </TableCell>
+                      <TableCell className="max-w-[46vw] sm:max-w-none">
+                        <Link href={`/admin/organizations/${payment.organizationId}`} className="block truncate font-medium hover:underline">
                           {payment.organizationName}
                         </Link>
+                        <span className="block truncate text-xs text-muted-foreground lg:hidden">{payment.customerEmail}</span>
+                        <span className="block text-xs text-muted-foreground md:hidden">{formatDateTime(payment.createdAt)}</span>
+                        <Badge className="mt-1 sm:hidden" variant={badge.variant}>
+                          {badge.label}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{payment.customerEmail}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden text-muted-foreground lg:table-cell">{payment.customerEmail}</TableCell>
+                      <TableCell className="hidden xl:table-cell">
                         <span className="block text-xs text-muted-foreground">{payment.provider}</span>
                         <span className="font-mono text-xs">{payment.providerPaymentId?.slice(-12) ?? "—"}</span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <Badge variant={badge.variant}>{badge.label}</Badge>
                       </TableCell>
                       <TableCell className="tabular text-right font-medium">{formatAmount(payment.amount, payment.currency)}</TableCell>

@@ -26,10 +26,10 @@ export default async function AdminPayoutsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Solicitado</TableHead>
+                  <TableHead className="hidden md:table-cell">Solicitado</TableHead>
                   <TableHead>Organização</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Pago em</TableHead>
+                  <TableHead className="hidden lg:table-cell">Pago em</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
@@ -38,17 +38,20 @@ export default async function AdminPayoutsPage() {
                   const badge = PAYOUT_BADGE[payout.status] ?? { label: payout.status, variant: "outline" as const };
                   return (
                     <TableRow key={payout.id}>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(payout.requestedAt)}</TableCell>
-                      <TableCell>
-                        <Link href={`/admin/organizations/${payout.organizationId}`} className="font-medium hover:underline">
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
+                        {formatDateTime(payout.requestedAt)}
+                      </TableCell>
+                      <TableCell className="max-w-[46vw] sm:max-w-none">
+                        <Link href={`/admin/organizations/${payout.organizationId}`} className="block truncate font-medium hover:underline">
                           {payout.organizationName}
                         </Link>
+                        <span className="block text-xs text-muted-foreground md:hidden">{formatDateTime(payout.requestedAt)}</span>
                       </TableCell>
                       <TableCell>
                         <Badge variant={badge.variant}>{badge.label}</Badge>
                         {payout.failureReason && <span className="block text-xs text-destructive">{payout.failureReason}</span>}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">
                         {payout.paidAt ? formatDateTime(payout.paidAt) : "—"}
                       </TableCell>
                       <TableCell className="tabular text-right font-medium">{formatAmount(payout.amount, payout.currency)}</TableCell>

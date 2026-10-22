@@ -90,7 +90,7 @@ export default async function CourseEditorPage({ params }: PageProps<"/members-a
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <Card>
             <CardHeader className="border-b pb-4">
               <CardTitle>Conteúdo</CardTitle>
@@ -116,15 +116,17 @@ export default async function CourseEditorPage({ params }: PageProps<"/members-a
                       </div>
                       {canEdit && (
                         <div className="flex items-center gap-0.5">
-                          <MoveButton action={moveModule} idName="moduleId" id={module.id} courseId={course.id} direction="up" disabled={moduleIndex === 0} />
-                          <MoveButton
-                            action={moveModule}
-                            idName="moduleId"
-                            id={module.id}
-                            courseId={course.id}
-                            direction="down"
-                            disabled={moduleIndex === course.modules.length - 1}
-                          />
+                          <span className="hidden items-center gap-0.5 sm:flex">
+                            <MoveButton action={moveModule} idName="moduleId" id={module.id} courseId={course.id} direction="up" disabled={moduleIndex === 0} />
+                            <MoveButton
+                              action={moveModule}
+                              idName="moduleId"
+                              id={module.id}
+                              courseId={course.id}
+                              direction="down"
+                              disabled={moduleIndex === course.modules.length - 1}
+                            />
+                          </span>
                           <ModuleDialog courseId={course.id} module={{ id: module.id, title: module.title }} />
                           <DeleteButton action={deleteModule} idName="moduleId" id={module.id} courseId={course.id} label="Excluir módulo" />
                         </div>
@@ -146,15 +148,17 @@ export default async function CourseEditorPage({ params }: PageProps<"/members-a
                             </div>
                             {canEdit && (
                               <div className="flex items-center gap-0.5">
-                                <MoveButton action={moveLesson} idName="lessonId" id={lesson.id} courseId={course.id} direction="up" disabled={lessonIndex === 0} />
-                                <MoveButton
-                                  action={moveLesson}
-                                  idName="lessonId"
-                                  id={lesson.id}
-                                  courseId={course.id}
-                                  direction="down"
-                                  disabled={lessonIndex === module.lessons.length - 1}
-                                />
+                                <span className="hidden items-center gap-0.5 sm:flex">
+                                  <MoveButton action={moveLesson} idName="lessonId" id={lesson.id} courseId={course.id} direction="up" disabled={lessonIndex === 0} />
+                                  <MoveButton
+                                    action={moveLesson}
+                                    idName="lessonId"
+                                    id={lesson.id}
+                                    courseId={course.id}
+                                    direction="down"
+                                    disabled={lessonIndex === module.lessons.length - 1}
+                                  />
+                                </span>
                                 <LessonDialog
                                   courseId={course.id}
                                   moduleId={module.id}
@@ -193,7 +197,7 @@ export default async function CourseEditorPage({ params }: PageProps<"/members-a
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {canEdit && (
             <CourseForm
               action={updateCourseSettings}

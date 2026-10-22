@@ -30,11 +30,11 @@ export default async function AdminDisputesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Abertura</TableHead>
+                  <TableHead className="hidden md:table-cell">Abertura</TableHead>
                   <TableHead>Organização</TableHead>
-                  <TableHead>Prazo para provas</TableHead>
+                  <TableHead className="hidden lg:table-cell">Prazo para provas</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Retido</TableHead>
+                  <TableHead className="hidden text-right xl:table-cell">Retido</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
@@ -43,19 +43,22 @@ export default async function AdminDisputesPage() {
                   const badge = DISPUTE_BADGE[dispute.status] ?? { label: dispute.status, variant: "outline" as const };
                   return (
                     <TableRow key={dispute.id}>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(dispute.createdAt)}</TableCell>
-                      <TableCell>
-                        <Link href={`/admin/organizations/${dispute.organizationId}`} className="font-medium hover:underline">
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
+                        {formatDateTime(dispute.createdAt)}
+                      </TableCell>
+                      <TableCell className="max-w-[46vw] sm:max-w-none">
+                        <Link href={`/admin/organizations/${dispute.organizationId}`} className="block truncate font-medium hover:underline">
                           {dispute.organizationName}
                         </Link>
+                        <span className="block text-xs text-muted-foreground md:hidden">{formatDateTime(dispute.createdAt)}</span>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">
                         {dispute.evidenceDueAt ? formatDateTime(dispute.evidenceDueAt) : "—"}
                       </TableCell>
                       <TableCell>
                         <Badge variant={badge.variant}>{badge.label}</Badge>
                       </TableCell>
-                      <TableCell className="tabular text-right text-muted-foreground">
+                      <TableCell className="tabular hidden text-right text-muted-foreground xl:table-cell">
                         {formatAmount(dispute.heldAmount, dispute.currency)}
                       </TableCell>
                       <TableCell className="tabular text-right font-medium">{formatAmount(dispute.amount, dispute.currency)}</TableCell>

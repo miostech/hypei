@@ -49,29 +49,32 @@ export default async function ProductsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Produto</TableHead>
-                  <TableHead>Tipo</TableHead>
+                  <TableHead className="hidden lg:table-cell">Tipo</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Ofertas</TableHead>
-                  <TableHead>Criado em</TableHead>
+                  <TableHead className="hidden text-right sm:table-cell">Ofertas</TableHead>
+                  <TableHead className="hidden md:table-cell">Criado em</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {products.map((product) => (
                   <TableRow key={product.id}>
-                    <TableCell>
-                      <Link href={`/products/${product.id}`} className="font-medium hover:underline">
+                    <TableCell className="max-w-[52vw] sm:max-w-none">
+                      <Link href={`/products/${product.id}`} className="block truncate font-medium hover:underline">
                         {product.name}
                       </Link>
-                      <span className="block text-xs text-muted-foreground">/{product.slug}</span>
+                      <span className="block truncate text-xs text-muted-foreground">/{product.slug}</span>
+                      <span className="block text-xs text-muted-foreground lg:hidden">
+                        {PRODUCT_TYPE_LABELS[product.type]} · {product._count.offers} oferta(s)
+                      </span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{PRODUCT_TYPE_LABELS[product.type]}</TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">{PRODUCT_TYPE_LABELS[product.type]}</TableCell>
                     <TableCell>
                       <Badge variant={product.status === "ACTIVE" ? "success" : product.status === "DRAFT" ? "outline" : "secondary"}>
                         {PRODUCT_STATUS_LABELS[product.status]}
                       </Badge>
                     </TableCell>
-                    <TableCell className="tabular text-muted-foreground">{product._count.offers}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(product.createdAt)}</TableCell>
+                    <TableCell className="tabular hidden text-right text-muted-foreground sm:table-cell">{product._count.offers}</TableCell>
+                    <TableCell className="hidden text-muted-foreground md:table-cell">{formatDate(product.createdAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

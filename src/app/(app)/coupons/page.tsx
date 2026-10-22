@@ -54,10 +54,10 @@ export default async function CouponsPage() {
                 <TableRow>
                   <TableHead>Código</TableHead>
                   <TableHead>Desconto</TableHead>
-                  <TableHead>Aplica em</TableHead>
-                  <TableHead>Usos</TableHead>
-                  <TableHead>Validade</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Aplica em</TableHead>
+                  <TableHead className="hidden md:table-cell">Usos</TableHead>
+                  <TableHead className="hidden lg:table-cell">Validade</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   {canEdit && <TableHead className="w-px" />}
                 </TableRow>
               </TableHeader>
@@ -81,9 +81,24 @@ export default async function CouponsPage() {
 
                   return (
                     <TableRow key={coupon.id}>
-                      <TableCell>
-                        <span className="font-mono text-sm font-semibold">{coupon.code}</span>
+                      <TableCell className="max-w-[38vw] sm:max-w-none">
+                        <span className="block truncate font-mono text-sm font-semibold">{coupon.code}</span>
                         {coupon.oncePerCustomer && <span className="block text-xs text-muted-foreground">Uma vez por cliente</span>}
+                        <span className="block text-xs text-muted-foreground md:hidden">
+                          {coupon.redemptions}
+                          {coupon.maxRedemptions !== null ? ` / ${coupon.maxRedemptions}` : ""} uso(s)
+                        </span>
+                        <span className="mt-1 block sm:hidden">
+                          {!coupon.active ? (
+                            <Badge variant="outline">Inativo</Badge>
+                          ) : expired ? (
+                            <Badge variant="outline">Expirado</Badge>
+                          ) : exhausted ? (
+                            <Badge variant="outline">Esgotado</Badge>
+                          ) : (
+                            <Badge variant="success">Ativo</Badge>
+                          )}
+                        </span>
                       </TableCell>
                       <TableCell className="font-medium">
                         {coupon.type === "PERCENTAGE"
@@ -95,15 +110,15 @@ export default async function CouponsPage() {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{coupon.product?.name ?? "Todos os produtos"}</TableCell>
-                      <TableCell className="tabular text-muted-foreground">
+                      <TableCell className="hidden text-muted-foreground lg:table-cell">{coupon.product?.name ?? "Todos os produtos"}</TableCell>
+                      <TableCell className="tabular hidden text-muted-foreground md:table-cell">
                         {coupon.redemptions}
                         {coupon.maxRedemptions !== null ? ` / ${coupon.maxRedemptions}` : ""}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">
                         {coupon.expiresAt ? formatDate(coupon.expiresAt) : "Sem validade"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {!coupon.active ? (
                           <Badge variant="outline">Inativo</Badge>
                         ) : expired ? (
