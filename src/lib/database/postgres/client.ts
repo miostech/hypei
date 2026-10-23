@@ -11,16 +11,16 @@ export function createPrismaClient(connectionString: string): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
-const globalForPrisma = globalThis as unknown as { __ripayPrisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as { __kabrunPrisma?: PrismaClient };
 
 /** Process-wide singleton (survives Next.js dev hot reloads). */
 export function getPrisma(): PrismaClient {
-  if (!globalForPrisma.__ripayPrisma) {
+  if (!globalForPrisma.__kabrunPrisma) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL is not configured");
-    globalForPrisma.__ripayPrisma = createPrismaClient(url);
+    globalForPrisma.__kabrunPrisma = createPrismaClient(url);
   }
-  return globalForPrisma.__ripayPrisma;
+  return globalForPrisma.__kabrunPrisma;
 }
 
 /** Postgres unique-constraint violation (P2002) detection, used for idempotent inserts. */

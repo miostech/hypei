@@ -24,8 +24,8 @@ duas implementações: `StripePaymentProvider` e `MockPaymentProvider`.
   `merchant:{organizationId}`.
 
 **Modelo de dinheiro (separate charges and transfers):** o comprador paga a plataforma; o ledger da
-Ripay controla quanto cada produtor tem a receber; o repasse é um transfer para a conta conectada
-seguido de payout (contas com agendamento manual), para que a liberação siga a política da Ripay e
+Kabrun controla quanto cada produtor tem a receber; o repasse é um transfer para a conta conectada
+seguido de payout (contas com agendamento manual), para que a liberação siga a política da Kabrun e
 não o calendário do PSP.
 
 O `MockPaymentProvider` existe para desenvolvimento e testes: determinístico, sem dinheiro real, e
@@ -41,5 +41,5 @@ O `MockPaymentProvider` existe para desenvolvimento e testes: determinístico, s
 ## Alternativas consideradas
 
 - **Usar o SDK direto**: mais rápido agora, acoplamento caro depois — e testes dependeriam da rede.
-- **Destination charges**: repasse automático pela Stripe, mas a Ripay perderia o controle do
+- **Destination charges**: repasse automático pela Stripe, mas a Kabrun perderia o controle do
   settlement, que é parte do produto.

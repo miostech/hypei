@@ -9,7 +9,7 @@ import { getServices } from "../src/server/container";
  * normal services (checkout → signed webhook → ledger) and then backdated so the
  * dashboard has 30 days of history. Never run this against production data.
  */
-const EMAIL = process.argv[2] ?? "producer@ripay.dev";
+const EMAIL = process.argv[2] ?? "producer@kabrun.dev";
 const DAYS = 30;
 
 const PRODUCTS = [

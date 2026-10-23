@@ -20,19 +20,19 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: ripay
-          POSTGRES_PASSWORD: ripay
-          POSTGRES_DB: ripay_test
+          POSTGRES_USER: kabrun
+          POSTGRES_PASSWORD: kabrun
+          POSTGRES_DB: kabrun_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U ripay"
+          --health-cmd "pg_isready -U kabrun"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
 
     env:
-      TEST_DATABASE_URL: postgresql://ripay:ripay@localhost:5432/ripay_test?schema=public
+      TEST_DATABASE_URL: postgresql://kabrun:kabrun@localhost:5432/kabrun_test?schema=public
 
     steps:
       - uses: actions/checkout@v4

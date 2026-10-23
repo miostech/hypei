@@ -11,7 +11,7 @@ export interface EmailBlock {
   rows?: { label: string; value: string }[];
   cta?: { label: string; url: string };
   note?: string;
-  /** Shown in the footer: the producer sells, Ripay only processes. */
+  /** Shown in the footer: the producer sells, Kabrun only processes. */
   organizationName: string;
   supportEmail?: string;
   /** Buyers are told who sold to them; producers are told who is writing. */
@@ -50,8 +50,8 @@ export function renderEmail(subject: string, block: EmailBlock): RenderedEmail {
     block.audience === "buyer"
       ? `Esta compra foi feita com ${escapeHtml(block.organizationName)}.${
           block.supportEmail ? ` Dúvidas? Responda este e-mail ou escreva para ${escapeHtml(block.supportEmail)}.` : ""
-        }<br />Pagamento processado pela Ripay.`
-      : `Enviado pela Ripay para ${escapeHtml(block.organizationName)}.`;
+        }<br />Pagamento processado pela Kabrun.`
+      : `Enviado pela Kabrun para ${escapeHtml(block.organizationName)}.`;
 
   const html = `<!doctype html>
 <html lang="pt-BR">
@@ -62,7 +62,7 @@ export function renderEmail(subject: string, block: EmailBlock): RenderedEmail {
       <tr><td align="center">
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:18px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
           <tr><td style="background:linear-gradient(135deg,#5B3DF5,#7A5CFA);padding:22px 32px;">
-            <span style="color:#ffffff;font-size:17px;font-weight:700;letter-spacing:-0.3px;">Ripay</span>
+            <span style="color:#ffffff;font-size:17px;font-weight:700;letter-spacing:-0.3px;">Kabrun</span>
           </td></tr>
           <tr><td style="padding:32px;">
             <h1 style="margin:0 0 10px;color:#16161d;font-size:21px;line-height:28px;font-weight:700;">${escapeHtml(block.heading)}</h1>
@@ -91,8 +91,8 @@ export function renderEmail(subject: string, block: EmailBlock): RenderedEmail {
     ...(block.note ? ["", block.note] : []),
     "",
     block.audience === "buyer"
-      ? `Esta compra foi feita com ${block.organizationName}.${block.supportEmail ? ` Contato: ${block.supportEmail}.` : ""}\nPagamento processado pela Ripay.`
-      : `Enviado pela Ripay para ${block.organizationName}.`,
+      ? `Esta compra foi feita com ${block.organizationName}.${block.supportEmail ? ` Contato: ${block.supportEmail}.` : ""}\nPagamento processado pela Kabrun.`
+      : `Enviado pela Kabrun para ${block.organizationName}.`,
   ].join("\n");
 
   return { subject, html, text };

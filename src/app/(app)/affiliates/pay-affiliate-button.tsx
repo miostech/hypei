@@ -10,7 +10,7 @@ import { idleState } from "@/lib/actions/action-state";
 import { payAffiliate } from "./actions";
 
 /**
- * Confirms before writing it down: the transfer itself happens outside Ripay today,
+ * Confirms before writing it down: the transfer itself happens outside Kabrun today,
  * so this button is a record, not a payment.
  */
 export function PayAffiliateButton({ affiliateId, name, amountLabel }: { affiliateId: string; name: string; amountLabel: string }) {
@@ -37,7 +37,7 @@ export function PayAffiliateButton({ affiliateId, name, amountLabel }: { affilia
         <DialogHeader>
           <DialogTitle>Registrar pagamento a {name}</DialogTitle>
           <DialogDescription>
-            Confirma que você transferiu {amountLabel} para {name}? O valor sai do que a Ripay tem reservado para este afiliado.
+            Confirma que você transferiu {amountLabel} para {name}? O valor sai do que a Kabrun tem reservado para este afiliado.
           </DialogDescription>
         </DialogHeader>
 

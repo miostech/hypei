@@ -2,10 +2,10 @@ import type { DbClient } from "@/lib/database/postgres/client";
 import type { DisputeStatus, PayoutStatus } from "@/generated/prisma/enums";
 
 /**
- * The only repository in Ripay that reads ACROSS organizations.
+ * The only repository in Kabrun that reads ACROSS organizations.
  *
  * Every other query is scoped by organizationId because a producer must never see
- * another producer's data. This one exists for Ripay staff, is read-only, and is
+ * another producer's data. This one exists for Kabrun staff, is read-only, and is
  * reachable solely through the platform admin area.
  */
 export interface PlatformAdminRepository {

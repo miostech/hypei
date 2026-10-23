@@ -98,7 +98,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
           <StatCard label="Receita bruta" value={formatAmount(summary.grossRevenue, currency)} icon={ReceiptIcon} hint="Total capturado dos compradores" />
-          <StatCard label="Taxas Ripay" value={formatAmount(summary.platformFees, currency)} tone="gold" icon={SparklesIcon} hint="Comissão da plataforma" />
+          <StatCard label="Taxas Kabrun" value={formatAmount(summary.platformFees, currency)} tone="gold" icon={SparklesIcon} hint="Comissão da plataforma" />
         </div>
       </section>
 

@@ -36,7 +36,7 @@ export function nextPeriodEnd(from: Date, interval: BillingInterval): Date {
 /**
  * Subscription state is synchronized ONLY from provider events, never from a frontend
  * callback. A renewal arrives as an invoice paid by the provider and becomes a regular
- * sale in Ripay: same fees, same ledger, same member-area access.
+ * sale in Kabrun: same fees, same ledger, same member-area access.
  */
 export class SubscriptionService {
   constructor(

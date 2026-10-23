@@ -96,7 +96,7 @@ export default async function SaleDetailPage({ params }: PageProps<"/sales/[orde
                     <Row label="Taxa do processador">− {formatAmount(payment.processorFeeAmount, payment.currency)}</Row>
                   )}
                   {payment.platformFeeAmount !== null && (
-                    <Row label="Taxa Ripay">− {formatAmount(payment.platformFeeAmount, payment.currency)}</Row>
+                    <Row label="Taxa Kabrun">− {formatAmount(payment.platformFeeAmount, payment.currency)}</Row>
                   )}
                   {payment.producerNetAmount !== null && (
                     <Row label="Você recebe" strong>

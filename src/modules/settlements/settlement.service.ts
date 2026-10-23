@@ -14,7 +14,7 @@ export interface SettlementRunResult {
 /**
  * Moves producer funds PENDING → AVAILABLE once a payment's settlement date
  * (from its SettlementPolicy) has passed. Independent from the provider's own balance:
- * funds available at Stripe are not automatically available to the producer at Ripay.
+ * funds available at Stripe are not automatically available to the producer at Kabrun.
  */
 export class SettlementService {
   constructor(

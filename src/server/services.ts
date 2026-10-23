@@ -108,7 +108,7 @@ export function buildServices(deps: ServiceDependencies) {
   const idempotency = new IdempotencyService(uow.repos.idempotency);
   const coupons = new CouponService(uow);
   const verification = new VerificationService(uow, merchantAccounts);
-  // Cross-tenant reads for Ripay staff; never reachable from the producer app.
+  // Cross-tenant reads for Kabrun staff; never reachable from the producer app.
   const platformAdmin = new PlatformAdminService(new PrismaPlatformAdminRepository(deps.prisma));
   const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, subscriptions, deps.paymentProvider.type);
   const finance = new FinanceOverviewService(uow);

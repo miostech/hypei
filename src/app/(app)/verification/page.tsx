@@ -61,7 +61,7 @@ export default async function VerificationPage() {
       <PageHeader
         eyebrow="Conta"
         title="Verificação"
-        description="Exigência dos meios de pagamento para que você possa receber. Os documentos vão direto para o provedor — a Ripay não guarda essas informações."
+        description="Exigência dos meios de pagamento para que você possa receber. Os documentos vão direto para o provedor — a Kabrun não guarda essas informações."
         actions={<VerificationActions label={actionLabel} canStart={canEdit} />}
       />
 
@@ -156,7 +156,7 @@ export default async function VerificationPage() {
       <Card>
         <CardHeader className="border-b pb-4">
           <CardTitle>Dados já informados</CardTitle>
-          <CardDescription>O que a Ripay tem no cadastro desta organização.</CardDescription>
+          <CardDescription>O que a Kabrun tem no cadastro desta organização.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
           <Row label="Tipo" value={overview.businessType === "INDIVIDUAL" ? "Pessoa física" : "Empresa"} />
@@ -171,7 +171,7 @@ export default async function VerificationPage() {
 
       <p className="flex items-start gap-2 px-1 text-xs text-muted-foreground">
         <CheckCircle2Icon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-        Documentos e dados bancários são enviados e guardados pelo provedor de pagamento. A Ripay recebe apenas o status da análise e o que ainda falta.
+        Documentos e dados bancários são enviados e guardados pelo provedor de pagamento. A Kabrun recebe apenas o status da análise e o que ainda falta.
       </p>
     </>
   );

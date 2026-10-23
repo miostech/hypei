@@ -16,7 +16,7 @@ import { useCoupon } from "./coupon-context";
 import { MockPaymentPanel } from "./mock-payment-panel";
 import { StripePaymentPanel } from "./stripe-payment-panel";
 
-const SESSION_KEY = "ripay_checkout_session";
+const SESSION_KEY = "kabrun_checkout_session";
 
 function sessionId(): string {
   try {
@@ -72,7 +72,7 @@ export function CheckoutClient({
     const fromUrl = new URLSearchParams(window.location.search).get("ref");
     if (!fromUrl) return;
     const code = fromUrl.trim().toUpperCase();
-    document.cookie = `ripay_ref=${encodeURIComponent(code)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+    document.cookie = `kabrun_ref=${encodeURIComponent(code)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
     void registerAffiliateClick(code);
   }, []);
 
@@ -106,7 +106,7 @@ export function CheckoutClient({
   function currentReferral(): string | undefined {
     const fromUrl = new URLSearchParams(window.location.search).get("ref");
     if (fromUrl) return fromUrl.trim().toUpperCase();
-    const stored = document.cookie.match(/(?:^|;\s*)ripay_ref=([^;]+)/)?.[1];
+    const stored = document.cookie.match(/(?:^|;\s*)kabrun_ref=([^;]+)/)?.[1];
     return stored ? decodeURIComponent(stored) : undefined;
   }
 

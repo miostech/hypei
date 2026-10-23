@@ -1,4 +1,4 @@
-// Ripay — PostgreSQL system of record for identity, commerce and finance.
+// Kabrun — PostgreSQL system of record for identity, commerce and finance.
 // Money is ALWAYS stored as BigInt in minor units together with an ISO-4217 currency code.
 // Flexible/document data (checkout presentation, analytics, payload archives) lives in MongoDB.
 
@@ -278,7 +278,7 @@ enum OutboxStatus {
 
 // ─────────────────────────── Identity ────────────────────────────
 
-/// Identity is owned by Keycloak. Ripay never stores passwords.
+/// Identity is owned by Keycloak. Kabrun never stores passwords.
 model User {
   id             String       @id @default(cuid())
   keycloakUserId String       @unique
@@ -437,7 +437,7 @@ model Product {
   coupons Coupon[]
 }
 
-/// The official price of anything sold on Ripay. Checkout presentation (MongoDB) never overrides it.
+/// The official price of anything sold on Kabrun. Checkout presentation (MongoDB) never overrides it.
 model Offer {
   id              String           @id @default(cuid())
   productId       String
@@ -463,7 +463,7 @@ model Offer {
   @@index([organizationId, productId])
 }
 
-/// Mapping Ripay Offer → provider price object (e.g. Stripe Price for Billing).
+/// Mapping Kabrun Offer → provider price object (e.g. Stripe Price for Billing).
 model ProviderPrice {
   id                String              @id @default(cuid())
   offerId           String
@@ -500,7 +500,7 @@ model Checkout {
 
 // ─────────────────────────── Commerce ────────────────────────────
 
-/// The buyer. Not necessarily a Ripay User.
+/// The buyer. Not necessarily a Kabrun User.
 model Customer {
   id             String     @id @default(cuid())
   organizationId String
@@ -829,7 +829,7 @@ model SettlementPolicy {
   @@index([country])
 }
 
-/// Ripay platform fee (percentage in basis points and/or fixed amount).
+/// Kabrun platform fee (percentage in basis points and/or fixed amount).
 model PlatformFeePolicy {
   id             String        @id @default(cuid())
   organizationId String?

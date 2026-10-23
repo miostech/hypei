@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { trackingSchema } from "@/modules/checkout/checkout.schemas";
 import { getServices } from "@/server/container";
 import { formatAmount } from "@/lib/ui/format";
-import { RipayLogo } from "@/components/brand/logo";
+import { KabrunLogo } from "@/components/brand/logo";
 import { CheckoutClient } from "./checkout-client";
 import { CouponProvider, OrderTotals } from "./coupon-context";
 
@@ -150,7 +150,7 @@ export default async function PublicCheckoutPage({
       <footer className="border-t bg-card/60 py-5">
         <p className="mx-auto flex w-full max-w-5xl items-center justify-center gap-1.5 px-4 text-xs text-muted-foreground">
           Pagamento processado por
-          <RipayLogo className="h-4" />
+          <KabrunLogo className="h-4" />
         </p>
       </footer>
     </div>

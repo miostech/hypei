@@ -1,6 +1,6 @@
 {
-  "realm": "ripay",
-  "displayName": "Ripay",
+  "realm": "kabrun",
+  "displayName": "Kabrun",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": true,
@@ -11,7 +11,7 @@
   "rememberMe": true,
   "verifyEmail": false,
   "bruteForceProtected": true,
-  "loginTheme": "ripay",
+  "loginTheme": "kabrun",
   "internationalizationEnabled": true,
   "supportedLocales": ["pt-BR", "en", "es", "fr", "de", "it"],
   "defaultLocale": "pt-BR",
@@ -22,19 +22,19 @@
     "realm": [
       {
         "name": "platform_admin",
-        "description": "Ripay staff with access to /admin. Authorization is still enforced by Ripay."
+        "description": "Kabrun staff with access to /admin. Authorization is still enforced by Kabrun."
       }
     ]
   },
   "clients": [
     {
-      "clientId": "ripay-web",
-      "name": "Ripay Web",
+      "clientId": "kabrun-web",
+      "name": "Kabrun Web",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "ripay-web-local-dev-secret",
+      "secret": "kabrun-web-local-dev-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false,
@@ -49,23 +49,23 @@
   ],
   "users": [
     {
-      "username": "producer@ripay.dev",
-      "email": "producer@ripay.dev",
+      "username": "producer@kabrun.dev",
+      "email": "producer@kabrun.dev",
       "firstName": "Produtora",
       "lastName": "Demo",
       "enabled": true,
       "emailVerified": true,
-      "credentials": [{ "type": "password", "value": "ripay-dev-123", "temporary": false }]
+      "credentials": [{ "type": "password", "value": "kabrun-dev-123", "temporary": false }]
     },
     {
-      "username": "admin@ripay.dev",
-      "email": "admin@ripay.dev",
+      "username": "admin@kabrun.dev",
+      "email": "admin@kabrun.dev",
       "firstName": "Admin",
-      "lastName": "Ripay",
+      "lastName": "Kabrun",
       "enabled": true,
       "emailVerified": true,
-      "realmRoles": ["default-roles-ripay", "platform_admin"],
-      "credentials": [{ "type": "password", "value": "ripay-dev-123", "temporary": false }]
+      "realmRoles": ["default-roles-kabrun", "platform_admin"],
+      "credentials": [{ "type": "password", "value": "kabrun-dev-123", "temporary": false }]
     }
   ]
 }

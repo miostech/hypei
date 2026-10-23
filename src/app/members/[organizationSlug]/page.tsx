@@ -1,7 +1,7 @@
 import { BookOpenIcon, LockIcon, PlayCircleIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { RipayLogo } from "@/components/brand/logo";
+import { KabrunLogo } from "@/components/brand/logo";
 import { CourseProgressBar } from "@/components/members/course-outline";
 import { MembersHeader } from "@/components/members/members-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -29,7 +29,7 @@ export default async function MembersHomePage({ params }: PageProps<"/members/[o
         title={organization.name}
         subtitle="Área de membros"
         user={user}
-        meta={<RipayLogo className="mr-1 hidden h-5 opacity-60 sm:block" />}
+        meta={<KabrunLogo className="mr-1 hidden h-5 opacity-60 sm:block" />}
       />
 
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-5 p-4 sm:p-6">

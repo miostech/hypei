@@ -71,7 +71,7 @@ export async function createTestApp(options: { platformFeeBps?: number; settleme
     storageProvider: storage,
     clock: () => clock.now,
     config: {
-      appUrl: "https://app.ripay.test",
+      appUrl: "https://app.kabrun.test",
       dataHashSecret: "test-hash-secret-with-at-least-32-chars!!",
       defaultSettlementDelayDays: 30,
       minimumPayout: { BRL: 1000n },
@@ -133,7 +133,7 @@ export async function createSeller(app: TestApp, options: { amount?: bigint; cur
   return { user, organization, product, offer, checkout };
 }
 
-/** Buyer goes through the public checkout; returns the Ripay payment (status PENDING). */
+/** Buyer goes through the public checkout; returns the Kabrun payment (status PENDING). */
 export async function startPurchase(
   app: TestApp,
   checkoutSlug: string,

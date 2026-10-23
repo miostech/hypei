@@ -6,7 +6,7 @@ import type { LedgerAccount, LedgerDirection } from "@/generated/prisma/enums";
  * - PLATFORM_CASH       asset     gross funds captured through the processor
  * - PRODUCER_PENDING    liability owed to producers, still inside the settlement window
  * - PRODUCER_AVAILABLE  liability owed to producers, withdrawable
- * - PLATFORM_REVENUE    revenue   Ripay platform fees
+ * - PLATFORM_REVENUE    revenue   Kabrun platform fees
  * - PROCESSOR_FEES      liability fees withheld/owed to the payment processor
  * - REFUNDS             expense   refund losses absorbed by the platform (non-returned processor fees)
  * - CHARGEBACKS         expense   chargeback losses absorbed by the platform

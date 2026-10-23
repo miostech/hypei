@@ -17,7 +17,7 @@ export interface PlatformOverview {
 export const ADMIN_WINDOW_DAYS = 30;
 
 /**
- * Read-only view of the whole platform for Ripay staff.
+ * Read-only view of the whole platform for Kabrun staff.
  *
  * Deliberately has no write operations: anything that moves money or changes a
  * producer's account should happen through the domain services that already

@@ -79,7 +79,7 @@ describe("Identity verification", () => {
     const seller = await createSeller(app);
     const org = seller.organization.id;
 
-    await app.services.verification.startVerification(org, seller.user.id, "https://app.ripay.test");
+    await app.services.verification.startVerification(org, seller.user.id, "https://app.kabrun.test");
 
     const verification = await app.prisma.organizationVerification.findFirstOrThrow({ where: { organizationId: org } });
     expect(verification.submittedAt).not.toBeNull();
@@ -97,7 +97,7 @@ describe("Identity verification", () => {
 
     expect((await app.services.verification.overview(seller.organization.id)).status).toBe("NOT_STARTED");
 
-    await app.services.verification.startVerification(seller.organization.id, seller.user.id, "https://app.ripay.test");
+    await app.services.verification.startVerification(seller.organization.id, seller.user.id, "https://app.kabrun.test");
     expect(await app.prisma.organizationVerification.count({ where: { organizationId: seller.organization.id } })).toBe(1);
   });
 

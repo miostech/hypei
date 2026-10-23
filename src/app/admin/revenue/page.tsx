@@ -21,7 +21,7 @@ export default async function AdminRevenuePage() {
     <>
       <PageHeader
         title="Receita da plataforma"
-        description="Taxas da Ripay lançadas no ledger, já descontados os estornos de reembolso e chargeback."
+        description="Taxas da Kabrun lançadas no ledger, já descontados os estornos de reembolso e chargeback."
       />
 
       <section className="grid gap-4 sm:grid-cols-3">

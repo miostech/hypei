@@ -48,7 +48,7 @@ describe("Transactional e-mail", () => {
     await confirmPayment(app, payment);
 
     const receipt = app.email.to("aluna@example.com")[0];
-    expect(receipt.html).toContain(`https://app.ripay.test/members/${seller.organization.slug}/courses/meu-curso`);
+    expect(receipt.html).toContain(`https://app.kabrun.test/members/${seller.organization.slug}/courses/meu-curso`);
     expect(receipt.html).toContain("Acessar o conteúdo");
   });
 

@@ -116,8 +116,8 @@ describe("Local storage provider", () => {
   let provider: LocalStorageProvider;
 
   beforeEach(async () => {
-    directory = await mkdtemp(path.join(tmpdir(), "ripay-storage-"));
-    provider = new LocalStorageProvider({ directory, appUrl: "https://app.ripay.test", secret: "test-secret" });
+    directory = await mkdtemp(path.join(tmpdir(), "kabrun-storage-"));
+    provider = new LocalStorageProvider({ directory, appUrl: "https://app.kabrun.test", secret: "test-secret" });
   });
 
   afterEach(async () => {

@@ -22,7 +22,7 @@ import { MongoRiskEventRepository } from "@/modules/risk/risk-event.repository";
 import { MongoWebhookPayloadRepository } from "@/modules/webhooks/webhook-payload.repository";
 import { buildServices, type Services } from "./services";
 
-const globalForContainer = globalThis as unknown as { __ripayServices?: Services; __ripayServicesStamp?: string };
+const globalForContainer = globalThis as unknown as { __kabrunServices?: Services; __kabrunServicesStamp?: string };
 
 /**
  * Re-evaluated whenever this module or anything it imports is reloaded, so a dev-server
@@ -97,14 +97,14 @@ function createContainer(): Services {
   eventBus.subscribe("*", (event) => logger.debug({ type: event.type, aggregateId: event.aggregateId }, "domain event"));
 
   holder.services = services;
-  logger.info({ paymentProvider: paymentProvider.type, queue: env.QUEUE_DRIVER, email: env.EMAIL_PROVIDER, storage: env.STORAGE_PROVIDER }, "ripay container initialized");
+  logger.info({ paymentProvider: paymentProvider.type, queue: env.QUEUE_DRIVER, email: env.EMAIL_PROVIDER, storage: env.STORAGE_PROVIDER }, "kabrun container initialized");
   return services;
 }
 
 export function getServices(): Services {
-  if (!globalForContainer.__ripayServices || globalForContainer.__ripayServicesStamp !== MODULE_STAMP) {
-    globalForContainer.__ripayServices = createContainer();
-    globalForContainer.__ripayServicesStamp = MODULE_STAMP;
+  if (!globalForContainer.__kabrunServices || globalForContainer.__kabrunServicesStamp !== MODULE_STAMP) {
+    globalForContainer.__kabrunServices = createContainer();
+    globalForContainer.__kabrunServicesStamp = MODULE_STAMP;
   }
-  return globalForContainer.__ripayServices;
+  return globalForContainer.__kabrunServices;
 }

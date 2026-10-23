@@ -10,7 +10,7 @@ import {
   ZapIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { RipayLogo, RipayMark } from "@/components/brand/logo";
+import { KabrunLogo, KabrunMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 
 const SIGNUP_HREF = "/api/auth/login?signup=1&returnTo=%2Fonboarding";
@@ -57,7 +57,7 @@ const STATS = [
 
 const STEPS = [
   { title: "Compra", text: "O comprador paga no seu checkout, com o método local dele." },
-  { title: "Confirmação", text: "O provedor confirma o pagamento e a Ripay registra a venda no ledger." },
+  { title: "Confirmação", text: "O provedor confirma o pagamento e a Kabrun registra a venda no ledger." },
   { title: "Liberação", text: "Passado o prazo de settlement, o valor vira saldo disponível." },
   { title: "Saque", text: "Você solicita o saque e acompanha até cair na conta." },
 ];
@@ -67,7 +67,7 @@ export default function LandingPage() {
     <div className="flex min-h-svh flex-col">
       <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-md">
         <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
-          <RipayLogo />
+          <KabrunLogo />
           <div className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
             <Link href="#recursos" className="transition-colors hover:text-foreground">
               Recursos
@@ -106,7 +106,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="max-w-2xl text-lg text-pretty text-muted-foreground">
-              A Ripay recebe do comprador, calcula as taxas, registra tudo em um ledger auditável e repassa para você quando o prazo de liberação
+              A Kabrun recebe do comprador, calcula as taxas, registra tudo em um ledger auditável e repassa para você quando o prazo de liberação
               vence.
             </p>
 
@@ -210,7 +210,7 @@ export default function LandingPage() {
               className="pointer-events-none absolute -top-24 left-1/2 size-96 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(242_199_92/0.28),transparent_65%)]"
             />
             <div className="relative mx-auto flex max-w-2xl flex-col items-center gap-5">
-              <RipayMark className="size-12" />
+              <KabrunMark className="size-12" />
               <h2 className="font-heading text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">
                 Comece a vender hoje, receba com previsibilidade
               </h2>
@@ -230,8 +230,8 @@ export default function LandingPage() {
 
       <footer className="border-t">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row">
-          <RipayLogo />
-          <p>© {new Date().getFullYear()} Ripay · Pagamentos para criadores</p>
+          <KabrunLogo />
+          <p>© {new Date().getFullYear()} Kabrun · Pagamentos para criadores</p>
         </div>
       </footer>
     </div>
@@ -247,12 +247,12 @@ function AppPreview() {
           <span className="size-2.5 rounded-full bg-destructive/50" />
           <span className="size-2.5 rounded-full bg-warning/60" />
           <span className="size-2.5 rounded-full bg-success/50" />
-          <span className="ml-3 rounded-md bg-card px-2.5 py-1 text-[0.6rem] text-muted-foreground ring-1 ring-border">app.ripay.com/dashboard</span>
+          <span className="ml-3 rounded-md bg-card px-2.5 py-1 text-[0.6rem] text-muted-foreground ring-1 ring-border">app.kabrun.com.br/dashboard</span>
         </div>
 
         <div className="flex">
           <aside className="hidden w-14 flex-col items-center gap-3 bg-sidebar py-4 sm:flex">
-            <RipayMark className="size-7" />
+            <KabrunMark className="size-7" />
             <span className="mt-2 size-7 rounded-lg bg-white/15" />
             <span className="size-7 rounded-lg bg-white/8" />
             <span className="size-7 rounded-lg bg-white/8" />

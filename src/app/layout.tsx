@@ -11,7 +11,7 @@ const sans = Inter({ variable: "--font-sans", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Ripay", template: "%s · Ripay" },
+  title: { default: "Kabrun", template: "%s · Kabrun" },
   description: "Crie, venda e escale produtos digitais, cursos, comunidades e assinaturas com pagamentos locais e uma operação global.",
 };
 

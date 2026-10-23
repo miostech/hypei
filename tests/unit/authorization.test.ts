@@ -8,7 +8,7 @@ import { safeReturnTo } from "@/modules/auth/session-token";
 const ctx = (role: TenantContext["membership"]["role"]) =>
   ({ userId: "u", organization: { id: "o" }, membership: { role } }) as unknown as TenantContext;
 
-describe("Authorization (Ripay-side, roles → permissions)", () => {
+describe("Authorization (Kabrun-side, roles → permissions)", () => {
   it("grants finance permissions only to finance-capable roles", () => {
     expect(hasPermission("OWNER", "payouts:request")).toBe(true);
     expect(hasPermission("FINANCE", "payouts:request")).toBe(true);

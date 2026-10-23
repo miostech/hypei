@@ -13,13 +13,13 @@ const envSchema = z.object({
 
   DATABASE_URL: z.string().min(1),
   MONGODB_URI: z.string().min(1),
-  MONGODB_DB: z.string().default("ripay"),
+  MONGODB_DB: z.string().default("kabrun"),
   REDIS_URL: z.string().min(1),
 
   KEYCLOAK_URL: z.string().url(),
   KEYCLOAK_INTERNAL_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
-  KEYCLOAK_REALM: z.string().default("ripay"),
-  KEYCLOAK_CLIENT_ID: z.string().default("ripay-web"),
+  KEYCLOAK_REALM: z.string().default("kabrun"),
+  KEYCLOAK_CLIENT_ID: z.string().default("kabrun-web"),
   KEYCLOAK_CLIENT_SECRET: z.string().min(1),
 
   PAYMENT_PROVIDER: z.enum(["stripe", "mock"]).default("mock"),
@@ -42,7 +42,7 @@ const envSchema = z.object({
   STORAGE_SECRET_ACCESS_KEY: optionalString,
   EMAIL_PROVIDER: z.enum(["console", "preview", "resend", "ses", "postmark"]).default("console"),
   EMAIL_PREVIEW_DIR: z.string().default(".mail"),
-  EMAIL_FROM: z.string().default("Ripay <no-reply@ripay.local>"),
+  EMAIL_FROM: z.string().default("Kabrun <no-reply@kabrun.local>"),
   RESEND_API_KEY: optionalString,
   QUEUE_DRIVER: z.enum(["memory", "bullmq", "redis-streams"]).default("memory"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
@@ -54,7 +54,7 @@ export type Env = z.infer<typeof envSchema>;
 const EXAMPLE_SECRETS = new Set([
   "change-me-to-a-long-random-string-with-32-plus-chars",
   "change-me-to-another-long-random-string-32-plus",
-  "ripay-web-local-dev-secret",
+  "kabrun-web-local-dev-secret",
 ]);
 
 /**

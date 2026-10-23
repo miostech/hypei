@@ -34,13 +34,13 @@ describe("Affiliates", () => {
     expect(code).toMatch(/^[BCDFGHJKLMNPQRSTVWXZ23456789]{8}$/);
   });
 
-  it("takes the commission out of the producer's share, never out of the Ripay fee", async () => {
+  it("takes the commission out of the producer's share, never out of the Kabrun fee", async () => {
     const { seller, affiliate, code } = await sellerWithAffiliate(app);
     const { payment } = await startPurchase(app, seller.checkout.slug, "indicada@example.com", { referralCode: code });
     await confirmPayment(app, payment);
 
     const paid = await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
-    // R$ 100,00: processor 4%, Ripay 10%, affiliate 30% of the sale.
+    // R$ 100,00: processor 4%, Kabrun 10%, affiliate 30% of the sale.
     expect(paid.processorFeeAmount).toBe(400n);
     expect(paid.platformFeeAmount).toBe(1000n);
     expect(paid.affiliateCommissionAmount).toBe(3000n);
@@ -114,7 +114,7 @@ describe("Affiliates", () => {
     await confirmPayment(app, payment);
 
     const paid = await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
-    // Processor (400) + Ripay (1000) leave 8600; a 90% commission is capped there.
+    // Processor (400) + Kabrun (1000) leave 8600; a 90% commission is capped there.
     expect(paid.affiliateCommissionAmount).toBe(8600n);
     expect(paid.producerNetAmount).toBe(0n);
     await expectLedgerBalanced(app.prisma);

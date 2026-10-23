@@ -52,7 +52,7 @@ export default async function RefundsPage() {
             Contestações
           </CardTitle>
           <CardDescription>
-            Abertas pelo cliente junto ao banco. A Ripay retém o valor até a resolução — reunir provas de entrega ajuda a reverter.
+            Abertas pelo cliente junto ao banco. A Kabrun retém o valor até a resolução — reunir provas de entrega ajuda a reverter.
           </CardDescription>
         </CardHeader>
         <CardContent className="px-0">

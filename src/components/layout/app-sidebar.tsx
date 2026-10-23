@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { RipayLogo, RipayMark } from "@/components/brand/logo";
+import { KabrunLogo, KabrunMark } from "@/components/brand/logo";
 import {
   Sidebar,
   SidebarContent,
@@ -24,9 +24,9 @@ export function AppSidebar({ allowedHrefs, environmentLabel }: { allowedHrefs: s
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="px-4 py-5 group-data-[collapsible=icon]:px-2">
-        <Link href="/dashboard" aria-label="Ripay" className="flex items-center gap-2.5">
-          <RipayLogo variant="knockout" className="group-data-[collapsible=icon]:hidden" />
-          <RipayMark className="hidden size-8 group-data-[collapsible=icon]:block" />
+        <Link href="/dashboard" aria-label="Kabrun" className="flex items-center gap-2.5">
+          <KabrunLogo variant="knockout" className="group-data-[collapsible=icon]:hidden" />
+          <KabrunMark className="hidden size-8 group-data-[collapsible=icon]:block" />
         </Link>
       </SidebarHeader>
 

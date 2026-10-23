@@ -80,7 +80,7 @@ export function CheckoutForm({
                 name="slug"
                 defaultValue={defaultValues.slug}
                 required
-                hint="ripay.com/checkout/seu-link"
+                hint="kabrun.com.br/checkout/seu-link"
                 error={fieldError("slug")}
                 readOnly={Boolean(defaultValues.id)}
               />

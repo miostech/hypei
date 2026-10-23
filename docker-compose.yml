@@ -1,24 +1,24 @@
-# Ripay — local development stack.
+# Kabrun — local development stack.
 # `docker compose up -d` starts infra only (Postgres, MongoDB, Redis, Keycloak).
 # `docker compose --profile app up -d --build` also runs the Next.js app in a container.
 
-name: ripay
+name: kabrun
 
 services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ripay
-      POSTGRES_PASSWORD: ripay
-      POSTGRES_DB: ripay
+      POSTGRES_USER: kabrun
+      POSTGRES_PASSWORD: kabrun
+      POSTGRES_DB: kabrun
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ripay -d ripay"]
+      test: ["CMD-SHELL", "pg_isready -U kabrun -d kabrun"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -74,7 +74,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
     restart: unless-stopped
-    # Theme caching off: the Ripay login theme is edited live during development.
+    # Theme caching off: the Kabrun login theme is edited live during development.
     command: ["start-dev", "--import-realm", "--spi-theme-static-max-age=-1", "--spi-theme-cache-themes=false", "--spi-theme-cache-templates=false"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
@@ -92,8 +92,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./docker/keycloak/realm-ripay.json:/opt/keycloak/data/import/realm-ripay.json:ro
-      - ./docker/keycloak/themes/ripay:/opt/keycloak/themes/ripay:ro
+      - ./docker/keycloak/realm-kabrun.json:/opt/keycloak/data/import/realm-kabrun.json:ro
+      - ./docker/keycloak/themes/kabrun:/opt/keycloak/themes/kabrun:ro
     depends_on:
       keycloak-db:
         condition: service_healthy
@@ -116,8 +116,8 @@ services:
         required: false
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://ripay:ripay@postgres:5432/ripay?schema=public
-      MONGODB_URI: mongodb://mongo:27017/ripay
+      DATABASE_URL: postgresql://kabrun:kabrun@postgres:5432/kabrun?schema=public
+      MONGODB_URI: mongodb://mongo:27017/kabrun
       REDIS_URL: redis://redis:6379
       KEYCLOAK_URL: http://localhost:8080
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080

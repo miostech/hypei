@@ -24,7 +24,7 @@ export interface VerificationOverview {
 /**
  * Identity verification (KYC for people, KYB for companies).
  *
- * The documents themselves never touch Ripay: they go to the payment provider's
+ * The documents themselves never touch Kabrun: they go to the payment provider's
  * hosted flow, which is also who decides. This service keeps our side of the
  * story — what the provider is waiting for, what it unlocks, and since when.
  */

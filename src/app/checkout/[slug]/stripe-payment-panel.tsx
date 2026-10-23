@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 /**
- * Stripe Payment Element. Card data goes straight to Stripe — it never touches Ripay's
+ * Stripe Payment Element. Card data goes straight to Stripe — it never touches Kabrun's
  * servers. A successful confirmation here is NOT proof of payment: the webhook is.
  */
 export function StripePaymentPanel({

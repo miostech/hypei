@@ -3,7 +3,7 @@ import { assertSupportedCurrency, currencyExponent, type CurrencyCode } from "./
 
 /**
  * Money is always an integer amount of MINOR units (cents) + currency.
- * Floats are never used for money anywhere in Ripay.
+ * Floats are never used for money anywhere in Kabrun.
  */
 export interface Money {
   readonly amount: bigint;

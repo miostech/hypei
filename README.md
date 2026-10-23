@@ -1,8 +1,8 @@
-# Ripay
+# Kabrun
 
 Plataforma global para venda de produtos digitais, cursos, comunidades, assinaturas e mentorias.
 
-A Ripay **recebe o pagamento do comprador**, registra a venda no seu próprio ledger, cobra a taxa da
+A Kabrun **recebe o pagamento do comprador**, registra a venda no seu próprio ledger, cobra a taxa da
 plataforma e **repassa o saldo ao produtor** quando o prazo de liberação vence. Ou seja: é uma
 plataforma de pagamentos/marketplace, não uma loja com checkout integrado.
 
@@ -44,12 +44,12 @@ Cada camada tem uma responsabilidade única, e elas nunca se misturam:
 | Camada | Responsabilidade |
 |---|---|
 | **Keycloak** | Identidade: login, senha, recuperação, verificação de e-mail, sessão, MFA |
-| **Ripay** | Autorização: quem pertence a qual organização e o que pode fazer |
+| **Kabrun** | Autorização: quem pertence a qual organização e o que pode fazer |
 | **PostgreSQL** | Fonte de verdade de commerce e finanças |
 | **MongoDB** | Dados flexíveis: apresentação do checkout, eventos, payloads |
 | **Redis** | Cache, locks, rate limit e (futuramente) filas |
 | **Payment provider** | Movimentação real do dinheiro (Stripe) |
-| **Ledger** | Fonte de verdade financeira da Ripay |
+| **Ledger** | Fonte de verdade financeira da Kabrun |
 | **Balance** | Projeção do ledger (cache), nunca fonte de verdade |
 | **Order** | Intenção comercial |
 | **Payment** | Movimentação vinda do comprador |
@@ -103,7 +103,7 @@ O preço oficial vem sempre da `Offer` no PostgreSQL; o Mongo só configura a ap
 
 ## Identidade (Keycloak)
 
-Realm `ripay`, client `ripay-web` (confidencial, PKCE S256). A Ripay **não armazena senhas**:
+Realm `kabrun`, client `kabrun-web` (confidencial, PKCE S256). A Kabrun **não armazena senhas**:
 a tabela `User` guarda `keycloakUserId` (único), e-mail, nome e preferências.
 
 - `GET /api/auth/login` inicia o fluxo (state + nonce + PKCE em cookie assinado de 10 min)
@@ -124,12 +124,12 @@ confiado: o vínculo é sempre reconferido no banco.
 
 Papéis: `OWNER`, `ADMIN`, `FINANCE`, `SUPPORT`, `MARKETING`, `VIEWER` (mapeados para permissões em
 [`permissions.ts`](src/modules/organizations/permissions.ts)), mais o papel global `PLATFORM_ADMIN`
-para a equipe Ripay (`/admin`).
+para a equipe Kabrun (`/admin`).
 
 ## Identidade visual
 
 A marca é roxa em ~70% da interface; o dourado fica reservado a 10–15% (CTA principal, o raio,
-selos premium), para a Ripay parecer uma fintech moderna e não uma marca de joias.
+selos premium), para a Kabrun parecer uma fintech moderna e não uma marca de joias.
 
 | Token | Valor | Uso |
 |---|---|---|
@@ -149,8 +149,8 @@ definidos em [`globals.css`](src/app/globals.css) junto com os tokens de sombra 
 Tipografia: **Plus Jakarta Sans** nos títulos e números (`font-heading`), **Inter** no texto de
 interface. Valores monetários usam a classe `.tabular` para alinhar as colunas.
 
-Arte oficial em [`public/brand`](public/brand): `ripay-icon.png` (transparente, serve em qualquer
-fundo), `ripay-logo.png` (lockup completo) e `ripay-wordmark-light.png` (versão knockout usada na
+Arte oficial em [`public/brand`](public/brand): `kabrun-icon.png` (transparente, serve em qualquer
+fundo), `kabrun-logo.png` (lockup completo) e `kabrun-wordmark-light.png` (versão knockout usada na
 sidebar escura). O favicon sai de [`src/app/icon.png`](src/app/icon.png).
 
 Gráficos seguem uma paleta validada para daltonismo (roxo `#7C3AED` como série principal, dourado
@@ -174,11 +174,11 @@ Helpers em [`src/lib/money`](src/lib/money): `formatMoney`, `addMoney`, `subtrac
 ## Arquitetura de pagamentos
 
 ```
-Comprador → Checkout Ripay → PaymentProvider → PaymentIntent
+Comprador → Checkout Kabrun → PaymentProvider → PaymentIntent
                                     ↓
                           pagamento confirmado (webhook)
                                     ↓
-   Ripay Ledger → Saldo pendente do produtor → Settlement → Saldo disponível
+   Kabrun Ledger → Saldo pendente do produtor → Settlement → Saldo disponível
                                     ↓
                         Payout → conta bancária do produtor
 ```
@@ -210,7 +210,7 @@ correções são novos lançamentos.
 Contas: `PLATFORM_CASH`, `PRODUCER_PENDING`, `PRODUCER_AVAILABLE`, `PLATFORM_REVENUE`,
 `PROCESSOR_FEES`, `REFUNDS`, `CHARGEBACKS`, `RESERVES`, `TAXES`, `PAYOUTS`.
 
-Venda de R$ 100,00 com R$ 4,00 de taxa de processamento e R$ 10,00 de taxa Ripay:
+Venda de R$ 100,00 com R$ 4,00 de taxa de processamento e R$ 10,00 de taxa Kabrun:
 
 | Conta | Direção | Valor |
 |---|---|---|
@@ -235,7 +235,7 @@ Depois da venda confirmada, o valor do produtor entra como **pendente**. A liber
 `SettlementPolicy` (D+2, D+7, D+14, D+30…), resolvida por organização → país → padrão global.
 Nada é hardcoded: as políticas são dados (veja [`prisma/seed.ts`](prisma/seed.ts)).
 
-Ter saldo disponível na Stripe não libera nada: o settlement interno da Ripay é independente.
+Ter saldo disponível na Stripe não libera nada: o settlement interno da Kabrun é independente.
 
 ```bash
 npm run settlement:run        # libera o que já venceu
@@ -260,7 +260,7 @@ ao saldo disponível.
 
 ## Reembolsos e chargebacks
 
-- **Reembolso**: reverte proporcionalmente a parte do produtor e a taxa Ripay; a taxa de
+- **Reembolso**: reverte proporcionalmente a parte do produtor e a taxa Kabrun; a taxa de
   processamento não devolvida pelo PSP é absorvida pela plataforma (conta `REFUNDS`). Nunca é
   possível reembolsar mais do que foi pago, nem duas vezes com a mesma chave.
 - **Disputa**: ao abrir, a parte do produtor vai para `RESERVES`. Ganhou, volta para o produtor;
@@ -316,8 +316,8 @@ npm run check:infra
 
 Aplicação: <http://localhost:3100> · Keycloak: <http://localhost:8080> (admin/admin)
 
-Usuários de desenvolvimento do realm: `producer@ripay.dev` e `admin@ripay.dev` (este com o papel
-`platform_admin`), senha `ripay-dev-123`.
+Usuários de desenvolvimento do realm: `producer@kabrun.dev` e `admin@kabrun.dev` (este com o papel
+`platform_admin`), senha `kabrun-dev-123`.
 
 O worker de background (retry de webhooks, outbox e settlement) roda separado:
 

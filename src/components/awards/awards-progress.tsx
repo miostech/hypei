@@ -68,7 +68,7 @@ export function AwardsProgress({
               <span className="flex size-9 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                 <GiftIcon className="size-5" aria-hidden />
               </span>
-              Premiações da Ripay
+              Premiações da Kabrun
             </DialogTitle>
             <DialogDescription>
               Você recebe uma placa a cada meta de faturamento líquido — o que sobra para você depois das taxas, reembolsos e
@@ -117,7 +117,7 @@ export function AwardsProgress({
           </Table>
 
           <p className="text-xs text-muted-foreground">
-            A placa é enviada pela equipe da Ripay assim que a meta é atingida. O código de rastreio aparece aqui quando ela sai.
+            A placa é enviada pela equipe da Kabrun assim que a meta é atingida. O código de rastreio aparece aqui quando ela sai.
           </p>
         </DialogContent>
       </Dialog>

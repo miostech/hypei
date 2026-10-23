@@ -37,7 +37,7 @@ export default async function AdminHomePage() {
     <>
       <PageHeader
         title="Visão da plataforma"
-        description={`Números de toda a Ripay. Volume e vendas consideram os últimos ${ADMIN_WINDOW_DAYS} dias; os saldos são acumulados.`}
+        description={`Números de toda a Kabrun. Volume e vendas consideram os últimos ${ADMIN_WINDOW_DAYS} dias; os saldos são acumulados.`}
       />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -47,7 +47,7 @@ export default async function AdminHomePage() {
           hint={primary ? `${primary.count} pagamento(s)` : "Nenhum pagamento no período"}
         />
         <StatCard
-          label="Receita Ripay"
+          label="Receita Kabrun"
           value={overview.revenue[0] ? formatAmount(overview.revenue[0].net, overview.revenue[0].currency) : "—"}
           hint="Taxas acumuladas, já descontados estornos"
           tone="positive"
