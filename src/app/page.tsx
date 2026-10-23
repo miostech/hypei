@@ -67,7 +67,7 @@ export default function LandingPage() {
     <div className="flex min-h-svh flex-col">
       <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-md">
         <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
-          <KabrunLogo />
+          <KabrunLogo showMark={false} />
           <div className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
             <Link href="#recursos" className="transition-colors hover:text-foreground">
               Recursos
