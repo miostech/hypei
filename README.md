@@ -305,8 +305,14 @@ npm run infra:up
 Instale, prepare os bancos e rode:
 
 ```bash
-npm install && npm run db:deploy && npm run db:seed && npm run mongo:setup && npm run dev
+yarn install && yarn db:deploy && yarn db:seed && yarn mongo:setup && yarn dev
 ```
+
+> **O gerenciador é o Yarn**, porque é o que a Vercel usa para construir a produção — o
+> `yarn.lock` é o lockfile do projeto e o CI instala com `--frozen-lockfile`. Rodar `npm install`
+> aqui **reescreve o `yarn.lock`** em formato npm, o que muda silenciosamente a árvore que vai ao
+> ar. Para executar um script isolado, `npm run <script>` continua funcionando; é só a instalação
+> que precisa ser pelo Yarn.
 
 Confira se tudo está no ar:
 

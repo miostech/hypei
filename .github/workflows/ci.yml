@@ -40,18 +40,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: yarn
 
-      - run: npm ci
+      # Yarn, e não npm, porque é o que a Vercel usa para construir a produção:
+      # o CI precisa instalar a mesma árvore de dependências que vai ao ar.
+      - run: yarn install --frozen-lockfile
 
-      # src/generated is gitignored, so the client has to be built here.
-      - run: npm run db:generate
+      # src/generated é gitignored. O postinstall do package.json já roda isto,
+      # mas deixar explícito evita uma falha obscura se o postinstall sair.
+      - run: yarn db:generate
 
-      - run: npm run lint
+      - run: yarn lint
 
-      - run: npm run typecheck
+      - run: yarn typecheck
 
       # global-setup applies migrations to TEST_DATABASE_URL before the suite.
-      - run: npm run test
+      - run: yarn test
 
-      - run: npm run build
+      - run: yarn build
