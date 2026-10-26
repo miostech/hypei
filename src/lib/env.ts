@@ -45,6 +45,8 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().default("Kabrun <no-reply@kabrun.local>"),
   RESEND_API_KEY: optionalString,
   QUEUE_DRIVER: z.enum(["memory", "bullmq", "redis-streams"]).default("memory"),
+  /** Segredo que o cron da Vercel envia no header Authorization. Sem ele a rota recusa tudo. */
+  CRON_SECRET: optionalString,
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 
@@ -78,6 +80,11 @@ function assertProductionReady(env: Env): void {
   }
   if (!env.APP_URL.startsWith("https://")) {
     problems.push("APP_URL must use https, otherwise the session cookie is never sent");
+  }
+  if (!env.CRON_SECRET) {
+    // Sem segredo o worker não roda: a rota de cron recusa tudo e o saldo do produtor
+    // fica preso em pendente, sem erro visível em lugar nenhum.
+    problems.push("CRON_SECRET is required: without it the worker never runs and balances never settle");
   }
   for (const key of ["SESSION_SECRET", "DATA_HASH_SECRET", "KEYCLOAK_CLIENT_SECRET"] as const) {
     if (EXAMPLE_SECRETS.has(env[key])) problems.push(`${key} is still the value from .env.example`);
