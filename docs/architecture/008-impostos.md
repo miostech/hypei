@@ -13,7 +13,7 @@ desenho precisavam ser respondidas antes de qualquer código.
 
 ## Decisão
 
-**Quem vende é o produtor.** A Kabrun calcula, registra e mostra o imposto; o recolhimento é
+**Quem vende é o produtor.** A Kabrun calcula, registra e mostra o imposto **ao produtor**; o recolhimento é
 obrigação dele. A plataforma não se torna contribuinte e não precisa de inscrição fiscal em
 cada jurisdição onde um produtor vende.
 
@@ -38,6 +38,14 @@ não reescreva vendas passadas.
 Isso é deliberado: no Brasil a carga depende do regime do produtor (Simples Nacional, ISS
 municipal, MEI) e da faixa de faturamento dele. A plataforma não tem como saber, e errar para
 mais é cobrar imposto que não existe.
+
+**O comprador não vê o tributo no checkout.** Decidido em 26/10/2026, e não por esquecimento: o
+resumo do pedido mostra subtotal, desconto e total, e nada de imposto. A Lei 12.741/2012 prende a
+obrigação de informar os tributos aproximados ao **documento fiscal de venda ao consumidor**, não à
+tela de pagamento — então o lugar dessa informação é a NFS-e. A obrigação não desaparece, ela passa
+a ser requisito da emissão de nota, e deve ser tratada lá.
+
+Quem for mexer no resumo do checkout: a ausência da linha de imposto é intencional.
 
 ## Consequências
 
