@@ -296,7 +296,7 @@ Gere os dois segredos locais (`SESSION_SECRET` e `DATA_HASH_SECRET`):
 openssl rand -base64 48
 ```
 
-Suba a infraestrutura (PostgreSQL, MongoDB, Redis, Keycloak + banco próprio):
+Suba a infraestrutura (PostgreSQL, MongoDB, Redis, Keycloak + banco próprio, Mailpit):
 
 ```bash
 npm run infra:up
@@ -314,7 +314,12 @@ Confira se tudo está no ar:
 npm run check:infra
 ```
 
-Aplicação: <http://localhost:3100> · Keycloak: <http://localhost:8080> (admin/admin)
+Aplicação: <http://localhost:3100> · Keycloak: <http://localhost:8080> (admin/admin) ·
+Caixa de e-mail: <http://localhost:8025>
+
+O Mailpit recebe o que o **Keycloak** envia — recuperação de senha e verificação de e-mail —, que é
+um caminho separado do `EMAIL_PROVIDER` da aplicação. Os e-mails da própria Kabrun (compra
+confirmada, saque pago) continuam indo para `EMAIL_PREVIEW_DIR` como arquivo.
 
 Usuários de desenvolvimento do realm: `producer@kabrun.dev` e `admin@kabrun.dev` (este com o papel
 `platform_admin`), senha `kabrun-dev-123`.
@@ -445,11 +450,13 @@ ambiente de produção. Não são dívidas de código soltas: cada um tem conseq
 
 **Identidade**
 
-- **O Keycloak não tem SMTP configurado** (`smtpServer` ausente no realm). "Esqueci minha senha"
-  está habilitado, mostra o formulário e o e-mail nunca chega — o usuário fica trancado fora da
-  conta. É configuração própria do Keycloak, separada do `EMAIL_PROVIDER` da aplicação.
-- `verifyEmail` está desligado, então dá para se cadastrar com o e-mail de outra pessoa. Depende
-  do SMTP acima.
+- **O SMTP do Keycloak só existe em desenvolvimento**, apontando para o Mailpit. O realm de
+  produção precisa de um remetente real — é configuração própria do Keycloak, separada do
+  `EMAIL_PROVIDER` da aplicação, e sem ela "esqueci minha senha" vira um beco sem saída: o
+  formulário aceita e o e-mail nunca chega. O `npm run check:infra` falha se o realm estiver sem
+  SMTP.
+- `verifyEmail` está desligado, então dá para se cadastrar com o e-mail de outra pessoa. Agora que
+  há SMTP, é só ligar a flag no realm.
 - MFA não está configurado (`otpPolicyType` ausente, nenhuma required action): o usuário não
   consegue nem optar.
 - O realm é o de desenvolvimento: sobe em `start-dev` e os `redirectUris` só aceitam localhost.

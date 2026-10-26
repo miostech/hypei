@@ -51,6 +51,33 @@ const checks: Check[] = [
     },
   },
   {
+    name: "Keycloak e-mail",
+    run: async () => {
+      const base = process.env.KEYCLOAK_INTERNAL_URL || process.env.KEYCLOAK_URL;
+      const token = await fetch(`${base}/realms/master/protocol/openid-connect/token`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: "admin-cli",
+          username: process.env.KEYCLOAK_ADMIN_USER ?? "admin",
+          password: process.env.KEYCLOAK_ADMIN_PASSWORD ?? "admin",
+          grant_type: "password",
+        }),
+      });
+      if (!token.ok) throw new Error(`admin login returned ${token.status}`);
+      const { access_token } = (await token.json()) as { access_token: string };
+
+      const realm = await fetch(`${base}/admin/realms/${process.env.KEYCLOAK_REALM}`, {
+        headers: { authorization: `Bearer ${access_token}` },
+      });
+      if (!realm.ok) throw new Error(`realm read returned ${realm.status}`);
+      const { smtpServer } = (await realm.json()) as { smtpServer?: { host?: string; port?: string } };
+      // Without SMTP the realm still offers "forgot password" and the mail silently never arrives.
+      if (!smtpServer?.host) throw new Error("no SMTP configured: password reset mail never leaves Keycloak");
+      return `smtp ${smtpServer.host}:${smtpServer.port ?? "25"}`;
+    },
+  },
+  {
     name: "Payment provider",
     run: async () => {
       const provider = process.env.PAYMENT_PROVIDER ?? "mock";

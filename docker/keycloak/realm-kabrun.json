@@ -12,6 +12,15 @@
   "verifyEmail": false,
   "bruteForceProtected": true,
   "passwordPolicy": "length(10) and notUsername and notEmail and passwordHistory(3)",
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@kabrun.local",
+    "fromDisplayName": "Kabrun",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
   "loginTheme": "kabrun",
   "internationalizationEnabled": true,
   "supportedLocales": ["pt-BR", "en", "es", "fr", "de", "it"],

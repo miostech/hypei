@@ -55,6 +55,25 @@ services:
       timeout: 3s
       retries: 20
 
+  # Caixa de e-mail de desenvolvimento: recebe o que o Keycloak envia (recuperação de senha,
+  # verificação de e-mail) e mostra em http://localhost:8025. Nada sai da máquina.
+  # Mailpit no lugar do MailHog porque o MailHog só publica imagem linux/amd64 e seria emulado.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
   # Keycloak has its own database, isolated from the application database.
   keycloak-db:
     image: postgres:17-alpine
@@ -97,6 +116,8 @@ services:
     depends_on:
       keycloak-db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     healthcheck:
       # The Keycloak image has no curl; use bash /dev/tcp against the management port.
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
