@@ -9,7 +9,7 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "rememberMe": true,
-  "verifyEmail": false,
+  "verifyEmail": true,
   "bruteForceProtected": true,
   "passwordPolicy": "length(10) and notUsername and notEmail and passwordHistory(3)",
   "smtpServer": {
@@ -26,6 +26,10 @@
   "supportedLocales": ["pt-BR", "en", "es", "fr", "de", "it"],
   "defaultLocale": "pt-BR",
   "accessTokenLifespan": 300,
+  "attributes": {
+    "actionTokenGeneratedByUserLifespan.verify-email": "43200",
+    "actionTokenGeneratedByUserLifespan.reset-credentials": "1800"
+  },
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "roles": {

@@ -321,6 +321,11 @@ O Mailpit recebe o que o **Keycloak** envia — recuperação de senha e verific
 um caminho separado do `EMAIL_PROVIDER` da aplicação. Os e-mails da própria Kabrun (compra
 confirmada, saque pago) continuam indo para `EMAIL_PREVIEW_DIR` como arquivo.
 
+Como `verifyEmail` está ligado, uma conta criada pelo cadastro só entra depois de clicar no link
+que chega no Mailpit. Os links valem 12 horas (verificação) e 30 minutos (recuperação de senha) —
+o padrão do Keycloak é 5 minutos para os dois, curto demais para quem só abre o e-mail mais tarde.
+Os usuários de desenvolvimento do realm já nascem verificados.
+
 Usuários de desenvolvimento do realm: `producer@kabrun.dev` e `admin@kabrun.dev` (este com o papel
 `platform_admin`), senha `kabrun-dev-123`.
 
@@ -455,8 +460,9 @@ ambiente de produção. Não são dívidas de código soltas: cada um tem conseq
   `EMAIL_PROVIDER` da aplicação, e sem ela "esqueci minha senha" vira um beco sem saída: o
   formulário aceita e o e-mail nunca chega. O `npm run check:infra` falha se o realm estiver sem
   SMTP.
-- `verifyEmail` está desligado, então dá para se cadastrar com o e-mail de outra pessoa. Agora que
-  há SMTP, é só ligar a flag no realm.
+- `verifyEmail` está ligado, o que torna o SMTP acima **obrigatório**: realm de produção sem
+  remetente real não trava só a recuperação de senha, trava todo cadastro novo. O
+  `npm run check:infra` existe justamente para pegar isso antes.
 - MFA não está configurado (`otpPolicyType` ausente, nenhuma required action): o usuário não
   consegue nem optar.
 - O realm é o de desenvolvimento: sobe em `start-dev` e os `redirectUris` só aceitam localhost.
