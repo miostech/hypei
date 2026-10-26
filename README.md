@@ -443,13 +443,24 @@ ambiente de produção. Não são dívidas de código soltas: cada um tem conseq
 - **Fila em processo.** Só `QUEUE_DRIVER=memory` tem implementação, então os jobs se perdem a cada
   restart e não é seguro subir mais de uma instância da app.
 
+**Identidade**
+
+- **O Keycloak não tem SMTP configurado** (`smtpServer` ausente no realm). "Esqueci minha senha"
+  está habilitado, mostra o formulário e o e-mail nunca chega — o usuário fica trancado fora da
+  conta. É configuração própria do Keycloak, separada do `EMAIL_PROVIDER` da aplicação.
+- `verifyEmail` está desligado, então dá para se cadastrar com o e-mail de outra pessoa. Depende
+  do SMTP acima.
+- MFA não está configurado (`otpPolicyType` ausente, nenhuma required action): o usuário não
+  consegue nem optar.
+- O realm é o de desenvolvimento: sobe em `start-dev` e os `redirectUris` só aceitam localhost.
+  Produção exige realm próprio, `kc start` com hostname e TLS, e backup do banco de identidades.
+
 **Infra e segurança**
 
-- Keycloak sobe em `start-dev` no compose; produção exige `kc start` com hostname e TLS, mais
-  backup do banco de identidades.
-- `GET /api/health` é só liveness: responde `ok` sem tocar em Postgres, Mongo, Redis ou Keycloak.
-- Nenhum header de segurança (CSP, HSTS, X-Frame-Options). Com checkout público e Stripe no fluxo,
-  CSP é requisito, e o valor de `X-Frame-Options` depende de permitir ou não o checkout em iframe.
+- Faltam **CSP e X-Frame-Options**. As duas dependem de decisão — quais origens da Stripe o
+  checkout precisa, e se produtor pode embutir o checkout em iframe — e valor errado ali quebra
+  pagamento sem dar erro visível. HSTS, `nosniff`, `Referrer-Policy` e `Permissions-Policy` já
+  são enviados em todas as respostas ([`next.config.ts`](next.config.ts)).
 - `images.remotePatterns` libera `https://**` ([`next.config.ts`](next.config.ts)), o que torna o
   domínio um proxy de imagem aberto.
 - Sem rastreio de erro, métrica ou rotina de backup do Postgres, que é a fonte de verdade do dinheiro.

@@ -35,6 +35,23 @@ O URL público do Keycloak (issuer) e o interno (chamadas server-to-server) são
 - MFA, login social e políticas de senha passam a ser configuração, não código.
 - A integração é nossa: ganhamos controle e perdemos o "pronto" de uma biblioteca de auth.
 
+## Revisão — 2026-10-26
+
+A decisão foi reaberta ("gerenciar os usuários na própria aplicação") e **mantida**. O que inclinou:
+
+A área de membros autentica o aluno (`/members/[organizationSlug]` chama `requireUser`), então a
+base de identidade são os compradores, não as dezenas de produtores. Isso tem duas consequências:
+provedores cobrados por usuário ativo (Clerk, Auth0, WorkOS) ficam caros nessa escala, e
+autenticação escrita em casa passaria a valer para uma superfície grande de consumidor final, onde
+erro em recuperação de senha, bloqueio por tentativa e enumeração de conta não dá erro visível —
+vira incidente.
+
+Soma-se que a integração já está pronta e é pequena (~400 linhas), e que o que de fato impede
+produção hoje é worker, migrations e fila; trocar identidade não move nenhum dos três.
+
+Se o custo de operar o Keycloak pesar no futuro, o caminho é Keycloak gerenciado ou equivalente
+mais leve (Zitadel), não reimplementar autenticação.
+
 ## Alternativas consideradas
 
 - **NextAuth/Auth.js**: rápido de começar, mas joga responsabilidade de identidade para dentro da
