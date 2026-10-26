@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 import { calculatePercentage, extractIncludedPercentage, money } from "@/lib/money";
 import { NoTaxService, PolicyTaxService } from "@/modules/taxes/tax.service";
 import type { TaxPolicyRepository, TaxRule } from "@/modules/taxes/tax-policy.repository";
+import { TaxSettingsService } from "@/modules/taxes/tax-settings.service";
 
 const BRL = (amount: bigint) => money(amount, "BRL");
 
 function repositoryWith(rule: TaxRule | null): TaxPolicyRepository {
-  return { findTaxRule: async () => rule };
+  return {
+    findTaxRule: async () => rule,
+    findOwn: async () => rule,
+    saveOwn: async () => undefined,
+  };
 }
 
 const input = (amount: bigint) => ({
@@ -100,6 +105,54 @@ describe("PolicyTaxService", () => {
     const result = await service.calculate({ ...input(10_500n), amount: money(10_500n, "EUR") });
 
     expect(result.taxAmount.currency).toBe("EUR");
+  });
+});
+
+describe("TaxSettingsService", () => {
+  function serviceWith(stored: TaxRule | null) {
+    const saved: TaxRule[] = [];
+    const uow = {
+      repos: {
+        taxPolicies: {
+          findTaxRule: async () => stored,
+          findOwn: async () => stored,
+          saveOwn: async (_org: string, rule: TaxRule) => {
+            saved.push(rule);
+          },
+        },
+      },
+    } as unknown as ConstructorParameters<typeof TaxSettingsService>[0];
+    return { service: new TaxSettingsService(uow), saved };
+  }
+
+  it("converts what the producer typed into basis points", async () => {
+    const { service, saved } = serviceWith(null);
+    await service.save("org_1", { regime: "BR_SIMPLES_NACIONAL", rate: "6", jurisdiction: undefined });
+    expect(saved[0].rateBps).toBe(600);
+
+    const decimal = serviceWith(null);
+    await decimal.service.save("org_1", { regime: "BR_ISS", rate: "6,5", jurisdiction: "Recife/PE" });
+    expect(decimal.saved[0].rateBps).toBe(650);
+    expect(decimal.saved[0].jurisdiction).toBe("Recife/PE");
+  });
+
+  it("zeroes the rate when the producer turns tax off", async () => {
+    const { service, saved } = serviceWith({ regime: "BR_ISS", rateBps: 500, jurisdiction: "Recife/PE" });
+    await service.save("org_1", { regime: "NONE", rate: "5", jurisdiction: "Recife/PE" });
+    expect(saved[0]).toMatchObject({ regime: "NONE", rateBps: 0 });
+  });
+
+  it("gives the rate back in the same shape the form expects", async () => {
+    const whole = await serviceWith({ regime: "BR_ISS", rateBps: 600, jurisdiction: null }).service.get("org_1");
+    expect(whole.rate).toBe("6");
+
+    const fractional = await serviceWith({ regime: "BR_ISS", rateBps: 650, jurisdiction: null }).service.get("org_1");
+    expect(fractional.rate).toBe("6,5");
+  });
+
+  it("starts empty for who never configured anything", async () => {
+    const view = await serviceWith(null).service.get("org_1");
+    expect(view).toEqual({ regime: "NONE", rate: "", jurisdiction: "" });
   });
 });
 

@@ -3,8 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { COUNTRY_INFO, type CountryCode } from "@/modules/organizations/countries";
+import { TAX_REGIME_LABELS } from "@/modules/taxes/tax.schemas";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
+import { TaxRegimeForm } from "./tax-regime-form";
 
 export const metadata = { title: "Configurações" };
 
@@ -20,10 +22,12 @@ const ROLE_LABELS: Record<string, string> = {
 export default async function SettingsPage() {
   const { organization, membership } = await requirePagePermission("organization:read");
   const services = getServices();
-  const [taxIdentities, verification] = await Promise.all([
+  const [taxIdentities, verification, taxSettings] = await Promise.all([
     services.uow.repos.organizations.taxIdentities(organization.id),
     services.uow.repos.organizations.latestVerification(organization.id),
+    services.taxSettings.get(organization.id),
   ]);
+  const canManage = membership.role === "OWNER" || membership.role === "ADMIN";
 
   return (
     <>
@@ -79,6 +83,27 @@ export default async function SettingsPage() {
                 {verification?.status ?? "NOT_STARTED"}
               </Badge>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Regime tributário</CardTitle>
+            <CardDescription>
+              Quem vende é você, então o imposto é seu para recolher. A Kabrun calcula quanto do preço é tributo e mostra
+              no detalhe de cada venda — o valor que o comprador paga não muda.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {canManage ? (
+              <TaxRegimeForm settings={taxSettings} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Somente proprietário e administrador alteram o regime. Atual:{" "}
+                <span className="font-medium text-foreground">{TAX_REGIME_LABELS[taxSettings.regime]}</span>
+                {taxSettings.rate && <> · {taxSettings.rate}%</>}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatAmount, formatDateTime } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
+import { TAX_REGIME_LABELS } from "@/modules/taxes/tax.schemas";
 import { hasPermission } from "@/modules/organizations/permissions";
 import { PAYMENT_METHOD_LABELS } from "@/modules/payments/payment-method-resolver";
 import { DISPUTE_STATUS_LABELS, REFUND_STATUS_LABELS } from "@/modules/refunds/refund.schemas";
@@ -106,6 +107,11 @@ export default async function SaleDetailPage({ params }: PageProps<"/sales/[orde
                   {payment.refundedAmount > 0n && (
                     <Row label="Já reembolsado">− {formatAmount(payment.refundedAmount, payment.currency)}</Row>
                   )}
+                  {order.taxAmount > 0n && (
+                    <Row label={`Tributo incluso · ${TAX_REGIME_LABELS[order.taxRegime]}`}>
+                      {formatAmount(order.taxAmount, order.currency)}
+                    </Row>
+                  )}
                   <Row label="Forma de pagamento">
                     {payment.paymentMethod ? PAYMENT_METHOD_LABELS[payment.paymentMethod] : "—"}
                   </Row>
@@ -114,6 +120,11 @@ export default async function SaleDetailPage({ params }: PageProps<"/sales/[orde
                     <Row label={payment.settledAt ? "Liberado em" : "Libera em"}>
                       {formatDateTime(payment.settledAt ?? payment.settleAt)}
                     </Row>
+                  )}
+                  {order.taxAmount > 0n && (
+                    <p className="border-t pt-3 text-xs text-muted-foreground">
+                      O tributo já está dentro do valor cobrado e não sai do que você recebe — o recolhimento é seu.
+                    </p>
                   )}
                 </>
               ) : (
