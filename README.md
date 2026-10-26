@@ -436,9 +436,14 @@ settlement → saldo disponível → saque → payout pago**, com o ledger fecha
 Também já implementados: assinaturas recorrentes (webhooks `customer.subscription.*` e `invoice.*`),
 afiliados, cupons, editor da área de membros com upload, storage S3/R2/MinIO e as telas do `/admin`.
 
+**Imposto** calcula e registra na venda, com o produtor como vendedor e a alíquota embutida no
+preço ([ADR 008](docs/architecture/008-impostos.md)). Falta a tela para o produtor configurar o
+próprio regime — hoje a `TaxPolicy` é criada direto no banco —, a emissão de NFS-e e os motores
+de UE (VAT/OSS) e EUA (sales tax).
+
 Ainda não implementado (fases seguintes): AML — monitoramento e triagem; o KYC/KYB é delegado ao
-Stripe Connect, que registra as pendências em Verificação —, impostos (NF-e, VAT/OSS, sales tax),
-API pública e os drivers de fila BullMQ/Redis Streams (`QUEUE_DRIVER` aceita só `memory`).
+Stripe Connect, que registra as pendências em Verificação —, API pública e os drivers de fila
+BullMQ/Redis Streams (`QUEUE_DRIVER` aceita só `memory`).
 
 Decisões arquiteturais estão registradas em [`docs/architecture`](docs/architecture).
 

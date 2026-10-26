@@ -11,6 +11,8 @@ import type { CheckoutConfigRepository } from "./checkout-config.repository";
 import { checkoutConfigSchema, type CheckoutConfig } from "./checkout-config.schema";
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import type { SubscriptionService } from "@/modules/subscriptions/subscription.service";
+import { money } from "@/lib/money";
+import type { TaxService } from "@/modules/taxes/tax.service";
 import { CouponNotUsableError, type CouponService } from "@/modules/coupons/coupon.service";
 import type { CheckoutBuilderInput, StartCheckoutInput } from "./checkout.schemas";
 
@@ -36,6 +38,7 @@ export class CheckoutService {
     private readonly affiliates: AffiliateService,
     private readonly subscriptions: SubscriptionService,
     private readonly providerType: PaymentProviderType,
+    private readonly taxes: TaxService,
   ) {}
 
   list(organizationId: string) {
@@ -178,6 +181,16 @@ export class CheckoutService {
       const discount = applied?.discount ?? 0n;
       const total = offer.amount - discount;
 
+      // Quem vende é o produtor, e o preço anunciado já inclui o imposto: isto apenas
+      // identifica quanto do que ele recebe é tributo. Nenhum dinheiro muda de mãos aqui.
+      const tax = await this.taxes.calculate({
+        amount: money(total, offer.currency),
+        organizationId: organization.id,
+        sellerCountry: checkout.organization.country,
+        buyerCountry: input.country ?? null,
+        productType: checkout.product.type,
+      });
+
       // Attribution is resolved now and frozen on the order: changing the
       // affiliate's rate later must not rewrite what an old sale owed.
       const attribution = input.referralCode
@@ -196,7 +209,8 @@ export class CheckoutService {
         couponCode: applied?.coupon.code ?? null,
         affiliateId: attribution?.affiliateId ?? null,
         affiliateLinkId: attribution?.linkId ?? null,
-        taxAmount: 0n,
+        taxAmount: tax.taxAmount.amount,
+        taxRegime: tax.regime,
         totalAmount: total,
         tracking: { ...input.tracking, sessionId: input.sessionId },
         items: [{ offerId: offer.id, productName: checkout.product.name, offerName: offer.name, quantity: 1, unitAmount: offer.amount, totalAmount: total }],

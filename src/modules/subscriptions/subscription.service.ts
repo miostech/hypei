@@ -2,8 +2,10 @@ import type { BillingInterval, PaymentProviderType, Subscription, SubscriptionSt
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { createDomainEvent } from "@/lib/events/domain-event";
 import { logger } from "@/lib/logger";
+import { money } from "@/lib/money";
 import type { NormalizedProviderEvent, PaymentProvider } from "@/lib/providers/payment/types";
 import type { PaymentService } from "@/modules/payments/payment.service";
+import type { TaxService } from "@/modules/taxes/tax.service";
 import type { Repositories } from "@/server/repositories";
 import type { UnitOfWork } from "@/server/unit-of-work";
 
@@ -43,6 +45,7 @@ export class SubscriptionService {
     private readonly uow: UnitOfWork,
     private readonly provider: PaymentProvider,
     private readonly payments: PaymentService,
+    private readonly taxes: TaxService,
   ) {}
 
   list(organizationId: string) {
@@ -154,6 +157,17 @@ export class SubscriptionService {
     const offer = await this.uow.repos.offers.findById(subscription.organizationId, subscription.offerId);
     if (!offer) throw new NotFoundError("Offer", subscription.offerId);
 
+    // A alíquota é resolvida a cada ciclo: se o produtor mudar de regime, a próxima
+    // cobrança já reflete, e os ciclos antigos guardam o que valia na época.
+    const organization = await this.uow.repos.organizations.findById(subscription.organizationId);
+    const tax = await this.taxes.calculate({
+      amount: money(event.amount, subscription.currency),
+      organizationId: subscription.organizationId,
+      sellerCountry: organization?.country ?? "BR",
+      buyerCountry: null,
+      productType: offer.product?.type ?? "DIGITAL",
+    });
+
     const payment = await this.uow.transaction(async (repos) => {
       const order = await repos.orders.create({
         organizationId: subscription.organizationId,
@@ -161,7 +175,8 @@ export class SubscriptionService {
         currency: subscription.currency,
         subtotalAmount: event.amount,
         discountAmount: 0n,
-        taxAmount: 0n,
+        taxAmount: tax.taxAmount.amount,
+        taxRegime: tax.regime,
         totalAmount: event.amount,
         items: [
           {

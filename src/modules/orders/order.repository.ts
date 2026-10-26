@@ -1,5 +1,6 @@
 import type { DbClient } from "@/lib/database/postgres/client";
 import type { Customer, Dispute, Order, OrderItem, OrderStatus, Payment, Refund } from "@/generated/prisma/client";
+import type { TaxRegime } from "@/generated/prisma/enums";
 
 export interface CreateOrderRecord {
   organizationId: string;
@@ -14,6 +15,7 @@ export interface CreateOrderRecord {
   affiliateId?: string | null;
   affiliateLinkId?: string | null;
   taxAmount: bigint;
+  taxRegime?: TaxRegime;
   totalAmount: bigint;
   tracking?: Record<string, string | null> | null;
   items: { offerId: string; productName: string; offerName: string; quantity: number; unitAmount: bigint; totalAmount: bigint }[];

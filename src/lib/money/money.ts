@@ -83,6 +83,23 @@ export function calculatePercentage(m: Money, basisPoints: number, mode: Roundin
 }
 
 /**
+ * Portion of `m` corresponding to `basisPoints` when the rate is ALREADY contained in
+ * the amount (tax-inclusive pricing): the buyer pays `m`, and part of it is the tax.
+ *
+ * tax = gross × bps / (10000 + bps) — not `calculatePercentage`, which would compute
+ * the rate ON TOP of the amount and overstate what is owed.
+ *
+ * extractIncludedPercentage(R$107,00, 700) → R$7,00
+ */
+export function extractIncludedPercentage(m: Money, basisPoints: number, mode: RoundingMode = "HALF_UP"): Money {
+  if (!Number.isInteger(basisPoints) || basisPoints < 0) {
+    throw new MoneyError(`Basis points must be a non-negative integer, received ${basisPoints}`);
+  }
+  const bps = BigInt(basisPoints);
+  return money(divideRounded(m.amount * bps, BPS_DENOMINATOR + bps, mode), m.currency);
+}
+
+/**
  * Splits `total` proportionally to `weights`, distributing the rounding remainder
  * so that the parts ALWAYS add up exactly to `total` (no money created or lost).
  */

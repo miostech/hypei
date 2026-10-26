@@ -12,7 +12,9 @@ import type { LedgerAccount, LedgerDirection } from "@/generated/prisma/enums";
  * - CHARGEBACKS         expense   chargeback losses absorbed by the platform
  * - RESERVES            liability producer funds held (disputes, risk)
  * - AFFILIATE_PAYABLE   liability owed to affiliates for referred sales
- * - TAXES               liability taxes collected on behalf of authorities
+ * - TAXES               liability reservada para quando a plataforma for a responsável pelo
+ *                       recolhimento. Hoje quem vende é o produtor (ADR 008): o imposto é
+ *                       calculado e registrado no pedido, e NÃO gera lançamento aqui.
  * - PAYOUTS             liability producer funds in transit to their bank
  */
 export const ACCOUNT_NORMAL_SIDE: Record<LedgerAccount, LedgerDirection> = {

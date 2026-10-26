@@ -43,6 +43,7 @@ import { SubscriptionService } from "@/modules/subscriptions/subscription.servic
 import { WEBHOOK_JOB, WebhookIngestionService } from "@/modules/webhooks/webhook-ingestion.service";
 import type { WebhookPayloadRepository } from "@/modules/webhooks/webhook-payload.repository";
 import { WebhookProcessor } from "@/modules/webhooks/webhook-processor.service";
+import { PolicyTaxService } from "@/modules/taxes/tax.service";
 import { PrismaUnitOfWork } from "./unit-of-work";
 
 export interface ServiceDependencies {
@@ -90,7 +91,9 @@ export function buildServices(deps: ServiceDependencies) {
     minimumPayout: deps.config.minimumPayout,
   });
   const merchantAccounts = new MerchantAccountService(uow, deps.paymentProvider, deps.mongo.providerSnapshots);
-  const subscriptions = new SubscriptionService(uow, deps.paymentProvider, payments);
+  // O imposto é do produtor: calculado e registrado aqui, recolhido por ele.
+  const taxes = new PolicyTaxService(uow.repos.taxPolicies);
+  const subscriptions = new SubscriptionService(uow, deps.paymentProvider, payments, taxes);
   const organizations = new OrganizationService(uow, merchantAccounts, deps.config.dataHashSecret);
   const products = new ProductService(uow);
   const courses = new CourseService(uow, deps.storageProvider);
@@ -110,7 +113,7 @@ export function buildServices(deps: ServiceDependencies) {
   const verification = new VerificationService(uow, merchantAccounts);
   // Cross-tenant reads for Kabrun staff; never reachable from the producer app.
   const platformAdmin = new PlatformAdminService(new PrismaPlatformAdminRepository(deps.prisma));
-  const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, subscriptions, deps.paymentProvider.type);
+  const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, subscriptions, deps.paymentProvider.type, taxes);
   const finance = new FinanceOverviewService(uow);
   const outboxPublisher = new OutboxPublisher(uow.repos.outbox, deps.eventBus);
 

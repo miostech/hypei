@@ -39,6 +39,17 @@ enum BusinessType {
   COMPANY
 }
 
+/// Regime tributário do PRODUTOR, que é quem vende e quem recolhe. A Kabrun calcula
+/// e informa; o imposto nunca vira passivo da plataforma.
+enum TaxRegime {
+  /// Nenhum imposto calculado — o produtor declara por fora.
+  NONE
+  /// Simples Nacional: alíquota efetiva única informada pelo produtor.
+  BR_SIMPLES_NACIONAL
+  /// ISS municipal sobre serviço, declarado via NFS-e.
+  BR_ISS
+}
+
 enum TaxIdType {
   CPF
   CNPJ
@@ -333,6 +344,7 @@ model Organization {
   subscriptions      Subscription[]
   settlementPolicies SettlementPolicy[]
   platformFeePolicies PlatformFeePolicy[]
+  taxPolicies        TaxPolicy[]
   affiliates         Affiliate[]
   coupons            Coupon[]
   courses            Course[]
@@ -553,6 +565,8 @@ model Order {
   affiliateId     String?
   affiliateLinkId String?
   taxAmount       BigInt      @default(0)
+  /// Regime aplicado no momento da venda; mudar a política depois não reescreve o passado.
+  taxRegime       TaxRegime   @default(NONE)
   totalAmount     BigInt
   currency        String      @db.Char(3)
   tracking        Json?
@@ -813,6 +827,27 @@ model Reserve {
 }
 
 /// How long producer funds stay pending. Resolution: organization → country → global default.
+/// Alíquota do produtor, resolvida como as demais políticas: organização → país → padrão.
+/// O preço anunciado JÁ inclui o imposto, então a alíquota é extraída do total pago,
+/// nunca somada a ele.
+model TaxPolicy {
+  id             String    @id @default(cuid())
+  organizationId String?
+  country        String?   @db.Char(2)
+  regime         TaxRegime @default(NONE)
+  rateBps        Int       @default(0)
+  /// Município da NFS-e, quando o regime exige (ISS).
+  jurisdiction   String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([country])
+}
+
 model SettlementPolicy {
   id             String        @id @default(cuid())
   organizationId String?
