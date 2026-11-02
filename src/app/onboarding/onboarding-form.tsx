@@ -14,7 +14,9 @@ import { TAX_ID_TYPES_BY_COUNTRY } from "@/modules/compliance/tax-id-types";
 import { completeOnboarding } from "./actions";
 import { idleState } from "@/lib/actions/action-state";
 
-const STEPS = ["Organização", "País e cobrança", "Identidade fiscal", "Recebimento"] as const;
+// Recebimento não é passo: não pedia nada, só avisava. O aviso virou uma linha no último
+// passo e a verificação segue onde a ação mora, em Conta → Verificação.
+const STEPS = ["Organização", "País e cobrança", "Identidade fiscal"] as const;
 
 const TAX_PLACEHOLDER: Record<string, string> = {
   CPF: "000.000.000-00",
@@ -84,7 +86,6 @@ export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: s
           {step === 0 && "Como sua operação será identificada na Kabrun."}
           {step === 1 && "Onde você vende e em qual moeda recebe."}
           {step === 2 && "Necessário para emissão fiscal e verificação de identidade."}
-          {step === 3 && "Como o dinheiro das suas vendas chega até você."}
         </CardDescription>
       </CardHeader>
 
@@ -170,22 +171,15 @@ export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: s
             <TextField label="Site (opcional)" name="website" type="url" placeholder="https://…" error={fieldError("website")} />
           </div>
 
-          <div className={step === 3 ? "space-y-4" : "hidden"}>
-            <div className="flex gap-3 rounded-lg border bg-muted/40 p-4 text-sm">
-              <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-primary" />
-              <div className="space-y-2">
-                <p className="font-medium">Verificação no {providerName}</p>
-                <p className="text-muted-foreground">
-                  Ao concluir, criamos sua conta de recebimento no {providerName}. Documento e conta bancária você preenche no site dele — a Kabrun não
-                  vê nem guarda esses dados, só o identificador da conta e o que ainda falta verificar.
-                </p>
-                <p className="text-muted-foreground">
-                  Enquanto o {providerName} não aprovar, <span className="font-medium text-foreground">o saque fica bloqueado</span>. Pode verificar
-                  agora ou depois, em Integrações.
-                </p>
-              </div>
-            </div>
-          </div>
+          {step === STEPS.length - 1 && (
+            <p className="flex gap-2 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+              <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+              <span>
+                Criamos sua conta de recebimento no {providerName}. Documento e conta bancária você preenche no site dele quando quiser, em Conta →
+                Verificação — só o saque depende disso.
+              </span>
+            </p>
+          )}
 
           <div className="flex items-center justify-between gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
