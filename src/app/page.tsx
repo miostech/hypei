@@ -128,11 +128,6 @@ export default function LandingPage() {
         <section className="bg-aurora relative overflow-hidden">
           <span aria-hidden className="bg-dot-grid pointer-events-none absolute inset-0 text-foreground/[0.07]" />
           <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center gap-7 px-4 pt-20 pb-10 text-center sm:pt-28">
-            <span className="inline-flex items-center gap-2 rounded-full border bg-card/80 px-3 py-1.5 text-xs font-medium shadow-soft backdrop-blur">
-              <span className="size-1.5 rounded-full bg-gold" aria-hidden />
-              Brasil · Europa · Estados Unidos
-            </span>
-
             <h1 className="max-w-4xl font-heading text-4xl leading-[1.05] font-extrabold tracking-tight text-balance sm:text-6xl">
               O mesmo curso, vendido em <span className="text-brand-gradient">três moedas e três idiomas</span>.
             </h1>
