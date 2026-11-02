@@ -1,6 +1,6 @@
 import { GiftIcon } from "lucide-react";
 import Link from "next/link";
-import { AwardMedal } from "@/components/awards/award-medal";
+import { AwardBolt } from "@/components/awards/award-bolt";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -73,7 +73,7 @@ export default async function AdminAwardsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="flex items-center gap-2 font-medium">
-                          <AwardMedal tier={award.tier} className="size-6" />
+                          <AwardBolt tier={award.tier} className="size-6" />
                           {formatCompactAmount(award.threshold, award.currency)}
                           <span className="hidden text-xs font-normal text-muted-foreground sm:inline">{tier?.label}</span>
                         </span>
