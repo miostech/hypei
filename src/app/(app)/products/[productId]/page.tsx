@@ -1,6 +1,7 @@
 import { ArchiveIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DeliveryWarning } from "@/components/shared/delivery-warning";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,8 @@ export default async function ProductPage({ params }: PageProps<"/products/[prod
     if (error instanceof NotFoundError) notFound();
     throw error;
   });
-  const offers = (await services.offers.list(organization.id)).filter((offer) => offer.productId === product.id);
+  const [allOffers, delivery] = await Promise.all([services.offers.list(organization.id), services.products.delivery(organization.id, product.id)]);
+  const offers = allOffers.filter((offer) => offer.productId === product.id);
 
   return (
     <>
@@ -41,6 +43,8 @@ export default async function ProductPage({ params }: PageProps<"/products/[prod
           </form>
         }
       />
+
+      <DeliveryWarning delivery={delivery} productId={product.id} />
 
       <ProductForm
         action={updateProduct}

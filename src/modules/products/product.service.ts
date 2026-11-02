@@ -15,6 +15,17 @@ export class ProductService {
     return product;
   }
 
+  /** Whether paying for this product actually delivers something to the buyer. */
+  async delivery(organizationId: string, id: string) {
+    const delivery = await this.uow.repos.products.findDelivery(organizationId, id);
+    if (!delivery) throw new NotFoundError("Product", id);
+    return delivery;
+  }
+
+  deliveryByProduct(organizationId: string) {
+    return this.uow.repos.products.deliveryByProduct(organizationId);
+  }
+
   async create(organizationId: string, userId: string, input: ProductInput) {
     return this.uow.transaction(async (repos) => {
       if (await repos.products.slugTaken(organizationId, input.slug)) throw new ConflictError("Já existe um produto com este slug", { field: "slug" });

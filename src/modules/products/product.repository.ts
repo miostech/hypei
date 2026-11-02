@@ -1,5 +1,6 @@
 import type { DbClient } from "@/lib/database/postgres/client";
 import type { Product, ProductStatus, ProductType } from "@/generated/prisma/client";
+import { classifyDelivery, type ProductDelivery } from "./product-delivery";
 
 export interface ProductWriteRecord {
   name: string;
@@ -20,6 +21,30 @@ export interface ProductRepository {
   create(organizationId: string, record: ProductWriteRecord): Promise<Product>;
   update(organizationId: string, id: string, record: Partial<ProductWriteRecord>): Promise<Product | null>;
   countByStatus(organizationId: string): Promise<Record<string, number>>;
+  /** Null when the product does not exist in this organization. */
+  findDelivery(organizationId: string, id: string): Promise<ProductDelivery | null>;
+  deliveryByProduct(organizationId: string): Promise<Map<string, ProductDelivery>>;
+}
+
+/** Just enough of the content tree to tell whether a purchase delivers anything. */
+const DELIVERY_SELECT = {
+  id: true,
+  course: { select: { id: true, published: true, modules: { select: { _count: { select: { lessons: true } } } } } },
+} as const;
+
+type DeliveryRow = {
+  id: string;
+  course: { id: string; published: boolean; modules: { _count: { lessons: number } }[] } | null;
+};
+
+function toDelivery(row: DeliveryRow): ProductDelivery {
+  return classifyDelivery(
+    row.course && {
+      id: row.course.id,
+      published: row.course.published,
+      lessons: row.course.modules.reduce((total, module) => total + module._count.lessons, 0),
+    },
+  );
 }
 
 export class PrismaProductRepository implements ProductRepository {
@@ -57,5 +82,15 @@ export class PrismaProductRepository implements ProductRepository {
   async countByStatus(organizationId: string) {
     const rows = await this.db.product.groupBy({ by: ["status"], where: { organizationId }, _count: true });
     return Object.fromEntries(rows.map((r) => [r.status, r._count]));
+  }
+
+  async findDelivery(organizationId: string, id: string) {
+    const row = await this.db.product.findFirst({ where: { id, organizationId }, select: DELIVERY_SELECT });
+    return row ? toDelivery(row) : null;
+  }
+
+  async deliveryByProduct(organizationId: string) {
+    const rows = await this.db.product.findMany({ where: { organizationId }, select: DELIVERY_SELECT });
+    return new Map(rows.map((row) => [row.id, toDelivery(row)]));
   }
 }

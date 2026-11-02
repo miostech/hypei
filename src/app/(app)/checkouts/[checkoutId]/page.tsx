@@ -1,6 +1,7 @@
 import { ExternalLinkIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DeliveryWarning } from "@/components/shared/delivery-warning";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { NotFoundError } from "@/lib/errors";
@@ -23,6 +24,8 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
     throw error;
   });
 
+  const delivery = await services.products.delivery(organization.id, checkout.offer.productId);
+
   const availableMethods = resolvePaymentMethods({
     provider: services.paymentProvider.type,
     currency: checkout.offer.currency,
@@ -41,6 +44,8 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
           </Button>
         }
       />
+      <DeliveryWarning delivery={delivery} productId={checkout.offer.productId} />
+
       <CheckoutForm
         action={updateCheckout}
         offers={[{ id: checkout.offerId, label: `${checkout.offer.product.name} — ${checkout.offer.name}` }]}

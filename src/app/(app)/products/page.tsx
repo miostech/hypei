@@ -8,14 +8,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
-import { PRODUCT_STATUS_LABELS, PRODUCT_TYPE_LABELS } from "@/modules/products/product.schemas";
+import { DELIVERY_ISSUE_LABELS, PRODUCT_STATUS_LABELS, PRODUCT_TYPE_LABELS } from "@/modules/products/product.schemas";
 import { getServices } from "@/server/container";
 
 export const metadata = { title: "Produtos" };
 
 export default async function ProductsPage() {
   const { organization } = await requirePagePermission("products:read");
-  const products = await getServices().products.list(organization.id);
+  const services = getServices();
+  const [products, delivery] = await Promise.all([services.products.list(organization.id), services.products.deliveryByProduct(organization.id)]);
 
   return (
     <>
@@ -56,7 +57,12 @@ export default async function ProductsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product) => (
+                {products.map((product) => {
+                  // Arquivado não vende, então não há entrega para avisar.
+                  const content = delivery.get(product.id);
+                  const issue = product.status !== "ARCHIVED" && content && !content.ready ? content.reason : null;
+
+                  return (
                   <TableRow key={product.id}>
                     <TableCell className="max-w-[52vw] sm:max-w-none">
                       <Link href={`/products/${product.id}`} className="block truncate font-medium hover:underline">
@@ -69,14 +75,18 @@ export default async function ProductsPage() {
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell">{PRODUCT_TYPE_LABELS[product.type]}</TableCell>
                     <TableCell>
-                      <Badge variant={product.status === "ACTIVE" ? "success" : product.status === "DRAFT" ? "outline" : "secondary"}>
-                        {PRODUCT_STATUS_LABELS[product.status]}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant={product.status === "ACTIVE" ? "success" : product.status === "DRAFT" ? "outline" : "secondary"}>
+                          {PRODUCT_STATUS_LABELS[product.status]}
+                        </Badge>
+                        {issue && <Badge variant="warning">{DELIVERY_ISSUE_LABELS[issue]}</Badge>}
+                      </div>
                     </TableCell>
                     <TableCell className="tabular hidden text-right text-muted-foreground sm:table-cell">{product._count.offers}</TableCell>
                     <TableCell className="hidden text-muted-foreground md:table-cell">{formatDate(product.createdAt)}</TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>

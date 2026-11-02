@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ProductStatus, ProductType } from "@/generated/prisma/enums";
 import { slugSchema } from "@/modules/organizations/organization.schemas";
+import type { ProductDeliveryIssue } from "./product-delivery";
 
 export const productInputSchema = z.object({
   name: z.string().trim().min(2, "Informe o nome").max(120),
@@ -21,6 +22,13 @@ export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
   SUBSCRIPTION: "Assinatura",
   EVENT: "Evento",
   OTHER: "Outro",
+};
+
+/** Short form for lists; the full explanation lives in the DeliveryWarning card. */
+export const DELIVERY_ISSUE_LABELS: Record<ProductDeliveryIssue, string> = {
+  missing: "Sem conteúdo",
+  empty: "Conteúdo vazio",
+  unpublished: "Conteúdo em rascunho",
 };
 
 export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
