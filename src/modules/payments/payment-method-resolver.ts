@@ -26,6 +26,13 @@ const PROVIDER_CAPABILITIES: Partial<Record<PaymentProviderType, Partial<Record<
   },
 };
 
+/**
+ * Quantos meios o provedor de produção consegue processar. A landing page anuncia este número,
+ * e número de página de venda envelhece calado: deixar que ele saia da matriz é o que impede
+ * prometer um meio que a Kabrun não processa.
+ */
+export const PROCESSABLE_PAYMENT_METHODS = Object.keys(PROVIDER_CAPABILITIES.STRIPE ?? {}).length;
+
 export interface ResolvePaymentMethodsInput {
   provider: PaymentProviderType;
   currency: string;

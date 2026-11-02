@@ -3,60 +3,89 @@ import {
   BanknoteIcon,
   CheckIcon,
   GlobeIcon,
+  LanguagesIcon,
   LayersIcon,
-  LockIcon,
   ReceiptIcon,
   ShieldCheckIcon,
+  XIcon,
   ZapIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { Fragment } from "react";
 import { KabrunLogo, KabrunMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
+import { SUPPORTED_COUNTRIES } from "@/modules/organizations/countries";
+import { PROCESSABLE_PAYMENT_METHODS } from "@/modules/payments/payment-method-resolver";
+import { SUPPORTED_CURRENCIES } from "@/lib/money/currency";
 
 const SIGNUP_HREF = "/api/auth/login?signup=1&returnTo=%2Fonboarding";
 
 const FEATURES = [
   {
+    icon: LanguagesIcon,
+    title: "Traduza as aulas, não regrave",
+    description: "O curso que você já gravou passa a vender em inglês e espanhol. Mesma aula, mesma gravação, outro idioma.",
+  },
+  {
     icon: GlobeIcon,
-    title: "Venda global, pagamento local",
-    description: "Brasil, Europa e Estados Unidos com os meios de pagamento que cada comprador já usa — e nada que não funcione no país dele.",
+    title: "Cada comprador paga como paga em casa",
+    description: "Pix e boleto para quem está no Brasil, cartão e carteiras em euro e em dólar lá fora. O que não funciona no país dele nem aparece.",
   },
   {
     icon: ReceiptIcon,
-    title: "Financeiro auditável",
-    description: "Cada centavo passa por um ledger de partida dobrada. Nenhum lançamento é editado: correções viram novos lançamentos.",
+    title: "Financeiro que você consegue auditar",
+    description: "Cada centavo passa por um ledger de partida dobrada. Nenhum lançamento é editado: correção vira lançamento novo.",
   },
   {
     icon: BanknoteIcon,
-    title: "Saldo e saques transparentes",
-    description: "Você vê o que está pendente, o que está disponível e o que está reservado — com a data de liberação de cada venda.",
+    title: "Saldo sem letra miúda",
+    description: "O que está pendente, o que está disponível e o que está reservado — com a data de liberação de cada venda, não um número só.",
   },
   {
     icon: LayersIcon,
     title: "Checkout que é seu",
-    description: "Monte a página, versione cada alteração e saiba exatamente qual versão o comprador viu na hora da compra.",
-  },
-  {
-    icon: LockIcon,
-    title: "Segurança desde a base",
-    description: "Identidade isolada, permissões por organização, webhooks assinados e nenhum dado sensível de cartão no nosso banco.",
+    description: "Monte a página, versione cada alteração e saiba exatamente qual versão o comprador viu na hora em que pagou.",
   },
   {
     icon: ZapIcon,
     title: "Área de membros incluída",
-    description: "O acesso ao conteúdo é liberado no momento em que o pagamento é confirmado pelo provedor.",
+    description: "O aluno entra no conteúdo no instante em que o provedor confirma o pagamento. Sem fila, sem liberação manual.",
   },
 ];
 
+/** Os números saem do código (moedas, países, matriz do provedor) para não envelhecerem calados. */
 const STATS = [
-  { value: "3", label: "mercados", hint: "Brasil, Europa e Estados Unidos" },
-  { value: "9", label: "meios de pagamento", hint: "Cartão, Pix, boleto, SEPA e carteiras" },
-  { value: "100%", label: "auditável", hint: "Todo saldo nasce de um lançamento contábil" },
+  { value: String(SUPPORTED_CURRENCIES.length), label: "moedas", hint: "Real, euro e dólar na mesma conta" },
+  { value: String(SUPPORTED_COUNTRIES.length), label: "países", hint: "Brasil, Portugal, Espanha, França, Alemanha, Itália e EUA" },
+  { value: String(PROCESSABLE_PAYMENT_METHODS), label: "meios de pagamento", hint: "Pix, boleto, cartão, SEPA, transferência e carteiras" },
   { value: "D+0", label: "liberação de acesso", hint: "O aluno entra assim que o pagamento confirma" },
 ];
 
+/**
+ * O argumento de troca. Kiwify e Cakto cobram só em real; quem chega de fora não consegue
+ * pagar. É o buraco concreto que a Kabrun tapa, e é o que decide a mudança de plataforma.
+ */
+const SWITCH = [
+  {
+    before: "Seu curso só vende em real, para quem está no Brasil.",
+    after: "O mesmo curso vende em real, euro e dólar.",
+  },
+  {
+    before: "Um comprador de Lisboa acha sua página e não tem como pagar.",
+    after: "Ele paga com o cartão dele, em euro, sem conversão estranha na fatura.",
+  },
+  {
+    before: "Vender em inglês significa regravar o curso inteiro.",
+    after: "Você traduz as aulas que já estão gravadas.",
+  },
+  {
+    before: "O extrato é uma lista de valores que você aceita no escuro.",
+    after: "Cada centavo nasce de um lançamento contábil que você pode conferir.",
+  },
+];
+
 const STEPS = [
-  { title: "Compra", text: "O comprador paga no seu checkout, com o método local dele." },
+  { title: "Compra", text: "O comprador paga no seu checkout, na moeda e no método do país dele." },
   { title: "Confirmação", text: "O provedor confirma o pagamento e a Kabrun registra a venda no ledger." },
   { title: "Liberação", text: "Passado o prazo de settlement, o valor vira saldo disponível." },
   { title: "Saque", text: "Você solicita o saque e acompanha até cair na conta." },
@@ -69,6 +98,9 @@ export default function LandingPage() {
         <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
           <KabrunLogo showMark={false} />
           <div className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
+            <Link href="#por-que-mudar" className="transition-colors hover:text-foreground">
+              Por que mudar
+            </Link>
             <Link href="#recursos" className="transition-colors hover:text-foreground">
               Recursos
             </Link>
@@ -102,12 +134,12 @@ export default function LandingPage() {
             </span>
 
             <h1 className="max-w-4xl font-heading text-4xl leading-[1.05] font-extrabold tracking-tight text-balance sm:text-6xl">
-              Venda para o mundo inteiro <span className="text-brand-gradient">sem perder o controle</span> do seu dinheiro.
+              O mesmo curso, vendido em <span className="text-brand-gradient">três moedas e três idiomas</span>.
             </h1>
 
             <p className="max-w-2xl text-lg text-pretty text-muted-foreground">
-              A Kabrun recebe do comprador, calcula as taxas, registra tudo em um ledger auditável e repassa para você quando o prazo de liberação
-              vence.
+              A Kabrun traduz as aulas que você já gravou, cobra em real, euro ou dólar e mostra a cada comprador o meio de pagamento que funciona no
+              país dele. Sem regravar o curso e sem abrir empresa lá fora.
             </p>
 
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -129,7 +161,7 @@ export default function LandingPage() {
                 <CheckIcon className="size-3.5 text-success" /> Sem mensalidade
               </span>
               <span className="flex items-center gap-1.5">
-                <CheckIcon className="size-3.5 text-success" /> Checkout em minutos
+                <CheckIcon className="size-3.5 text-success" /> Você só paga quando vender
               </span>
               <span className="flex items-center gap-1.5">
                 <ShieldCheckIcon className="size-3.5 text-success" /> Pagamentos processados pela Stripe
@@ -154,14 +186,55 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <section id="por-que-mudar" className="mx-auto w-full max-w-6xl px-4 py-20 sm:py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">Por que mudar</p>
+            <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+              Sua plataforma de hoje só sabe vender em real
+            </h2>
+            <p className="mt-4 text-pretty text-muted-foreground">
+              O seu conteúdo não tem fronteira, mas o seu checkout tem. É isso que a Kabrun muda.
+            </p>
+          </div>
+
+          <div className="mt-12 overflow-hidden rounded-2xl border shadow-soft">
+            {/* Lado a lado só a partir do sm: em 375px duas colunas quebram o texto em uma
+                palavra por linha. Empilhado, o X apagado e o check em destaque já dizem qual é
+                qual, então os títulos das colunas somem junto. */}
+            <div className="grid grid-cols-1 gap-px bg-border sm:grid-cols-2">
+              <p className="hidden bg-muted/60 px-5 py-3 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase sm:block">Hoje</p>
+              <p className="hidden bg-card px-5 py-3 text-xs font-semibold tracking-[0.12em] text-primary uppercase sm:block">Na Kabrun</p>
+
+              {SWITCH.map((row) => (
+                <Fragment key={row.before}>
+                  <div className="flex items-start gap-2.5 bg-muted/30 px-5 py-4">
+                    <XIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                    <p className="text-sm text-pretty text-muted-foreground">{row.before}</p>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-card px-5 py-4">
+                    <CheckIcon className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+                    <p className="text-sm font-medium text-pretty">{row.after}</p>
+                  </div>
+                </Fragment>
+              ))}
+            </div>
+          </div>
+
+          {/* O formulário de checkout já diz o mesmo ao produtor. Prometer menos aqui do que o
+              produto entrega depois é o que gera o primeiro pedido de reembolso. */}
+          <p className="mt-4 text-center text-xs text-pretty text-muted-foreground">
+            Os meios disponíveis em cada venda dependem do país da sua conta de recebimento e da moeda da oferta.
+          </p>
+        </section>
+
         <section id="recursos" className="mx-auto w-full max-w-6xl px-4 py-20 sm:py-24">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">Plataforma</p>
             <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-              Uma plataforma de pagamentos, não só um checkout
+              Vender lá fora não pode dar mais trabalho que vender aqui
             </h2>
             <p className="mt-4 text-pretty text-muted-foreground">
-              Tudo que uma operação digital precisa para vender, receber e provar para onde cada centavo foi.
+              Tudo que a sua operação precisa para traduzir, vender, receber e provar para onde cada centavo foi.
             </p>
           </div>
 
@@ -212,9 +285,11 @@ export default function LandingPage() {
             <div className="relative mx-auto flex max-w-2xl flex-col items-center gap-5">
               <KabrunMark className="size-12" />
               <h2 className="font-heading text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">
-                Comece a vender hoje, receba com previsibilidade
+                Seu próximo aluno pode não falar português
               </h2>
-              <p className="text-pretty text-white/75">Criar a conta leva menos de cinco minutos. Você só paga quando vender.</p>
+              <p className="text-pretty text-white/75">
+                Criar a conta leva menos de cinco minutos e não custa nada enquanto você não vender. O curso você já tem.
+              </p>
               <Button
                 size="lg"
                 className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90"
