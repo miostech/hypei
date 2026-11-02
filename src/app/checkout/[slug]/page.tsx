@@ -40,6 +40,9 @@ export default async function PublicCheckoutPage({
 
   const accent = checkout.config.theme.accentColor;
   const price = formatAmount(checkout.offer.amount, checkout.offer.currency);
+  // Assinada a cada renderização: a página é dinâmica, então a URL nunca chega vencida ao
+  // comprador, e o objeto continua privado no bucket como o resto da mídia.
+  const bannerUrl = await getServices().checkouts.bannerUrl(checkout.config.bannerKey);
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">
@@ -52,6 +55,15 @@ export default async function PublicCheckoutPage({
       <CouponProvider>
         <main className="mx-auto grid w-full max-w-5xl flex-1 gap-6 px-4 py-8 lg:grid-cols-[1fr_360px] lg:py-14">
           <section className="space-y-6">
+            {bannerUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- URL assinada que expira; otimizar cacharia um link morto
+              <img
+                src={bannerUrl}
+                alt=""
+                className="aspect-[16/5] w-full rounded-2xl border object-cover shadow-soft"
+              />
+            )}
+
             <header className="space-y-3">
               {checkout.config.logoUrl && (
                 // eslint-disable-next-line @next/next/no-img-element -- producer-provided external logo

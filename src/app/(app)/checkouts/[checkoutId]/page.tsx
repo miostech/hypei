@@ -25,6 +25,7 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
   });
 
   const delivery = await services.products.delivery(organization.id, checkout.offer.productId);
+  const bannerUrl = await services.checkouts.bannerUrl(config?.bannerKey ?? null);
 
   const availableMethods = resolvePaymentMethods({
     provider: services.paymentProvider.type,
@@ -61,6 +62,8 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
           description: config?.description ?? "",
           accentColor: config?.theme.accentColor ?? "#5B3DF5",
           logoUrl: config?.logoUrl ?? "",
+          bannerKey: config?.bannerKey ?? "",
+          bannerUrl,
           collectPhone: config?.fields.phone ?? false,
           guaranteeDays: config?.guaranteeDays ?? 7,
           enabledPaymentMethods: config?.enabledPaymentMethods ?? [],

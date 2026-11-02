@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PaymentMethodType } from "@/generated/prisma/enums";
+import { isDomainError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { checkoutBuilderSchema } from "@/modules/checkout/checkout.schemas";
 import { requirePermission } from "@/modules/organizations/current-organization";
 import { runAction, type ActionState } from "@/server/actions/action-state";
@@ -17,10 +19,36 @@ function parse(formData: FormData) {
     description: formData.get("description") ?? "",
     accentColor: formData.get("accentColor"),
     logoUrl: formData.get("logoUrl") ?? "",
+    bannerKey: formData.get("bannerKey") ?? "",
     collectPhone: formData.get("collectPhone") === "on",
     guaranteeDays: formData.get("guaranteeDays"),
     enabledPaymentMethods: formData.getAll("enabledPaymentMethods").filter((m): m is PaymentMethodType => typeof m === "string" && m in PaymentMethodType),
   });
+}
+
+/**
+ * Entrega ao navegador uma URL de envio de vida curta. O arquivo não passa pelo servidor:
+ * isto só diz "você pode colocar este objeto ali, pelos próximos minutos".
+ */
+export async function requestBannerUpload(input: {
+  checkoutId: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+}): Promise<{ ok: true; url: string; key: string; headers: Record<string, string> } | { ok: false; message: string }> {
+  try {
+    const { organization } = await requirePermission("checkout:write");
+    const target = await getServices().checkouts.createBannerUpload(organization.id, input.checkoutId, {
+      filename: input.filename,
+      contentType: input.contentType,
+      sizeBytes: input.sizeBytes,
+    });
+    return { ok: true, url: target.url, key: target.key, headers: target.headers };
+  } catch (error) {
+    if (isDomainError(error)) return { ok: false, message: error.message };
+    logger.error({ err: error }, "checkout banner upload authorization failed");
+    return { ok: false, message: "Não foi possível preparar o envio da imagem." };
+  }
 }
 
 export async function createCheckout(_prev: ActionState, formData: FormData): Promise<ActionState> {

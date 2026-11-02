@@ -73,8 +73,16 @@ export function resolveStorageConfig(env: {
   };
 }
 
+function extensionOf(filename: string): string {
+  return filename.includes(".") ? `.${filename.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "")}` : "";
+}
+
 /** Builds a collision-free object key that also reads well in a bucket listing. */
 export function buildStorageKey(parts: { organizationId: string; courseId: string; filename: string; id: string }): string {
-  const extension = parts.filename.includes(".") ? `.${parts.filename.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "")}` : "";
-  return `organizations/${parts.organizationId}/courses/${parts.courseId}/${parts.id}${extension}`;
+  return `organizations/${parts.organizationId}/courses/${parts.courseId}/${parts.id}${extensionOf(parts.filename)}`;
+}
+
+/** Same shape for art that belongs to a checkout instead of a course. */
+export function buildCheckoutAssetKey(parts: { organizationId: string; checkoutId: string; filename: string; id: string }): string {
+  return `organizations/${parts.organizationId}/checkouts/${parts.checkoutId}/${parts.id}${extensionOf(parts.filename)}`;
 }

@@ -11,6 +11,11 @@ export const checkoutConfigSchema = z.object({
     accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#5B3DF5"),
   }),
   logoUrl: z.string().url().nullable().default(null),
+  /**
+   * Chave do objeto no storage, não URL: o banner é enviado pelo produtor e continua privado
+   * no bucket. A página assina uma URL curta a cada renderização, como o resto da mídia.
+   */
+  bannerKey: z.string().nullable().default(null),
   headline: z.string().min(1).max(120),
   description: z.string().max(600).default(""),
   fields: z.object({

@@ -37,6 +37,8 @@ export default async function NewCheckoutPage() {
           description: "",
           accentColor: "#5B3DF5",
           logoUrl: "",
+          bannerKey: "",
+          bannerUrl: null,
           collectPhone: false,
           guaranteeDays: 7,
           enabledPaymentMethods: [],

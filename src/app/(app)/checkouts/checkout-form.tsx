@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PaymentMethodType } from "@/generated/prisma/enums";
 import { PAYMENT_METHOD_LABELS } from "@/modules/payments/payment-method-resolver";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
+import { BannerField } from "./banner-field";
 
 export interface CheckoutFormValues {
   id?: string;
@@ -22,6 +23,8 @@ export interface CheckoutFormValues {
   description: string;
   accentColor: string;
   logoUrl: string;
+  bannerKey: string;
+  bannerUrl: string | null;
   collectPhone: boolean;
   guaranteeDays: number;
   enabledPaymentMethods: PaymentMethodType[];
@@ -91,6 +94,7 @@ export function CheckoutForm({
               <Textarea id="description" name="description" rows={4} defaultValue={defaultValues.description} maxLength={600} />
             </div>
             <TextField label="Logo (URL)" name="logoUrl" type="url" defaultValue={defaultValues.logoUrl} placeholder="https://…" error={fieldError("logoUrl")} />
+            <BannerField checkoutId={defaultValues.id} defaultKey={defaultValues.bannerKey} previewUrl={defaultValues.bannerUrl} />
           </CardContent>
         </Card>
 

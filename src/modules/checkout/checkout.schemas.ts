@@ -10,6 +10,7 @@ export const checkoutBuilderSchema = z.object({
   description: z.string().trim().max(600).optional().or(z.literal("")),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida"),
   logoUrl: z.string().trim().url().optional().or(z.literal("")),
+  bannerKey: z.string().trim().max(300).optional().or(z.literal("")),
   collectPhone: z.boolean(),
   guaranteeDays: z.coerce.number().int().min(0).max(365),
   enabledPaymentMethods: z.array(z.enum(PaymentMethodType)),
