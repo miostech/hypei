@@ -144,3 +144,87 @@ describe("Disputes / chargebacks", () => {
     await expectLedgerBalanced(app.prisma);
   });
 });
+
+/**
+ * Devolver o dinheiro e deixar o acesso de pé é o risco inteiro de produto digital: o
+ * comprador fica com o arquivo, o produtor perde a venda e nada no sistema percebe.
+ */
+describe("Acesso segue o dinheiro", () => {
+  let app: TestApp;
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  /** Cria a venda já com conteúdo publicado, que é o que gera matrícula. */
+  async function soldWithContent(app: TestApp) {
+    const seller = await createSeller(app, { amount: 10_000n });
+    const course = await app.services.courses.create(seller.organization.id, seller.user.id, {
+      productId: seller.product.id,
+      title: "Ebook",
+      slug: `ebook-${seller.organization.slug}`,
+      description: "",
+    });
+    const courseModule = await app.services.courses.addModule(seller.organization.id, course.id, "Material");
+    await app.services.courses.addLesson(seller.organization.id, courseModule!.id, {
+      title: "PDF",
+      type: "PDF",
+      externalUrl: "https://files.example.com/ebook.pdf",
+    });
+    await app.services.courses.setPublished(seller.organization.id, seller.user.id, course.id, true);
+
+    const { payment } = await startPurchase(app, seller.checkout.slug);
+    await confirmPayment(app, payment);
+    return { ...seller, course, payment: await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }) };
+  }
+
+  const enrollmentStatus = (app: TestApp, courseId: string) =>
+    app.prisma.enrollment.findFirstOrThrow({ where: { courseId } }).then((row) => row.status);
+
+  it("reembolso integral revoga o acesso", async () => {
+    const { organization, course, payment } = await soldWithContent(app);
+    expect(await enrollmentStatus(app, course.id)).toBe("ACTIVE");
+
+    const refund = await app.services.refunds.request({ organizationId: organization.id, paymentId: payment.id, amount: 10_000n, idempotencyKey: "rev-full" });
+    await completeRefund(app, refund.id);
+
+    expect(await enrollmentStatus(app, course.id)).toBe("REVOKED");
+    // A linha fica para o histórico, mas quem foi reembolsado não é aluno em lugar nenhum.
+    const [listed] = await app.services.courses.list(organization.id);
+    expect(listed._count.enrollments).toBe(0);
+    expect(await app.services.uow.repos.courses.countEnrollments(course.id)).toBe(0);
+  });
+
+  it("reembolso parcial mantém o acesso, porque pode ser ajuste de preço", async () => {
+    const { organization, course, payment } = await soldWithContent(app);
+    const refund = await app.services.refunds.request({ organizationId: organization.id, paymentId: payment.id, amount: 3000n, idempotencyKey: "rev-part" });
+    await completeRefund(app, refund.id);
+
+    expect(await enrollmentStatus(app, course.id)).toBe("ACTIVE");
+  });
+
+  it("chargeback perdido revoga; aberto ainda não, porque a disputa pode ser ganha", async () => {
+    const { course, payment } = await soldWithContent(app);
+
+    await app.deliver({
+      type: "dispute.updated",
+      providerDisputeId: `dp_${payment.id}`,
+      providerPaymentId: payment.providerPaymentId!,
+      amount: payment.amount.toString(),
+      currency: payment.currency,
+      status: "open",
+      reason: "fraudulent",
+    });
+    expect(await enrollmentStatus(app, course.id)).toBe("ACTIVE");
+
+    await app.deliver({
+      type: "dispute.updated",
+      providerDisputeId: `dp_${payment.id}`,
+      providerPaymentId: payment.providerPaymentId!,
+      amount: payment.amount.toString(),
+      currency: payment.currency,
+      status: "lost",
+      reason: "fraudulent",
+    });
+    expect(await enrollmentStatus(app, course.id)).toBe("REVOKED");
+  });
+});

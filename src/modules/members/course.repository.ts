@@ -63,7 +63,12 @@ export class PrismaCourseRepository implements CourseRepository {
   list(organizationId: string) {
     return this.db.course.findMany({
       where: { organizationId },
-      include: { product: { select: { id: true, name: true, status: true } }, _count: { select: { modules: true, enrollments: true } } },
+      include: {
+        product: { select: { id: true, name: true, status: true } },
+        // Só matrícula ativa conta como aluno: a linha revogada fica para o histórico, e
+        // contá-la mostrava reembolsado como aluno — e divergia da tela do conteúdo.
+        _count: { select: { modules: true, enrollments: { where: { status: "ACTIVE" } } } },
+      },
       orderBy: { createdAt: "desc" },
     });
   }

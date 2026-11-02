@@ -5,6 +5,7 @@ import { assertSupportedCurrency } from "@/lib/money";
 import type { NormalizedProviderEvent, PaymentProvider } from "@/lib/providers/payment/types";
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
+import { revokeOrderAccess } from "@/modules/members/access";
 import { producerAccountFor, splitByOriginalShares } from "@/modules/payments/payment-shares";
 import type { Repositories } from "@/server/repositories";
 import type { UnitOfWork } from "@/server/unit-of-work";
@@ -119,6 +120,9 @@ export class RefundService {
 
       const refundedAmount = payment.refundedAmount + refund.amount;
       const fullyRefunded = refundedAmount === payment.amount;
+      // Devolveu o valor inteiro, o acesso vai junto. Reembolso parcial não tira nada: pode
+      // ser ajuste de preço ou cortesia, e o comprador continua tendo direito ao que comprou.
+      if (fullyRefunded) await revokeOrderAccess(repos, payment.orderId, payment.customerId);
       await repos.payments.update(payment.id, {
         refundedAmount,
         status: payment.status === "CHARGEBACK" ? "CHARGEBACK" : fullyRefunded ? "REFUNDED" : "PARTIALLY_REFUNDED",

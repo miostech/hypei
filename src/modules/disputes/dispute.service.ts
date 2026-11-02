@@ -5,6 +5,7 @@ import { createDomainEvent } from "@/lib/events/domain-event";
 import { assertSupportedCurrency } from "@/lib/money";
 import type { NormalizedProviderEvent } from "@/lib/providers/payment/types";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
+import { revokeOrderAccess } from "@/modules/members/access";
 import { producerAccountFor, splitByOriginalShares } from "@/modules/payments/payment-shares";
 import type { Repositories } from "@/server/repositories";
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
@@ -123,6 +124,9 @@ export class DisputeService {
       ],
     });
     await this.affiliates.reverseCommission(repos, payment.orderId, shares.affiliate);
+    // Só no chargeback perdido. Na abertura o resultado ainda é desconhecido, e tirar o acesso
+    // de quem vai ganhar a disputa é pior do que o fraudador manter o acesso por mais semanas.
+    await revokeOrderAccess(repos, payment.orderId, payment.customerId);
     await repos.disputes.update(dispute.id, { status: "LOST", closedAt: new Date() });
     await repos.payments.update(payment.id, { status: "CHARGEBACK" });
     await repos.transactions.record({

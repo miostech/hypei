@@ -8,7 +8,7 @@ import type { NormalizedProviderEvent, PaymentProvider } from "@/lib/providers/p
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import { calculateFeeBreakdown, NO_PLATFORM_FEE } from "@/modules/fees/fee.calculator";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
-import type { Repositories } from "@/server/repositories";
+import { grantOrderAccess } from "@/modules/members/access";
 import type { UnitOfWork } from "@/server/unit-of-work";
 import { canTransition, isCaptured } from "./payment-status";
 
@@ -230,7 +230,7 @@ export class PaymentService {
         });
       }
 
-      await this.grantAccess(repos, payment.orderId, payment.customerId);
+      await grantOrderAccess(repos, payment.orderId, payment.customerId);
       await repos.outbox.add(
         createDomainEvent("payment.paid", payment.id, payment.organizationId, {
           orderId: payment.orderId,
@@ -241,14 +241,6 @@ export class PaymentService {
       );
       return "applied";
     });
-  }
-
-  /** Enrolls the buyer in any course sold by the order (member area access). */
-  private async grantAccess(repos: Repositories, orderId: string, customerId: string) {
-    for (const productId of await repos.orders.productIds(orderId)) {
-      const course = await repos.courses.findByProductId(productId);
-      if (course) await repos.courses.enroll({ courseId: course.id, customerId, orderId });
-    }
   }
 
   async applyStatus(
