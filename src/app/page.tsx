@@ -6,7 +6,6 @@ import {
   LanguagesIcon,
   LayersIcon,
   ReceiptIcon,
-  ShieldCheckIcon,
   XIcon,
   ZapIcon,
 } from "lucide-react";
@@ -161,9 +160,6 @@ export default function LandingPage() {
               </span>
               <span className="flex items-center gap-1.5">
                 <CheckIcon className="size-3.5 text-success" /> Você só paga quando vender
-              </span>
-              <span className="flex items-center gap-1.5">
-                <ShieldCheckIcon className="size-3.5 text-success" /> Pagamentos processados pela Stripe
               </span>
             </p>
           </div>
