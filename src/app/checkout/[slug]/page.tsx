@@ -7,6 +7,7 @@ import { formatAmount } from "@/lib/ui/format";
 import { KabrunLogo } from "@/components/brand/logo";
 import { CheckoutClient } from "./checkout-client";
 import { CouponProvider, OrderTotals } from "./coupon-context";
+import { ProductThumb } from "./product-thumb";
 
 export async function generateMetadata({
   params,
@@ -127,13 +128,11 @@ export default async function PublicCheckoutPage({
               </p>
               <div className="space-y-4 p-5">
                 <div className="flex items-start gap-3">
-                  <span
-                    aria-hidden
-                    className="flex size-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
-                    style={{ background: accent }}
-                  >
-                    {checkout.product.name.slice(0, 2).toUpperCase()}
-                  </span>
+                  <ProductThumb
+                    name={checkout.product.name}
+                    thumbnailUrl={checkout.product.thumbnailUrl}
+                    accent={accent}
+                  />
                   <div className="min-w-0">
                     <p className="font-medium">{checkout.product.name}</p>
                     <p className="text-sm text-muted-foreground">
