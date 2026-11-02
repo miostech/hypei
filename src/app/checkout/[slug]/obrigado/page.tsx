@@ -1,6 +1,9 @@
-import { CheckCircle2Icon, ClockIcon, XCircleIcon } from "lucide-react";
+import { ArrowRightIcon, CheckCircle2Icon, ClockIcon, XCircleIcon } from "lucide-react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { KabrunLogo } from "@/components/brand/logo";
+import { Button } from "@/components/ui/button";
+import { memberCourseHref } from "@/lib/ui/routes";
 import { getServices } from "@/server/container";
 import { PaymentStatusWatcher } from "./status-watcher";
 
@@ -22,6 +25,11 @@ export default async function CheckoutResultPage({ params, searchParams }: PageP
     services.checkouts.getPublic(slug),
   ]);
   if (!payment || !checkout) notFound();
+
+  // Esperar o e-mail chegar era a única porta de entrada, e em serverless ele pode atrasar um
+  // ciclo do cron. O link só aparece com conteúdo publicado — a mesma regra do e-mail.
+  const course = payment.status === "PAID" ? await services.uow.repos.courses.findByProductId(checkout.product.id) : null;
+  const accessHref = course?.published ? memberCourseHref(checkout.organization.slug, course.slug) : null;
 
   const state =
     payment.status === "PAID"
@@ -54,6 +62,17 @@ export default async function CheckoutResultPage({ params, searchParams }: PageP
         <state.icon className={`mx-auto size-10 ${state.tone}`} aria-hidden />
         <h1 className="text-xl font-semibold tracking-tight">{state.title}</h1>
         <p className="text-pretty text-sm text-muted-foreground">{state.description}</p>
+
+        {accessHref && (
+          <div className="space-y-1.5 pt-2">
+            <Button className="w-full" render={<Link href={accessHref} />}>
+              Acessar agora
+              <ArrowRightIcon />
+            </Button>
+            <p className="text-xs text-muted-foreground">Entre com o mesmo e-mail que você usou nesta compra.</p>
+          </div>
+        )}
+
         <p className="pt-2 text-xs text-muted-foreground">
           Vendido por {checkout.organization.name}
           {checkout.organization.supportEmail ? ` · ${checkout.organization.supportEmail}` : ""}
