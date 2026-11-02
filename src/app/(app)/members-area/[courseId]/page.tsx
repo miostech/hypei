@@ -28,6 +28,7 @@ import { getServices } from "@/server/container";
 import { deleteLesson, deleteModule, moveLesson, moveModule, setCoursePublished, updateCourseSettings } from "../actions";
 import { DeleteCourseDialog, LessonDialog, ModuleDialog } from "../content-dialogs";
 import { CourseForm } from "../course-form";
+import { TranslationSoon } from "../translation-soon";
 
 export const metadata = { title: "Editar curso" };
 
@@ -51,6 +52,7 @@ export default async function CourseEditorPage({ params }: PageProps<"/members-a
   });
   const canEdit = hasPermission(membership.role, "products:write");
   const lessonCount = course.modules.reduce((total, module) => total + module.lessons.length, 0);
+  const hasVideo = course.modules.some((module) => module.lessons.some((lesson) => lesson.type === "VIDEO"));
   const students = await services.uow.repos.courses.countEnrollments(course.id);
 
   return (
@@ -238,6 +240,8 @@ export default async function CourseEditorPage({ params }: PageProps<"/members-a
               )}
             </CardContent>
           </Card>
+
+          {hasVideo && <TranslationSoon />}
 
           {canEdit && (
             <Card className="border-destructive/30">
