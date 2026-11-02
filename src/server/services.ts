@@ -97,7 +97,7 @@ export function buildServices(deps: ServiceDependencies) {
   const taxSettings = new TaxSettingsService(uow);
   const subscriptions = new SubscriptionService(uow, deps.paymentProvider, payments, taxes);
   const organizations = new OrganizationService(uow, merchantAccounts, deps.config.dataHashSecret);
-  const products = new ProductService(uow);
+  const products = new ProductService(uow, deps.storageProvider);
   const courses = new CourseService(uow, deps.storageProvider);
   const memberArea = new MemberAreaService(uow);
 

@@ -13,7 +13,7 @@ export default async function NewProductPage() {
       <ProductForm
         action={createProduct}
         submitLabel="Criar produto"
-        defaultValues={{ name: "", slug: "", description: "", type: "COURSE", status: "ACTIVE", thumbnailUrl: "" }}
+        defaultValues={{ name: "", slug: "", description: "", type: "COURSE", status: "ACTIVE", thumbnailKey: "", thumbnailUrl: null }}
       />
     </>
   );

@@ -2,7 +2,7 @@ import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { randomUUID } from "node:crypto";
 import type { LessonType } from "@/generated/prisma/enums";
-import { buildStorageKey, type StorageProvider } from "@/lib/providers/storage";
+import { buildAssetKey, type StorageProvider } from "@/lib/providers/storage";
 import type { UnitOfWork } from "@/server/unit-of-work";
 import type { CourseInput, CourseSettingsInput, LessonInput } from "./course.schemas";
 
@@ -52,9 +52,10 @@ export class CourseService {
       throw new ValidationError("Formato de arquivo não aceito para este tipo de aula");
     }
 
-    const key = buildStorageKey({
+    const key = buildAssetKey({
       organizationId,
-      courseId: courseModule.courseId,
+      scope: "courses",
+      scopeId: courseModule.courseId,
       filename: input.filename,
       id: randomUUID(),
     });

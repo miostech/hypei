@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { ImageUploadRequest, ImageUploadResult } from "@/components/shared/image-upload-field";
 import { PaymentMethodType } from "@/generated/prisma/enums";
 import { isDomainError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -18,7 +19,7 @@ function parse(formData: FormData) {
     headline: formData.get("headline"),
     description: formData.get("description") ?? "",
     accentColor: formData.get("accentColor"),
-    logoUrl: formData.get("logoUrl") ?? "",
+    logoKey: formData.get("logoKey") ?? "",
     bannerKey: formData.get("bannerKey") ?? "",
     collectPhone: formData.get("collectPhone") === "on",
     guaranteeDays: formData.get("guaranteeDays"),
@@ -30,15 +31,10 @@ function parse(formData: FormData) {
  * Entrega ao navegador uma URL de envio de vida curta. O arquivo não passa pelo servidor:
  * isto só diz "você pode colocar este objeto ali, pelos próximos minutos".
  */
-export async function requestBannerUpload(input: {
-  checkoutId: string;
-  filename: string;
-  contentType: string;
-  sizeBytes: number;
-}): Promise<{ ok: true; url: string; key: string; headers: Record<string, string> } | { ok: false; message: string }> {
+export async function requestCheckoutImageUpload(input: ImageUploadRequest): Promise<ImageUploadResult> {
   try {
     const { organization } = await requirePermission("checkout:write");
-    const target = await getServices().checkouts.createBannerUpload(organization.id, input.checkoutId, {
+    const target = await getServices().checkouts.createImageUpload(organization.id, input.ownerId, {
       filename: input.filename,
       contentType: input.contentType,
       sizeBytes: input.sizeBytes,
@@ -46,7 +42,7 @@ export async function requestBannerUpload(input: {
     return { ok: true, url: target.url, key: target.key, headers: target.headers };
   } catch (error) {
     if (isDomainError(error)) return { ok: false, message: error.message };
-    logger.error({ err: error }, "checkout banner upload authorization failed");
+    logger.error({ err: error }, "checkout image upload authorization failed");
     return { ok: false, message: "Não foi possível preparar o envio da imagem." };
   }
 }

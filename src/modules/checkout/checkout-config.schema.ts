@@ -10,7 +10,8 @@ export const checkoutConfigSchema = z.object({
     mode: z.enum(["light", "dark"]).default("light"),
     accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#5B3DF5"),
   }),
-  logoUrl: z.string().url().nullable().default(null),
+  /** Chave do objeto no storage, igual ao banner: o logo também é enviado pelo produtor. */
+  logoKey: z.string().nullable().default(null),
   /**
    * Chave do objeto no storage, não URL: o banner é enviado pelo produtor e continua privado
    * no bucket. A página assina uma URL curta a cada renderização, como o resto da mídia.

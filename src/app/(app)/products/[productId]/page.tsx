@@ -25,7 +25,11 @@ export default async function ProductPage({ params }: PageProps<"/products/[prod
     if (error instanceof NotFoundError) notFound();
     throw error;
   });
-  const [allOffers, delivery] = await Promise.all([services.offers.list(organization.id), services.products.delivery(organization.id, product.id)]);
+  const [allOffers, delivery, thumbnailUrl] = await Promise.all([
+    services.offers.list(organization.id),
+    services.products.delivery(organization.id, product.id),
+    services.products.thumbnailUrl(product.thumbnailKey),
+  ]);
   const offers = allOffers.filter((offer) => offer.productId === product.id);
 
   return (
@@ -56,7 +60,8 @@ export default async function ProductPage({ params }: PageProps<"/products/[prod
           description: product.description ?? "",
           type: product.type,
           status: product.status,
-          thumbnailUrl: product.thumbnailUrl ?? "",
+          thumbnailKey: product.thumbnailKey ?? "",
+          thumbnailUrl,
         }}
       />
 

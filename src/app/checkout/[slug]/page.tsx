@@ -7,7 +7,7 @@ import { formatAmount } from "@/lib/ui/format";
 import { KabrunLogo } from "@/components/brand/logo";
 import { CheckoutClient } from "./checkout-client";
 import { CouponProvider, OrderTotals } from "./coupon-context";
-import { ProductThumb } from "./product-thumb";
+import { SafeImage } from "./safe-image";
 
 export async function generateMetadata({
   params,
@@ -41,9 +41,13 @@ export default async function PublicCheckoutPage({
 
   const accent = checkout.config.theme.accentColor;
   const price = formatAmount(checkout.offer.amount, checkout.offer.currency);
-  // Assinada a cada renderização: a página é dinâmica, então a URL nunca chega vencida ao
-  // comprador, e o objeto continua privado no bucket como o resto da mídia.
-  const bannerUrl = await getServices().checkouts.bannerUrl(checkout.config.bannerKey);
+  // Assinadas a cada renderização: a página é dinâmica, então a URL nunca chega vencida ao
+  // comprador, e os objetos continuam privados no bucket como o resto da mídia.
+  const [bannerUrl, logoUrl, thumbnailUrl] = await Promise.all([
+    getServices().checkouts.assetUrl(checkout.config.bannerKey),
+    getServices().checkouts.assetUrl(checkout.config.logoKey),
+    getServices().checkouts.assetUrl(checkout.product.thumbnailKey),
+  ]);
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">
@@ -56,24 +60,14 @@ export default async function PublicCheckoutPage({
       <CouponProvider>
         <main className="mx-auto grid w-full max-w-5xl flex-1 gap-6 px-4 py-8 lg:grid-cols-[1fr_360px] lg:py-14">
           <section className="space-y-6">
-            {bannerUrl && (
-              // eslint-disable-next-line @next/next/no-img-element -- URL assinada que expira; otimizar cacharia um link morto
-              <img
-                src={bannerUrl}
-                alt=""
-                className="aspect-[16/5] w-full rounded-2xl border object-cover shadow-soft"
-              />
-            )}
+            <SafeImage
+              src={bannerUrl}
+              alt=""
+              className="aspect-[16/5] w-full rounded-2xl border object-cover shadow-soft"
+            />
 
             <header className="space-y-3">
-              {checkout.config.logoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element -- producer-provided external logo
-                <img
-                  src={checkout.config.logoUrl}
-                  alt={checkout.organization.name}
-                  className="h-11 w-auto"
-                />
-              )}
+              <SafeImage src={logoUrl} alt={checkout.organization.name} className="h-11 w-auto" />
               <h1 className="font-heading text-3xl font-bold tracking-tight text-balance">
                 {checkout.config.headline}
               </h1>
@@ -128,10 +122,19 @@ export default async function PublicCheckoutPage({
               </p>
               <div className="space-y-4 p-5">
                 <div className="flex items-start gap-3">
-                  <ProductThumb
-                    name={checkout.product.name}
-                    thumbnailUrl={checkout.product.thumbnailUrl}
-                    accent={accent}
+                  <SafeImage
+                    src={thumbnailUrl}
+                    alt=""
+                    className="size-12 shrink-0 rounded-xl border object-cover"
+                    fallback={
+                      <span
+                        aria-hidden
+                        className="flex size-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
+                        style={{ background: accent }}
+                      >
+                        {checkout.product.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    }
                   />
                   <div className="min-w-0">
                     <p className="font-medium">{checkout.product.name}</p>

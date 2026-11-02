@@ -8,7 +8,7 @@ export interface ProductWriteRecord {
   description?: string | null;
   type: ProductType;
   status: ProductStatus;
-  thumbnailUrl?: string | null;
+  thumbnailKey?: string | null;
 }
 
 export type ProductWithOfferCount = Product & { _count: { offers: number } };

@@ -96,7 +96,7 @@ describe("Checkout", () => {
 });
 
 /** Arte que o produtor envia. O objeto continua privado: a página assina na hora de mostrar. */
-describe("Banner do checkout", () => {
+describe("Imagens do produtor", () => {
   let app: TestApp;
   beforeEach(async () => {
     app = await createTestApp();
@@ -107,39 +107,56 @@ describe("Banner do checkout", () => {
   it("autoriza o envio numa chave do próprio checkout", async () => {
     const { organization, checkout } = await createSeller(app);
 
-    const target = await app.services.checkouts.createBannerUpload(organization.id, checkout.id, image);
+    const target = await app.services.checkouts.createImageUpload(organization.id, checkout.id, image);
 
     expect(target.key).toBe(app.storage.uploads[0].key);
     expect(target.key.startsWith(`organizations/${organization.id}/checkouts/${checkout.id}/`)).toBe(true);
     expect(target.key.endsWith(".png")).toBe(true);
   });
 
+  it("autoriza a capa numa chave do próprio produto", async () => {
+    const { organization, product } = await createSeller(app);
+
+    const target = await app.services.products.createThumbnailUpload(organization.id, product.id, image);
+
+    expect(target.key).toBe(app.storage.uploads[0].key);
+    expect(target.key.startsWith(`organizations/${organization.id}/products/${product.id}/`)).toBe(true);
+  });
+
   it("recusa o que não é imagem e o que é grande demais", async () => {
-    const { organization, checkout } = await createSeller(app);
+    const { organization, checkout, product } = await createSeller(app);
 
     await expect(
-      app.services.checkouts.createBannerUpload(organization.id, checkout.id, { ...image, filename: "a.pdf", contentType: "application/pdf" }),
+      app.services.checkouts.createImageUpload(organization.id, checkout.id, { ...image, filename: "a.pdf", contentType: "application/pdf" }),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     await expect(
-      app.services.checkouts.createBannerUpload(organization.id, checkout.id, { ...image, sizeBytes: 9_000_000 }),
+      app.services.checkouts.createImageUpload(organization.id, checkout.id, { ...image, sizeBytes: 9_000_000 }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    // Mesma política nas duas telas: a validação é compartilhada, não copiada.
+    await expect(
+      app.services.products.createThumbnailUpload(organization.id, product.id, { ...image, contentType: "image/heic" }),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 
     expect(app.storage.uploads).toHaveLength(0);
   });
 
-  it("não deixa enviar para o checkout de outra organização", async () => {
+  it("não deixa enviar para o checkout nem para o produto de outra organização", async () => {
     const mine = await createSeller(app);
     const theirs = await createSeller(app);
 
-    await expect(app.services.checkouts.createBannerUpload(mine.organization.id, theirs.checkout.id, image)).rejects.toMatchObject({
+    await expect(app.services.checkouts.createImageUpload(mine.organization.id, theirs.checkout.id, image)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(app.services.products.createThumbnailUpload(mine.organization.id, theirs.product.id, image)).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
     expect(app.storage.uploads).toHaveLength(0);
   });
 
-  it("guarda a chave na versão da configuração e entrega assinada para a página", async () => {
+  it("guarda banner e logo na versão da configuração e entrega assinados para a página", async () => {
     const { organization, user, checkout, offer } = await createSeller(app);
-    const target = await app.services.checkouts.createBannerUpload(organization.id, checkout.id, image);
+    const banner = await app.services.checkouts.createImageUpload(organization.id, checkout.id, image);
+    const logo = await app.services.checkouts.createImageUpload(organization.id, checkout.id, { ...image, filename: "logo.png" });
 
     await app.services.checkouts.updateConfig(organization.id, user.id, checkout.id, {
       offerId: offer.id,
@@ -147,16 +164,38 @@ describe("Banner do checkout", () => {
       slug: checkout.slug,
       headline: "Garanta seu acesso",
       accentColor: "#111111",
-      bannerKey: target.key,
+      bannerKey: banner.key,
+      logoKey: logo.key,
       collectPhone: false,
       guaranteeDays: 7,
       enabledPaymentMethods: [],
     });
 
     const view = await app.services.checkouts.getPublic(checkout.slug);
-    expect(view?.config.bannerKey).toBe(target.key);
-    expect(await app.services.checkouts.bannerUrl(view!.config.bannerKey)).toContain(encodeURIComponent(target.key));
-    // Sem banner não há URL: a página não deve renderizar uma imagem vazia.
-    expect(await app.services.checkouts.bannerUrl(null)).toBeNull();
+    expect(view?.config.bannerKey).toBe(banner.key);
+    expect(view?.config.logoKey).toBe(logo.key);
+    expect(await app.services.checkouts.assetUrl(view!.config.bannerKey)).toContain(encodeURIComponent(banner.key));
+    expect(await app.services.checkouts.assetUrl(view!.config.logoKey)).toContain(encodeURIComponent(logo.key));
+    // Sem imagem não há URL: a página não deve renderizar um <img> vazio.
+    expect(await app.services.checkouts.assetUrl(null)).toBeNull();
+  });
+
+  it("leva a capa do produto para o resumo do pedido", async () => {
+    const { organization, user, product, checkout } = await createSeller(app);
+    const target = await app.services.products.createThumbnailUpload(organization.id, product.id, image);
+
+    await app.services.products.update(organization.id, user.id, product.id, {
+      name: product.name,
+      slug: product.slug,
+      type: product.type,
+      status: product.status,
+      thumbnailKey: target.key,
+    });
+
+    // A capa é do produto, mas quem a mostra é o checkout: tem que atravessar a view pública.
+    const view = await app.services.checkouts.getPublic(checkout.slug);
+    expect(view?.product.thumbnailKey).toBe(target.key);
+    expect(await app.services.products.thumbnailUrl(target.key)).toContain(encodeURIComponent(target.key));
+    expect(await app.services.products.thumbnailUrl(null)).toBeNull();
   });
 });

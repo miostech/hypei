@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { SelectField, TextField } from "@/components/shared/form-field";
+import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { SubmitButton } from "@/components/shared/submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ProductStatus, ProductType } from "@/generated/prisma/enums";
 import { PRODUCT_STATUS_LABELS, PRODUCT_TYPE_LABELS } from "@/modules/products/product.schemas";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
+import { requestThumbnailUpload } from "./actions";
 
 export interface ProductFormValues {
   id?: string;
@@ -18,7 +20,8 @@ export interface ProductFormValues {
   description: string;
   type: string;
   status: string;
-  thumbnailUrl: string;
+  thumbnailKey: string;
+  thumbnailUrl: string | null;
 }
 
 export function ProductForm({
@@ -60,13 +63,16 @@ export function ProductForm({
             <Label htmlFor="description">Descrição</Label>
             <Textarea id="description" name="description" rows={5} defaultValue={defaultValues.description} maxLength={2000} />
           </div>
-          <TextField
-            label="Imagem de capa (URL)"
-            name="thumbnailUrl"
-            type="url"
-            defaultValue={defaultValues.thumbnailUrl}
-            placeholder="https://…"
-            error={fieldError("thumbnailUrl")}
+          <ImageUploadField
+            name="thumbnailKey"
+            label="Imagem de capa"
+            hint="aparece no resumo do pedido"
+            pendingNote="Crie o produto primeiro. A capa fica disponível na tela de edição."
+            previewClass="size-20"
+            ownerId={defaultValues.id}
+            defaultKey={defaultValues.thumbnailKey}
+            previewUrl={defaultValues.thumbnailUrl}
+            requestUpload={requestThumbnailUpload}
           />
         </CardContent>
       </Card>

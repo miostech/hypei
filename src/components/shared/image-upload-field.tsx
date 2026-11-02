@@ -1,31 +1,63 @@
 "use client";
 
-import { ImageIcon, Loader2Icon, UploadCloudIcon, XIcon } from "lucide-react";
+import { Loader2Icon, UploadCloudIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { IMAGE_MAX_BYTES } from "@/lib/images";
 import { uploadToStorage } from "@/lib/ui/upload";
-import { requestBannerUpload } from "./actions";
+
+export interface ImageUploadRequest {
+  ownerId: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+export type ImageUploadResult =
+  | { ok: true; url: string; key: string; headers: Record<string, string> }
+  | { ok: false; message: string };
 
 /**
- * O banner só existe depois do checkout, porque a chave do objeto é derivada dele. Na tela de
- * criação o campo é só um aviso — prometer o upload e falhar seria pior do que dizer quando vem.
+ * Campo de imagem enviada pelo produtor: capa do produto, banner e logo do checkout.
+ *
+ * O dono (produto ou checkout) precisa existir, porque a chave do objeto é derivada dele. Na
+ * tela de criação o campo vira aviso em vez de botão — prometer o upload ali e falhar na hora
+ * seria pior do que dizer quando ele aparece.
  */
-export function BannerField({ checkoutId, defaultKey, previewUrl }: { checkoutId?: string; defaultKey: string; previewUrl: string | null }) {
+export function ImageUploadField({
+  name,
+  label,
+  hint,
+  pendingNote,
+  previewClass,
+  ownerId,
+  defaultKey,
+  previewUrl,
+  requestUpload,
+}: {
+  name: string;
+  label: string;
+  hint: string;
+  pendingNote: string;
+  previewClass: string;
+  ownerId?: string;
+  defaultKey: string;
+  previewUrl: string | null;
+  requestUpload: (input: ImageUploadRequest) => Promise<ImageUploadResult>;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [storageKey, setStorageKey] = useState(defaultKey);
   const [preview, setPreview] = useState(previewUrl);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!checkoutId) {
+  if (!ownerId) {
     return (
       <div className="space-y-1.5">
-        <Label>Banner</Label>
-        <p className="rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
-          Crie o checkout primeiro. A imagem de capa fica disponível na tela de edição.
-        </p>
+        <Label>{label}</Label>
+        <p className="rounded-xl border border-dashed p-3 text-xs text-muted-foreground">{pendingNote}</p>
       </div>
     );
   }
@@ -34,8 +66,8 @@ export function BannerField({ checkoutId, defaultKey, previewUrl }: { checkoutId
     setError(null);
     setProgress(0);
     try {
-      const authorized = await requestBannerUpload({
-        checkoutId: checkoutId!,
+      const authorized = await requestUpload({
+        ownerId: ownerId!,
         filename: file.name,
         contentType: file.type || "application/octet-stream",
         sizeBytes: file.size,
@@ -61,11 +93,11 @@ export function BannerField({ checkoutId, defaultKey, previewUrl }: { checkoutId
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor="banner">Banner</Label>
+      <Label htmlFor={`image-${name}`}>{label}</Label>
 
       <input
         ref={inputRef}
-        id="banner"
+        id={`image-${name}`}
         type="file"
         accept="image/jpeg,image/png,image/webp"
         className="sr-only"
@@ -89,7 +121,7 @@ export function BannerField({ checkoutId, defaultKey, previewUrl }: { checkoutId
         <div className="space-y-2">
           {preview && (
             // eslint-disable-next-line @next/next/no-img-element -- URL assinada que expira; otimizar cacharia um link morto
-            <img src={preview} alt="" className="aspect-[16/5] w-full rounded-xl border object-cover" />
+            <img src={preview} alt="" className={`rounded-xl border object-cover ${previewClass}`} />
           )}
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => inputRef.current?.click()}>
@@ -99,7 +131,7 @@ export function BannerField({ checkoutId, defaultKey, previewUrl }: { checkoutId
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="Remover banner"
+              aria-label={`Remover ${label.toLowerCase()}`}
               onClick={() => {
                 setStorageKey("");
                 setPreview(null);
@@ -118,21 +150,16 @@ export function BannerField({ checkoutId, defaultKey, previewUrl }: { checkoutId
           <UploadCloudIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <span className="text-sm">
             Enviar imagem
-            <span className="block text-xs text-muted-foreground">JPG, PNG ou WebP até 4 MB · 16:5 fica melhor</span>
+            <span className="block text-xs text-muted-foreground">
+              JPG, PNG ou WebP até {Math.round(IMAGE_MAX_BYTES / 1_000_000)} MB · {hint}
+            </span>
           </span>
         </button>
       )}
 
-      {!storageKey && !preview && progress === null && (
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <ImageIcon className="size-3.5" aria-hidden />
-          Aparece no topo da página de pagamento.
-        </p>
-      )}
-
       {error && <p className="text-xs text-destructive">{error}</p>}
 
-      <input type="hidden" name="bannerKey" value={storageKey} />
+      <input type="hidden" name={name} value={storageKey} />
     </div>
   );
 }

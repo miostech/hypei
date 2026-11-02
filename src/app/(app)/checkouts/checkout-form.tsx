@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PaymentMethodType } from "@/generated/prisma/enums";
 import { PAYMENT_METHOD_LABELS } from "@/modules/payments/payment-method-resolver";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
-import { BannerField } from "./banner-field";
+import { ImageUploadField } from "@/components/shared/image-upload-field";
+import { requestCheckoutImageUpload } from "./actions";
 
 export interface CheckoutFormValues {
   id?: string;
@@ -22,7 +23,8 @@ export interface CheckoutFormValues {
   headline: string;
   description: string;
   accentColor: string;
-  logoUrl: string;
+  logoKey: string;
+  logoUrl: string | null;
   bannerKey: string;
   bannerUrl: string | null;
   collectPhone: boolean;
@@ -93,8 +95,30 @@ export function CheckoutForm({
               <Label htmlFor="description">Descrição</Label>
               <Textarea id="description" name="description" rows={4} defaultValue={defaultValues.description} maxLength={600} />
             </div>
-            <TextField label="Logo (URL)" name="logoUrl" type="url" defaultValue={defaultValues.logoUrl} placeholder="https://…" error={fieldError("logoUrl")} />
-            <BannerField checkoutId={defaultValues.id} defaultKey={defaultValues.bannerKey} previewUrl={defaultValues.bannerUrl} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ImageUploadField
+                name="logoKey"
+                label="Logo"
+                hint="fica no topo, acima do título"
+                pendingNote="Crie o checkout primeiro. O logo fica disponível na tela de edição."
+                previewClass="h-11 w-auto"
+                ownerId={defaultValues.id}
+                defaultKey={defaultValues.logoKey}
+                previewUrl={defaultValues.logoUrl}
+                requestUpload={requestCheckoutImageUpload}
+              />
+              <ImageUploadField
+                name="bannerKey"
+                label="Banner"
+                hint="16:5 fica melhor"
+                pendingNote="Crie o checkout primeiro. O banner fica disponível na tela de edição."
+                previewClass="aspect-[16/5] w-full"
+                ownerId={defaultValues.id}
+                defaultKey={defaultValues.bannerKey}
+                previewUrl={defaultValues.bannerUrl}
+                requestUpload={requestCheckoutImageUpload}
+              />
+            </div>
           </CardContent>
         </Card>
 

@@ -436,7 +436,7 @@ model Product {
   description    String?
   type           ProductType
   status         ProductStatus @default(DRAFT)
-  thumbnailUrl   String?
+  thumbnailKey   String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

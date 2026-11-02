@@ -5,6 +5,8 @@
  * Uploads never pass through the app server: the browser receives a short-lived signed
  * URL and sends the bytes straight to storage.
  */
+import { logger } from "@/lib/logger";
+
 export interface UploadTarget {
   /** Where the browser sends the file. */
   url: string;
@@ -77,12 +79,31 @@ function extensionOf(filename: string): string {
   return filename.includes(".") ? `.${filename.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "")}` : "";
 }
 
-/** Builds a collision-free object key that also reads well in a bucket listing. */
-export function buildStorageKey(parts: { organizationId: string; courseId: string; filename: string; id: string }): string {
-  return `organizations/${parts.organizationId}/courses/${parts.courseId}/${parts.id}${extensionOf(parts.filename)}`;
+/** O que o objeto pertence: aula de curso, arte de checkout ou capa de produto. */
+export type AssetScope = "courses" | "checkouts" | "products";
+
+/**
+ * Chave sem colisão que também se lê bem numa listagem do bucket. O nome original do arquivo
+ * não entra: ele vem do computador do produtor e traria acento, espaço e barra para dentro da
+ * chave. Só a extensão sobrevive, normalizada.
+ */
+export function buildAssetKey(parts: { organizationId: string; scope: AssetScope; scopeId: string; filename: string; id: string }): string {
+  return `organizations/${parts.organizationId}/${parts.scope}/${parts.scopeId}/${parts.id}${extensionOf(parts.filename)}`;
 }
 
-/** Same shape for art that belongs to a checkout instead of a course. */
-export function buildCheckoutAssetKey(parts: { organizationId: string; checkoutId: string; filename: string; id: string }): string {
-  return `organizations/${parts.organizationId}/checkouts/${parts.checkoutId}/${parts.id}${extensionOf(parts.filename)}`;
+/**
+ * Assina uma imagem do produtor para exibição, e devolve null se não der.
+ *
+ * Engole a falha de propósito. Banner, logo e capa são decoração: na página de pagamento,
+ * trocar a venda inteira por um erro 500 porque a capa não assinou é o pior resultado
+ * possível. Quem renderiza trata o null — ou esconde a imagem, ou mostra as iniciais.
+ */
+export async function signImage(storage: StorageProvider, key: string | null): Promise<string | null> {
+  if (!key) return null;
+  try {
+    return await storage.getDownloadUrl({ key });
+  } catch (error) {
+    logger.warn({ err: error, key }, "could not sign producer image");
+    return null;
+  }
 }

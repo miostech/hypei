@@ -2,12 +2,12 @@ import { randomUUID } from "node:crypto";
 import type { PaymentMethodType, PaymentProviderType } from "@/generated/prisma/enums";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { createDomainEvent } from "@/lib/events/domain-event";
-import { logger } from "@/lib/logger";
 import type { IdempotencyService } from "@/lib/idempotency/idempotency.service";
 import type { TrackingService } from "@/modules/analytics/tracking.service";
 import { resolvePaymentMethods } from "@/modules/payments/payment-method-resolver";
 import type { PaymentService } from "@/modules/payments/payment.service";
-import { buildCheckoutAssetKey, type StorageProvider } from "@/lib/providers/storage";
+import { assertUploadableImage } from "@/lib/images";
+import { buildAssetKey, signImage, type StorageProvider } from "@/lib/providers/storage";
 import type { UnitOfWork } from "@/server/unit-of-work";
 import type { CheckoutConfigRepository } from "./checkout-config.repository";
 import { checkoutConfigSchema, type CheckoutConfig } from "./checkout-config.schema";
@@ -17,9 +17,6 @@ import { money } from "@/lib/money";
 import type { TaxService } from "@/modules/taxes/tax.service";
 import { CouponNotUsableError, type CouponService } from "@/modules/coupons/coupon.service";
 import type { CheckoutBuilderInput, StartCheckoutInput } from "./checkout.schemas";
-
-const BANNER_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const BANNER_MAX_BYTES = 4_000_000;
 
 export interface StartCheckoutResult {
   orderId: string;
@@ -48,45 +45,26 @@ export class CheckoutService {
   ) {}
 
   /**
-   * Autoriza o envio do banner direto para o storage. O arquivo nunca passa pelo servidor:
-   * o navegador pede aqui, recebe uma URL que expira e manda os bytes para o bucket.
-   *
-   * O teto é baixo de propósito. É arte de topo de página numa tela de pagamento, onde cada
-   * segundo de carregamento custa venda — não é lugar para o PNG de 20 MB que saiu do Canva.
+   * Autoriza o envio de uma arte do checkout — banner ou logo — direto para o storage. O
+   * arquivo nunca passa pelo servidor: o navegador pede aqui, recebe uma URL que expira e manda
+   * os bytes para o bucket. Qual campo guarda a chave é decisão de quem chama.
    */
-  async createBannerUpload(
+  async createImageUpload(
     organizationId: string,
     checkoutId: string,
     input: { filename: string; contentType: string; sizeBytes: number },
   ) {
     const checkout = await this.uow.repos.checkouts.findById(organizationId, checkoutId);
     if (!checkout) throw new NotFoundError("Checkout", checkoutId);
+    assertUploadableImage(input);
 
-    if (!BANNER_TYPES.includes(input.contentType)) {
-      throw new ValidationError("Use uma imagem JPG, PNG ou WebP");
-    }
-    if (input.sizeBytes <= 0) throw new ValidationError("Arquivo vazio");
-    if (input.sizeBytes > BANNER_MAX_BYTES) {
-      throw new ValidationError(`A imagem passa do limite de ${Math.round(BANNER_MAX_BYTES / 1_000_000)} MB`);
-    }
-
-    const key = buildCheckoutAssetKey({ organizationId, checkoutId, filename: input.filename, id: randomUUID() });
+    const key = buildAssetKey({ organizationId, scope: "checkouts", scopeId: checkoutId, filename: input.filename, id: randomUUID() });
     return this.storage.createUpload({ key, contentType: input.contentType });
   }
 
-  /**
-   * URL curta para mostrar o banner. Engole a falha de propósito: isto roda na página de
-   * pagamento, e derrubar a venda inteira porque a decoração não carregou é o pior resultado
-   * possível. Sem banner a página continua vendendo.
-   */
-  async bannerUrl(bannerKey: string | null): Promise<string | null> {
-    if (!bannerKey) return null;
-    try {
-      return await this.storage.getDownloadUrl({ key: bannerKey });
-    } catch (error) {
-      logger.warn({ err: error, bannerKey }, "could not sign checkout banner");
-      return null;
-    }
+  /** URL curta para mostrar banner, logo ou capa. Sem imagem a página continua vendendo. */
+  assetUrl(key: string | null): Promise<string | null> {
+    return signImage(this.storage, key);
   }
 
   list(organizationId: string) {
@@ -156,7 +134,7 @@ export class CheckoutService {
       /** False while the provider has not enabled charges: the page hides the form. */
       acceptsPayments: merchant?.chargesEnabled ?? false,
       organization: { id: checkout.organization.id, name: checkout.organization.name, slug: checkout.organization.slug, country: checkout.organization.country, supportEmail: checkout.organization.supportEmail },
-      product: { id: checkout.offer.product.id, name: checkout.offer.product.name, description: checkout.offer.product.description, type: checkout.offer.product.type, thumbnailUrl: checkout.offer.product.thumbnailUrl },
+      product: { id: checkout.offer.product.id, name: checkout.offer.product.name, description: checkout.offer.product.description, type: checkout.offer.product.type, thumbnailKey: checkout.offer.product.thumbnailKey },
       // Official price: ALWAYS from the Offer in PostgreSQL.
       offer: {
         id: checkout.offer.id,
@@ -325,7 +303,7 @@ export class CheckoutService {
   private toConfig(input: CheckoutBuilderInput): CheckoutConfig {
     return checkoutConfigSchema.parse({
       theme: { mode: "light", accentColor: input.accentColor },
-      logoUrl: input.logoUrl || null,
+      logoKey: input.logoKey || null,
       bannerKey: input.bannerKey || null,
       headline: input.headline,
       description: input.description ?? "",

@@ -9,7 +9,7 @@ export const productInputSchema = z.object({
   description: z.string().trim().max(2000).optional().or(z.literal("")),
   type: z.enum(ProductType),
   status: z.enum(ProductStatus),
-  thumbnailUrl: z.string().trim().url("URL inválida").optional().or(z.literal("")),
+  thumbnailKey: z.string().trim().max(300).optional().or(z.literal("")),
 });
 
 export type ProductInput = z.infer<typeof productInputSchema>;
