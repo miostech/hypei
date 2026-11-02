@@ -26,7 +26,7 @@ const TAX_PLACEHOLDER: Record<string, string> = {
   TIN: "000000000",
 };
 
-export function OnboardingForm({ defaultEmail }: { defaultEmail: string }) {
+export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: string; providerName: string }) {
   const [state, formAction] = useActionState(completeOnboarding, idleState);
   const [currentStep, setStep] = useState(0);
   const [country, setCountry] = useState<CountryCode>("BR");
@@ -173,11 +173,15 @@ export function OnboardingForm({ defaultEmail }: { defaultEmail: string }) {
           <div className={step === 3 ? "space-y-4" : "hidden"}>
             <div className="flex gap-3 rounded-lg border bg-muted/40 p-4 text-sm">
               <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-primary" />
-              <div className="space-y-1">
-                <p className="font-medium">Verificação e dados bancários</p>
+              <div className="space-y-2">
+                <p className="font-medium">Verificação no {providerName}</p>
                 <p className="text-muted-foreground">
-                  Ao concluir, criamos sua conta de recebimento no provedor de pagamentos. Os documentos e a conta bancária são enviados direto para
-                  ele — a Kabrun não armazena esses dados. Você pode concluir a verificação depois, em Integrações.
+                  Ao concluir, criamos sua conta de recebimento no {providerName}. Documento e conta bancária você preenche no site dele — a Kabrun não
+                  vê nem guarda esses dados, só o identificador da conta e o que ainda falta verificar.
+                </p>
+                <p className="text-muted-foreground">
+                  Enquanto o {providerName} não aprovar, <span className="font-medium text-foreground">o saque fica bloqueado</span>. Pode verificar
+                  agora ou depois, em Integrações.
                 </p>
               </div>
             </div>
