@@ -99,17 +99,24 @@ export function LessonMedia({
     );
   }
 
-  const label = type === "LIVE" ? "Entrar na transmissão" : type === "DOWNLOAD" ? "Baixar material" : "Abrir material";
-  const Icon = type === "LIVE" ? RadioIcon : type === "DOWNLOAD" ? DownloadIcon : ExternalLinkIcon;
+  // Mesma regra do serviço: PDF e Download viram anexo com o nome do arquivo original.
+  const download = type === "DOWNLOAD" || type === "PDF";
+  const label = type === "LIVE" ? "Entrar na transmissão" : download ? "Baixar material" : "Abrir material";
+  const Icon = type === "LIVE" ? RadioIcon : download ? DownloadIcon : ExternalLinkIcon;
+  // `mediaType` só existe em arquivo enviado pelo produtor; link de terceiro não tem.
+  const hint =
+    type === "LIVE"
+      ? "O encontro acontece no link abaixo."
+      : mediaType
+        ? "O link de download expira: salve o arquivo no seu dispositivo."
+        : "O material desta aula está hospedado fora da plataforma.";
 
   return (
     <div className="flex flex-col items-center gap-4 rounded-2xl border bg-card p-10 text-center shadow-soft">
       <span className="bg-brand-gradient flex size-12 items-center justify-center rounded-2xl text-white">
         <Icon className="size-6" aria-hidden />
       </span>
-      <p className="text-sm text-muted-foreground">
-        {type === "LIVE" ? "O encontro acontece no link abaixo." : "O material desta aula está hospedado fora da plataforma."}
-      </p>
+      <p className="text-sm text-muted-foreground">{hint}</p>
       <Button render={<a href={url.toString()} target="_blank" rel="noopener noreferrer" />}>
         <Icon />
         {label}

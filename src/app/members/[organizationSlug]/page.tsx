@@ -1,4 +1,4 @@
-import { BookOpenIcon, LockIcon, PlayCircleIcon } from "lucide-react";
+import { BookOpenIcon, DownloadIcon, LockIcon, PlayCircleIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { KabrunLogo } from "@/components/brand/logo";
@@ -34,12 +34,13 @@ export default async function MembersHomePage({ params }: PageProps<"/members/[o
 
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-5 p-4 sm:p-6">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Seus cursos</h1>
+          {/* Nem todo conteúdo é curso: um ebook também aparece aqui. */}
+          <h1 className="font-heading text-2xl font-bold tracking-tight">Seus produtos</h1>
           <p className="text-sm text-muted-foreground">Tudo que você comprou fica disponível aqui.</p>
         </div>
 
         {courses.length === 0 ? (
-          <EmptyState icon={BookOpenIcon} title="Nenhum conteúdo publicado" description="Assim que o produtor publicar um curso, ele aparece aqui." />
+          <EmptyState icon={BookOpenIcon} title="Nenhum conteúdo publicado" description="Assim que o produtor publicar um conteúdo, ele aparece aqui." />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {courses.map(({ course, unlocked, percentage, completedLessons, totalLessons, preview }) => {
@@ -61,10 +62,11 @@ export default async function MembersHomePage({ params }: PageProps<"/members/[o
 
                     {unlocked ? (
                       <div className="space-y-3 border-t pt-3">
-                        <CourseProgressBar percentage={percentage} completed={completedLessons} total={totalLessons} />
+                        {/* Entrega de arquivo único não tem progresso: ou você baixou, ou não. */}
+                        {totalLessons > 1 && <CourseProgressBar percentage={percentage} completed={completedLessons} total={totalLessons} />}
                         <p className="flex items-center gap-1.5 text-sm font-medium text-primary">
-                          <PlayCircleIcon className="size-4" aria-hidden />
-                          {percentage > 0 ? "Continuar" : "Começar"}
+                          {totalLessons === 1 ? <DownloadIcon className="size-4" aria-hidden /> : <PlayCircleIcon className="size-4" aria-hidden />}
+                          {totalLessons === 1 ? "Acessar" : percentage > 0 ? "Continuar" : "Começar"}
                         </p>
                       </div>
                     ) : (

@@ -2,15 +2,17 @@ import { PlayCircleIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CourseOutlineList } from "@/components/members/course-outline";
+import { LessonMedia } from "@/components/members/lesson-media";
 import { MembersHeader } from "@/components/members/members-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NotFoundError } from "@/lib/errors";
 import { memberHomeHref, memberLessonHref } from "@/lib/ui/routes";
 import { requireUser } from "@/modules/auth/current-user";
+import { LESSON_TYPE_LABELS } from "@/modules/members/course.schemas";
 import { getServices } from "@/server/container";
 
-export const metadata = { title: "Curso" };
+export const metadata = { title: "Conteúdo" };
 
 export default async function CoursePage({ params }: PageProps<"/members/[organizationSlug]/courses/[courseSlug]">) {
   const { organizationSlug, courseSlug } = await params;
@@ -32,6 +34,36 @@ export default async function CoursePage({ params }: PageProps<"/members/[organi
 
   const outline = await services.memberArea.outline(organization.id, courseSlug, access);
   const started = outline.completedLessons > 0;
+
+  // Conteúdo de uma aula só é entrega, não curso: ebook, planilha, template, pack.
+  // Módulo, barra de progresso e "começar o curso" só atrapalham quem comprou um arquivo.
+  const lessons = course.modules.flatMap((module) => module.lessons);
+  const single = lessons.length === 1 ? lessons[0] : null;
+
+  if (single) {
+    const mediaUrl = (await services.courses.lessonMediaUrl(single)) ?? single.externalUrl;
+
+    return (
+      <div className="flex min-h-svh flex-col bg-muted/40">
+        <MembersHeader
+          title={course.title}
+          subtitle={single.storageFilename ?? LESSON_TYPE_LABELS[single.type]}
+          backHref={memberHomeHref(organizationSlug)}
+          user={user}
+          meta={access.kind === "preview" ? <Badge variant="outline">Prévia da equipe</Badge> : undefined}
+        />
+
+        <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 p-4 sm:p-6">
+          <div className="space-y-2">
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-balance">{course.title}</h1>
+            {course.description && <p className="text-pretty text-muted-foreground">{course.description}</p>}
+          </div>
+
+          <LessonMedia type={single.type} externalUrl={mediaUrl} content={single.content} mediaType={single.storageType} />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">

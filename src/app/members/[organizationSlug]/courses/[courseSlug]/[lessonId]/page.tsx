@@ -2,7 +2,7 @@ import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, ListIcon, RotateCcwIcon } fro
 import type { Route } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CourseOutlineList, LESSON_ICON } from "@/components/members/course-outline";
 import { MembersHeader } from "@/components/members/members-header";
 import { LessonMedia } from "@/components/members/lesson-media";
@@ -34,6 +34,13 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
   // Someone without access is told the course does not exist, rather than that it
   // exists and is closed to them. `forbidden()` would need an experimental flag.
   if (!access) notFound();
+
+  // Entrega de arquivo único mora na página do conteúdo. Aqui o arquivo viria com índice,
+  // contador de concluídas e "próxima aula" — justamente o que essa entrega não tem.
+  // Antes de `openLesson` para não gravar progresso de algo que não tem progresso.
+  if (course.modules.reduce((total, module) => total + module.lessons.length, 0) === 1) {
+    redirect(memberCourseHref(organizationSlug, courseSlug));
+  }
 
   const view = await services.memberArea.openLesson(organization.id, courseSlug, lessonId, access).catch((error) => {
     if (error instanceof NotFoundError) notFound();
