@@ -1,9 +1,13 @@
 import "dotenv/config";
 import { createPrismaClient } from "../src/lib/database/postgres/client";
+import { PUBLISHED_PLATFORM_FEE } from "../src/modules/fees/fee.calculator";
 
 /**
  * Seeds the financial POLICIES the platform needs to operate.
- * Values here are placeholders for development — Kabrun's real pricing is not defined yet.
+ *
+ * O prazo de settlement ainda é placeholder de desenvolvimento. A taxa não é mais: ela sai de
+ * PUBLISHED_PLATFORM_FEE, a mesma constante que a landing page anuncia, para que o que o
+ * produtor lê na página e o que o ledger cobra não possam divergir.
  */
 async function main() {
   const prisma = createPrismaClient(process.env.DATABASE_URL!);
@@ -27,10 +31,10 @@ async function main() {
     else await prisma.settlementPolicy.create({ data: policy });
   }
 
-  // Placeholder platform fee: 10% + 0 fixed, per currency.
+  // A taxa anunciada, por moeda. O fixo é em unidades menores da moeda da venda.
   for (const currency of ["BRL", "EUR", "USD"]) {
     const existing = await prisma.platformFeePolicy.findFirst({ where: { organizationId: null, country: null, currency } });
-    const data = { currency, percentageBps: 1000, fixedAmount: 0n, active: true };
+    const data = { currency, ...PUBLISHED_PLATFORM_FEE, active: true };
     if (existing) await prisma.platformFeePolicy.update({ where: { id: existing.id }, data });
     else await prisma.platformFeePolicy.create({ data });
   }

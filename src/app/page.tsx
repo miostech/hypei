@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { SUPPORTED_COUNTRIES } from "@/modules/organizations/countries";
 import { PROCESSABLE_PAYMENT_METHODS } from "@/modules/payments/payment-method-resolver";
 import { SUPPORTED_CURRENCIES } from "@/lib/money/currency";
+import { PUBLISHED_PLATFORM_FEE } from "@/modules/fees/fee.calculator";
+import { formatAmount } from "@/lib/ui/format";
 
 const SIGNUP_HREF = "/api/auth/login?signup=1&returnTo=%2Fonboarding";
 
@@ -83,6 +85,18 @@ const SWITCH = [
   },
 ];
 
+/** Formatados a partir da constante: a página não pode anunciar um número que o ledger não cobra. */
+const FEE_PERCENTAGE = (PUBLISHED_PLATFORM_FEE.percentageBps / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+const FEE_FIXED = formatAmount(PUBLISHED_PLATFORM_FEE.fixedAmount, "BRL");
+
+const INCLUDED = [
+  "Checkout em real, euro e dólar",
+  "Tradução das aulas para inglês e espanhol",
+  "Área de membros, com acesso liberado na confirmação do pagamento",
+  "Ledger auditável, saldo e saques",
+  "Afiliados, cupons e assinaturas",
+];
+
 const STEPS = [
   { title: "Compra", text: "O comprador paga no seu checkout, na moeda e no método do país dele." },
   { title: "Confirmação", text: "O provedor confirma o pagamento e a Kabrun registra a venda no ledger." },
@@ -105,6 +119,9 @@ export default function LandingPage() {
             </Link>
             <Link href="#como-funciona" className="transition-colors hover:text-foreground">
               Como funciona
+            </Link>
+            <Link href="#precos" className="transition-colors hover:text-foreground">
+              Preço
             </Link>
           </div>
           <div className="flex items-center gap-2">
@@ -270,7 +287,46 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:py-24">
+        <section id="precos" className="mx-auto w-full max-w-6xl px-4 py-20 sm:py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">Preço</p>
+            <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight text-balance sm:text-4xl">Você só paga se vender</h2>
+            <p className="mt-4 text-pretty text-muted-foreground">Sem mensalidade, sem taxa de setup e sem fidelidade.</p>
+          </div>
+
+          <div className="mx-auto mt-12 max-w-lg rounded-3xl border bg-card p-8 text-center shadow-lift sm:p-10">
+            <p className="font-heading text-5xl font-extrabold tracking-tight sm:text-6xl">
+              <span className="text-brand-gradient">{FEE_PERCENTAGE}%</span>
+            </p>
+            <p className="mt-2 text-lg font-medium">+ {FEE_FIXED} por venda aprovada</p>
+
+            <ul className="mt-8 space-y-2.5 text-left text-sm">
+              {INCLUDED.map((item) => (
+                <li key={item} className="flex items-start gap-2.5">
+                  <CheckIcon className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+                  <span className="text-pretty">{item}</span>
+                </li>
+              ))}
+            </ul>
+
+            <Button
+              size="lg"
+              className="bg-gold-gradient mt-8 w-full border-0 text-gold-foreground shadow-gold hover:opacity-90"
+              render={<a href={SIGNUP_HREF} />}
+            >
+              Criar conta grátis
+              <ArrowRightIcon />
+            </Button>
+          </div>
+
+          {/* O fixo é cobrado na moeda da venda, então em euro e em dólar ele é bem mais caro em
+              valor. Dizer isso aqui custa menos que o produtor descobrir no primeiro extrato. */}
+          <p className="mt-4 text-center text-xs text-pretty text-muted-foreground">
+            Em vendas de fora, a porcentagem é a mesma e o valor fixo é cobrado na moeda da venda.
+          </p>
+        </section>
+
+        <section className="mx-auto w-full max-w-6xl px-4 pb-20 sm:pb-24">
           <div className="bg-brand-gradient relative isolate overflow-hidden rounded-3xl px-6 py-14 text-center text-white shadow-lift sm:px-12">
             <span aria-hidden className="bg-dot-grid pointer-events-none absolute inset-0 text-white/15 opacity-40" />
             <span
