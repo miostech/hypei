@@ -2,6 +2,15 @@ import { z } from "zod";
 import { PaymentMethodType } from "@/generated/prisma/enums";
 import { slugSchema } from "@/modules/organizations/organization.schemas";
 
+/**
+ * Piso da garantia, em dias.
+ *
+ * Não é preferência de produto: o art. 49 do CDC dá ao comprador sete dias para desistir de
+ * compra feita fora do estabelecimento. Anunciar menos que isso não reduz o direito dele, só
+ * cria promessa que a plataforma teria de quebrar no primeiro pedido de reembolso.
+ */
+export const GUARANTEE_MIN_DAYS = 7;
+
 export const checkoutBuilderSchema = z.object({
   offerId: z.string().min(1, "Selecione uma oferta"),
   name: z.string().trim().min(2).max(80),
@@ -12,7 +21,7 @@ export const checkoutBuilderSchema = z.object({
   logoKey: z.string().trim().max(300).optional().or(z.literal("")),
   bannerKey: z.string().trim().max(300).optional().or(z.literal("")),
   collectPhone: z.boolean(),
-  guaranteeDays: z.coerce.number().int().min(0).max(365),
+  guaranteeDays: z.coerce.number().int().min(GUARANTEE_MIN_DAYS, `A garantia é de no mínimo ${GUARANTEE_MIN_DAYS} dias`).max(365),
   enabledPaymentMethods: z.array(z.enum(PaymentMethodType)),
 });
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PaymentMethodType } from "@/generated/prisma/enums";
+import { GUARANTEE_MIN_DAYS } from "./checkout.schemas";
 
 /**
  * Presentation-only checkout configuration (MongoDB). Never contains the price:
@@ -31,7 +32,10 @@ export const checkoutConfigSchema = z.object({
     .object({ metaPixelId: z.string().nullable(), googleTagId: z.string().nullable() })
     .default({ metaPixelId: null, googleTagId: null }),
   styles: z.record(z.string(), z.string()).default({}),
-  guaranteeDays: z.number().int().min(0).max(365).default(7),
+  // O piso de GUARANTEE_MIN_DAYS vale para quem salva agora, e por isso mora no schema do
+  // formulário. Aqui ele não entra: este schema lê versões já gravadas, e recusar uma versão
+  // antiga com garantia menor derrubaria a página de pagamento que um pedido antigo registrou.
+  guaranteeDays: z.number().int().min(0).max(365).default(GUARANTEE_MIN_DAYS),
 });
 
 export type CheckoutConfig = z.infer<typeof checkoutConfigSchema>;

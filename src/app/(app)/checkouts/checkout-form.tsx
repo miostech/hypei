@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PaymentMethodType } from "@/generated/prisma/enums";
 import { PAYMENT_METHOD_LABELS } from "@/modules/payments/payment-method-resolver";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
+import { GUARANTEE_MIN_DAYS } from "@/modules/checkout/checkout.schemas";
 import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { requestCheckoutImageUpload } from "./actions";
 
@@ -168,7 +169,16 @@ export function CheckoutForm({
                 <span className="text-sm text-muted-foreground">{accent}</span>
               </div>
             </div>
-            <TextField label="Garantia (dias)" name="guaranteeDays" type="number" min={0} max={365} defaultValue={defaultValues.guaranteeDays} />
+            <TextField
+              label="Garantia (dias)"
+              name="guaranteeDays"
+              type="number"
+              min={GUARANTEE_MIN_DAYS}
+              max={365}
+              defaultValue={defaultValues.guaranteeDays}
+              hint={`No mínimo ${GUARANTEE_MIN_DAYS} dias: é o direito de arrependimento do CDC em compra pela internet.`}
+              error={fieldError("guaranteeDays")}
+            />
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="collectPhone">Pedir telefone</Label>
               <Switch id="collectPhone" name="collectPhone" defaultChecked={defaultValues.collectPhone} />

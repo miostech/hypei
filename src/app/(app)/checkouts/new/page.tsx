@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatAmount } from "@/lib/ui/format";
+import { GUARANTEE_MIN_DAYS } from "@/modules/checkout/checkout.schemas";
 import { resolvePaymentMethods } from "@/modules/payments/payment-method-resolver";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
@@ -41,7 +42,7 @@ export default async function NewCheckoutPage() {
           bannerKey: "",
           bannerUrl: null,
           collectPhone: false,
-          guaranteeDays: 7,
+          guaranteeDays: GUARANTEE_MIN_DAYS,
           enabledPaymentMethods: [],
         }}
       />

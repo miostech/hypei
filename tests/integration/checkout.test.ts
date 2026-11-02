@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
+import { checkoutConfigSchema } from "@/modules/checkout/checkout-config.schema";
+import { checkoutBuilderSchema, GUARANTEE_MIN_DAYS } from "@/modules/checkout/checkout.schemas";
 import { createSeller, createTestApp, startPurchase, type TestApp } from "../support/test-app";
 
 describe("Checkout", () => {
@@ -68,6 +70,33 @@ describe("Checkout", () => {
     const view = await app.services.checkouts.getPublic(checkout.slug);
     expect(view?.config.headline).toBe("Nova headline");
     expect(view?.version).toBe(2);
+  });
+
+  /**
+   * O input do formulário tem min=7, mas isso é só o navegador. Quem posta direto no server
+   * action tem que esbarrar na mesma parede: o art. 49 do CDC dá sete dias ao comprador, e
+   * anunciar menos só criaria promessa que a plataforma quebraria no primeiro reembolso.
+   */
+  it("recusa garantia menor que o mínimo do CDC", () => {
+    const base = {
+      offerId: "off_1",
+      name: "Checkout",
+      slug: "checkout",
+      headline: "Garanta seu acesso",
+      accentColor: "#111111",
+      collectPhone: false,
+      enabledPaymentMethods: [],
+    };
+
+    expect(() => checkoutBuilderSchema.parse({ ...base, guaranteeDays: 0 })).toThrow();
+    expect(() => checkoutBuilderSchema.parse({ ...base, guaranteeDays: GUARANTEE_MIN_DAYS - 1 })).toThrow();
+    expect(checkoutBuilderSchema.parse({ ...base, guaranteeDays: GUARANTEE_MIN_DAYS }).guaranteeDays).toBe(GUARANTEE_MIN_DAYS);
+  });
+
+  /** Versão antiga com garantia menor continua legível: recusá-la derrubaria a página. */
+  it("ainda lê uma configuração gravada antes do piso", () => {
+    const config = checkoutConfigSchema.parse({ theme: {}, headline: "Oi", fields: {}, guaranteeDays: 3 });
+    expect(config.guaranteeDays).toBe(3);
   });
 
   it("hides checkouts of inactive offers", async () => {

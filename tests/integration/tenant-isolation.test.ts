@@ -51,7 +51,7 @@ describe("Tenant isolation", () => {
         headline: "x",
         accentColor: "#000000",
         collectPhone: false,
-        guaranteeDays: 0,
+        guaranteeDays: 7,
         enabledPaymentMethods: [],
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
