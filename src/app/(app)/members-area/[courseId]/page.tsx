@@ -26,7 +26,7 @@ import { requirePagePermission } from "@/modules/organizations/current-organizat
 import { hasPermission } from "@/modules/organizations/permissions";
 import { getServices } from "@/server/container";
 import { deleteLesson, deleteModule, moveLesson, moveModule, setCoursePublished, updateCourseSettings } from "../actions";
-import { LessonDialog, ModuleDialog } from "../content-dialogs";
+import { DeleteCourseDialog, LessonDialog, ModuleDialog } from "../content-dialogs";
 import { CourseForm } from "../course-form";
 
 export const metadata = { title: "Editar curso" };
@@ -238,6 +238,18 @@ export default async function CourseEditorPage({ params }: PageProps<"/members-a
               )}
             </CardContent>
           </Card>
+
+          {canEdit && (
+            <Card className="border-destructive/30">
+              <CardHeader className="border-b pb-4">
+                <CardTitle>Apagar conteúdo</CardTitle>
+                <CardDescription>Use quando o conteúdo foi criado no produto errado — é um conteúdo por produto.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DeleteCourseDialog courseId={course.id} title={course.title} students={students} />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </>

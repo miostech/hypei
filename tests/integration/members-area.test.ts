@@ -196,3 +196,81 @@ describe("Members area editor", () => {
     expect((await app.services.courses.list(seller.organization.id))[0]._count.enrollments).toBe(1);
   });
 });
+
+/**
+ * Apagar cascateia para módulos, aulas, matrículas e progresso. É a única operação do editor
+ * sem volta nem histórico, então a regra de quando ela é recusada importa mais que a de quando
+ * ela funciona.
+ */
+describe("Apagar conteúdo", () => {
+  let app: TestApp;
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  async function courseWithLesson(app: TestApp, seller: Awaited<ReturnType<typeof createSeller>>) {
+    const course = await app.services.courses.create(seller.organization.id, seller.user.id, {
+      productId: seller.product.id,
+      title: "Conteúdo",
+      slug: `conteudo-${seller.organization.slug}`,
+      description: "",
+    });
+    const courseModule = await app.services.courses.addModule(seller.organization.id, course.id, "Módulo");
+    await app.services.courses.addLesson(seller.organization.id, courseModule!.id, lesson("Aula"));
+    return course;
+  }
+
+  it("apaga o conteúdo, mantém o produto e libera ele para um conteúdo novo", async () => {
+    const seller = await createSeller(app);
+    const course = await courseWithLesson(app, seller);
+
+    await app.services.courses.remove(seller.organization.id, seller.user.id, course.id);
+
+    expect(await app.prisma.course.count({ where: { id: course.id } })).toBe(0);
+    expect(await app.prisma.lesson.count()).toBe(0);
+    expect(await app.prisma.product.count({ where: { id: seller.product.id } })).toBe(1);
+    // É esta a razão de existir do botão: o produto errado deixava de ser utilizável.
+    await expect(
+      app.services.courses.create(seller.organization.id, seller.user.id, {
+        productId: seller.product.id,
+        title: "Conteúdo novo",
+        slug: "conteudo-novo",
+        description: "",
+      }),
+    ).resolves.toMatchObject({ productId: seller.product.id });
+  });
+
+  it("recusa quando alguém comprou, porque o progresso do aluno iria junto", async () => {
+    const seller = await createSeller(app);
+    const course = await courseWithLesson(app, seller);
+    await app.services.courses.setPublished(seller.organization.id, seller.user.id, course.id, true);
+    const { payment } = await startPurchase(app, seller.checkout.slug);
+    await confirmPayment(app, payment);
+
+    await expect(app.services.courses.remove(seller.organization.id, seller.user.id, course.id)).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(await app.prisma.course.count({ where: { id: course.id } })).toBe(1);
+  });
+
+  it("volta a permitir depois que o acesso foi revogado", async () => {
+    const seller = await createSeller(app);
+    const course = await courseWithLesson(app, seller);
+    await app.services.courses.setPublished(seller.organization.id, seller.user.id, course.id, true);
+    const { payment } = await startPurchase(app, seller.checkout.slug);
+    await confirmPayment(app, payment);
+
+    const enrollment = await app.prisma.enrollment.findFirstOrThrow({ where: { courseId: course.id } });
+    await app.prisma.enrollment.update({ where: { id: enrollment.id }, data: { status: "REVOKED" } });
+
+    await app.services.courses.remove(seller.organization.id, seller.user.id, course.id);
+    expect(await app.prisma.course.count({ where: { id: course.id } })).toBe(0);
+  });
+
+  it("não apaga conteúdo de outra organização", async () => {
+    const mine = await createSeller(app);
+    const theirs = await createSeller(app);
+    const course = await courseWithLesson(app, theirs);
+
+    await expect(app.services.courses.remove(mine.organization.id, mine.user.id, course.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(await app.prisma.course.count({ where: { id: course.id } })).toBe(1);
+  });
+});

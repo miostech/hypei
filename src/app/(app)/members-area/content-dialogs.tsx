@@ -1,6 +1,6 @@
 "use client";
 
-import { PencilIcon, PlusIcon } from "lucide-react";
+import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useActionState, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { TextField } from "@/components/shared/form-field";
@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { LessonType } from "@/generated/prisma/enums";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
 import { LESSON_TYPE_LABELS } from "@/modules/members/course.schemas";
-import { addLesson, addModule, renameModule, updateLesson } from "./actions";
+import { addLesson, addModule, deleteCourse, renameModule, updateLesson } from "./actions";
 import { LessonFileField, type UploadedFile } from "./lesson-file-field";
 
 /** Dialog that closes itself once the action succeeds, without syncing state in an effect. */
@@ -196,6 +196,54 @@ export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string;
               Cancelar
             </Button>
             <SubmitButton>{lesson ? "Salvar aula" : "Adicionar aula"}</SubmitButton>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Apagar conteúdo é o único destrutivo que não tem volta nem histórico — módulos, aulas e
+ * arquivos enviados somem junto —, então é o único que pergunta antes.
+ */
+export function DeleteCourseDialog({ courseId, title, students }: { courseId: string; title: string; students: number }) {
+  const [opened, setOpened] = useState(false);
+
+  if (students > 0) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Não dá para apagar: {students} aluno(s) têm acesso. Despublique para esconder da área de membros sem perder o histórico.
+      </p>
+    );
+  }
+
+  return (
+    <Dialog open={opened} onOpenChange={setOpened}>
+      <DialogTrigger
+        render={
+          <Button variant="outline" className="w-full text-destructive hover:text-destructive">
+            <Trash2Icon />
+            Apagar conteúdo
+          </Button>
+        }
+      />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Apagar “{title}”?</DialogTitle>
+          <DialogDescription>
+            Os módulos, as aulas e os arquivos enviados vão junto, e não há como desfazer. O produto continua existindo e pode receber um conteúdo novo.
+          </DialogDescription>
+        </DialogHeader>
+        <form action={deleteCourse}>
+          <input type="hidden" name="courseId" value={courseId} />
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setOpened(false)}>
+              Cancelar
+            </Button>
+            <SubmitButton variant="destructive" pendingLabel="Apagando…">
+              Apagar
+            </SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

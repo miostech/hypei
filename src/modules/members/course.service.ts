@@ -1,4 +1,5 @@
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { randomUUID } from "node:crypto";
 import type { LessonType } from "@/generated/prisma/enums";
 import { buildStorageKey, type StorageProvider } from "@/lib/providers/storage";
@@ -131,6 +132,40 @@ export class CourseService {
       await repos.audit.record({ organizationId, userId, action: "course.updated", entity: "Course", entityId: courseId });
       return course;
     });
+  }
+
+  /**
+   * Apagar leva junto módulos, aulas, matrículas e o progresso dos alunos, então aluno com
+   * acesso ativo bloqueia. A necessidade real do produtor é desfazer conteúdo criado no
+   * produto errado — e isso acontece antes de alguém ter comprado. Depois disso o caminho é
+   * despublicar, que esconde do aluno sem destruir o histórico.
+   */
+  async remove(organizationId: string, userId: string, courseId: string) {
+    const orphanKeys = await this.uow.transaction(async (repos) => {
+      const course = await repos.courses.findById(organizationId, courseId);
+      if (!course) throw new NotFoundError("Course", courseId);
+      const students = await repos.courses.countEnrollments(courseId);
+      if (students > 0) {
+        throw new ConflictError(`Este conteúdo tem ${students} aluno(s) com acesso. Despublique em vez de apagar.`);
+      }
+      const keys = course.modules.flatMap((module) => module.lessons.map((lesson) => lesson.storageKey).filter((key) => key !== null));
+      await repos.courses.delete(organizationId, courseId);
+      await repos.audit.record({
+        organizationId,
+        userId,
+        action: "course.deleted",
+        entity: "Course",
+        entityId: courseId,
+        metadata: { title: course.title, productId: course.productId, lessons: keys.length },
+      });
+      return keys;
+    });
+
+    // Depois do commit e sem derrubar a operação: o banco é a fonte de verdade, e arquivo
+    // órfão no bucket é mais barato do que conteúdo que volta porque o storage recusou.
+    for (const key of orphanKeys) {
+      await this.storage.deleteObject(key).catch((err) => logger.warn({ err, key }, "orphan object left in storage"));
+    }
   }
 
   async setPublished(organizationId: string, userId: string, courseId: string, published: boolean) {

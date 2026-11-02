@@ -59,6 +59,14 @@ export async function setCoursePublished(formData: FormData): Promise<void> {
   revalidateCourse(courseId);
 }
 
+export async function deleteCourse(formData: FormData): Promise<void> {
+  const { organization, userId } = await requirePermission(EDIT);
+  await getServices().courses.remove(organization.id, userId, String(formData.get("courseId")));
+  // Sem id: a rota do curso não existe mais.
+  revalidateCourse();
+  redirect("/members-area");
+}
+
 // ── Modules ────────────────────────────────────────────────────────────────
 export async function addModule(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {

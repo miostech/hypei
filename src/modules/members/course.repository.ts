@@ -31,6 +31,8 @@ export interface CourseRepository {
   slugTaken(organizationId: string, slug: string, exceptId?: string): Promise<boolean>;
   create(organizationId: string, productId: string, record: CourseWriteRecord): Promise<Course>;
   update(organizationId: string, courseId: string, record: Partial<CourseWriteRecord & { published: boolean }>): Promise<Course | null>;
+  /** Cascades to modules, lessons, enrollments and progress. Guarded in the service. */
+  delete(organizationId: string, courseId: string): Promise<boolean>;
 
   createModule(organizationId: string, courseId: string, title: string): Promise<Module | null>;
   updateModule(organizationId: string, moduleId: string, title: string): Promise<boolean>;
@@ -104,6 +106,11 @@ export class PrismaCourseRepository implements CourseRepository {
     const result = await this.db.course.updateMany({ where: { id: courseId, organizationId }, data: record });
     if (result.count === 0) return null;
     return this.db.course.findFirst({ where: { id: courseId, organizationId } });
+  }
+
+  async delete(organizationId: string, courseId: string) {
+    const result = await this.db.course.deleteMany({ where: { id: courseId, organizationId } });
+    return result.count > 0;
   }
 
   // ── Modules ──────────────────────────────────────────────────────────────
