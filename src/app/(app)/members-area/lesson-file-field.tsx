@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { uploadToStorage } from "@/lib/ui/upload";
 import type { LessonType } from "@/generated/prisma/enums";
 import { requestLessonUpload } from "./actions";
 
@@ -26,28 +27,6 @@ function formatBytes(bytes: number): string {
   if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
   if (bytes >= 1_000_000) return `${Math.round(bytes / 1_000_000)} MB`;
   return `${Math.max(1, Math.round(bytes / 1000))} KB`;
-}
-
-/**
- * Sends the file straight to storage with the signed URL the server hands out,
- * so a 2 GB video never passes through the app. XMLHttpRequest instead of fetch
- * because it is the only one that reports upload progress.
- */
-function upload(url: string, headers: Record<string, string>, file: File, onProgress: (percent: number) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    request.open("PUT", url);
-    for (const [name, value] of Object.entries(headers)) request.setRequestHeader(name, value);
-    request.upload.addEventListener("progress", (event) => {
-      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
-    });
-    request.addEventListener("load", () =>
-      request.status >= 200 && request.status < 300 ? resolve() : reject(new Error(`Upload falhou (${request.status})`)),
-    );
-    request.addEventListener("error", () => reject(new Error("Falha de rede durante o envio")));
-    request.addEventListener("abort", () => reject(new Error("Envio cancelado")));
-    request.send(file);
-  });
 }
 
 export function LessonFileField({
@@ -84,7 +63,7 @@ export function LessonFileField({
         return;
       }
 
-      await upload(authorized.url, authorized.headers, file, setProgress);
+      await uploadToStorage(authorized.url, authorized.headers, file, setProgress);
       onChange({ key: authorized.key, filename: file.name, contentType: file.type || "application/octet-stream", bytes: file.size });
       toast.success("Arquivo enviado");
     } catch (uploadError) {
