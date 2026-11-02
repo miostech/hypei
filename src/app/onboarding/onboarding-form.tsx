@@ -53,7 +53,9 @@ export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: s
           ? 2
           : null
       : null;
-  const step = errorStep ?? currentStep;
+  // Preso ao último passo: fora do intervalo não existe título nem campo, e o card renderiza
+  // vazio. Os botões já clampam, mas estado preservado de um hot reload não passa por eles.
+  const step = Math.min(errorStep ?? currentStep, STEPS.length - 1);
 
   const slugify = (value: string) =>
     value
