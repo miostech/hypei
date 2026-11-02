@@ -152,6 +152,10 @@ export default function LandingPage() {
             </div>
 
             <p className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+              {/* Primeiro da linha: é o diferencial, e o único sinal de alcance antes das estatísticas. */}
+              <span className="flex items-center gap-1.5">
+                <GlobeIcon className="size-3.5 text-success" /> Brasil, Europa e Estados Unidos
+              </span>
               <span className="flex items-center gap-1.5">
                 <CheckIcon className="size-3.5 text-success" /> Sem mensalidade
               </span>
