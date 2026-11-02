@@ -134,7 +134,7 @@ export default function LandingPage() {
               className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90"
               render={<a href={SIGNUP_HREF} />}
             >
-              Criar conta grátis
+              Criar conta
             </Button>
           </div>
         </nav>
@@ -159,7 +159,7 @@ export default function LandingPage() {
                 className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90"
                 render={<a href={SIGNUP_HREF} />}
               >
-                Criar conta grátis
+                Criar conta
                 <ArrowRightIcon />
               </Button>
               <Button size="lg" variant="outline" className="bg-card" render={<Link href="#como-funciona" />}>
@@ -314,7 +314,7 @@ export default function LandingPage() {
               className="bg-gold-gradient mt-8 w-full border-0 text-gold-foreground shadow-gold hover:opacity-90"
               render={<a href={SIGNUP_HREF} />}
             >
-              Criar conta grátis
+              Criar conta
               <ArrowRightIcon />
             </Button>
           </div>
@@ -346,7 +346,7 @@ export default function LandingPage() {
                 className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90"
                 render={<a href={SIGNUP_HREF} />}
               >
-                Criar conta grátis
+                Criar conta
                 <ArrowRightIcon />
               </Button>
             </div>
