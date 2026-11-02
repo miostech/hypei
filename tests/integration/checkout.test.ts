@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createSeller, createTestApp, type TestApp } from "../support/test-app";
+import { createSeller, createTestApp, startPurchase, type TestApp } from "../support/test-app";
 
 describe("Checkout", () => {
   let app: TestApp;
@@ -74,5 +74,23 @@ describe("Checkout", () => {
     const { checkout, organization, user, offer } = await createSeller(app);
     await app.services.offers.setActive(organization.id, user.id, offer.id, false);
     expect(await app.services.checkouts.getPublic(checkout.slug)).toBeNull();
+  });
+
+  /**
+   * A tela de Verificação promete ao produtor que o checkout não cobra antes de ele
+   * verificar. Esta é a trava que torna a promessa verdadeira — sem ela o comprador é
+   * cobrado e o dinheiro fica preso, porque o saque também é bloqueado.
+   */
+  it("recusa a venda enquanto o provedor não liberou cobranças", async () => {
+    const { checkout, organization } = await createSeller(app);
+    await app.prisma.merchantAccount.updateMany({
+      where: { organizationId: organization.id },
+      data: { status: "REQUIRES_ACTION", chargesEnabled: false, requirementsDue: ["individual.verification.document"] },
+    });
+
+    expect(await app.services.checkouts.getPublic(checkout.slug)).toMatchObject({ acceptsPayments: false });
+    await expect(startPurchase(app, checkout.slug)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await app.prisma.order.count({ where: { organizationId: organization.id } })).toBe(0);
+    expect(await app.prisma.payment.count({ where: { organizationId: organization.id } })).toBe(0);
   });
 });

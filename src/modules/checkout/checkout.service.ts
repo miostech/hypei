@@ -90,6 +90,9 @@ export class CheckoutService {
     if (!checkout || checkout.status !== "ACTIVE" || !checkout.offer.active || checkout.offer.product.status !== "ACTIVE") {
       return null;
     }
+    // A tela de Verificação promete ao produtor que o checkout não cobra antes de ele
+    // verificar. Sem consultar a conta do provedor aqui, a promessa era falsa.
+    const merchant = await this.uow.repos.merchantAccounts.findByOrganization(checkout.organizationId, this.providerType);
     const stored = await this.configs.getVersion(checkout.id, checkout.currentVersion);
     const config: CheckoutConfig = stored ? checkoutConfigSchema.parse(stored.config) : checkoutConfigSchema.parse({ theme: {}, headline: checkout.offer.product.name, fields: {} });
     const paymentMethods: PaymentMethodType[] = resolvePaymentMethods({
@@ -102,6 +105,8 @@ export class CheckoutService {
       checkoutId: checkout.id,
       version: checkout.currentVersion,
       provider: this.providerType,
+      /** False while the provider has not enabled charges: the page hides the form. */
+      acceptsPayments: merchant?.chargesEnabled ?? false,
       organization: { id: checkout.organization.id, name: checkout.organization.name, slug: checkout.organization.slug, country: checkout.organization.country, supportEmail: checkout.organization.supportEmail },
       product: { id: checkout.offer.product.id, name: checkout.offer.product.name, description: checkout.offer.product.description, type: checkout.offer.product.type, thumbnailUrl: checkout.offer.product.thumbnailUrl },
       // Official price: ALWAYS from the Offer in PostgreSQL.
@@ -152,6 +157,11 @@ export class CheckoutService {
   private async createOrderAndPayment(input: StartCheckoutInput): Promise<StartCheckoutResult> {
     const checkout = await this.getPublic(input.slug);
     if (!checkout) throw new NotFoundError("Checkout", input.slug);
+    // A trava de verdade é esta, não a da tela: sem ela o produtor vendia, o dinheiro entrava
+    // e o saque ficava bloqueado — com o comprador já cobrado e sem caminho de volta barato.
+    if (!checkout.acceptsPayments) {
+      throw new ValidationError("Este checkout ainda não está liberado para receber pagamentos. Fale com quem está vendendo.");
+    }
     const { organization, offer } = checkout;
 
     const { customer, order, total, subscription } = await this.uow.transaction(async (repos) => {

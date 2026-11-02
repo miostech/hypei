@@ -1,4 +1,4 @@
-import { LockIcon, MailIcon, ShieldCheckIcon } from "lucide-react";
+import { ClockIcon, LockIcon, MailIcon, ShieldCheckIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { trackingSchema } from "@/modules/checkout/checkout.schemas";
@@ -71,21 +71,41 @@ export default async function PublicCheckoutPage({
               )}
             </header>
 
-            <CheckoutClient
-              slug={slug}
-              organizationId={checkout.organization.id}
-              checkoutId={checkout.checkoutId}
-              collectPhone={checkout.config.fields.phone}
-              collectCountry={checkout.config.fields.country}
-              paymentMethods={checkout.paymentMethods}
-              provider={checkout.provider}
-              publishableKey={
-                process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null
-              }
-              accentColor={accent}
-              tracking={tracking}
-              amountLabel={price}
-            />
+            {checkout.acceptsPayments ? (
+              <CheckoutClient
+                slug={slug}
+                organizationId={checkout.organization.id}
+                checkoutId={checkout.checkoutId}
+                collectPhone={checkout.config.fields.phone}
+                collectCountry={checkout.config.fields.country}
+                paymentMethods={checkout.paymentMethods}
+                provider={checkout.provider}
+                publishableKey={
+                  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null
+                }
+                accentColor={accent}
+                tracking={tracking}
+                amountLabel={price}
+              />
+            ) : (
+              /* O serviço recusa esta venda de qualquer jeito. Esconder o formulário é o que
+                 evita o comprador digitar o cartão para só então levar erro. */
+              <div className="space-y-2 rounded-2xl border border-dashed bg-card p-8 text-center">
+                <ClockIcon
+                  className="mx-auto size-8 text-muted-foreground"
+                  aria-hidden
+                />
+                <p className="font-medium">Checkout ainda não liberado</p>
+                <p className="text-pretty text-sm text-muted-foreground">
+                  {checkout.organization.name} ainda está concluindo a
+                  verificação da conta de recebimento. Nenhuma cobrança é feita
+                  até lá.
+                  {checkout.organization.supportEmail
+                    ? ` Dúvidas: ${checkout.organization.supportEmail}.`
+                    : ""}
+                </p>
+              </div>
+            )}
           </section>
 
           <aside className="space-y-4 lg:sticky lg:top-8 lg:h-fit">
