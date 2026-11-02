@@ -274,3 +274,52 @@ describe("Apagar conteúdo", () => {
     expect(await app.prisma.course.count({ where: { id: course.id } })).toBe(1);
   });
 });
+
+/** Decide se o aviso de tradução aparece: quem só vende arquivo não tem o que traduzir. */
+describe("Tem aula em vídeo", () => {
+  let app: TestApp;
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  async function courseWith(app: TestApp, seller: Awaited<ReturnType<typeof createSeller>>, type: "VIDEO" | "PDF") {
+    const course = await app.services.courses.create(seller.organization.id, seller.user.id, {
+      productId: seller.product.id,
+      title: "Conteúdo",
+      slug: `conteudo-${seller.organization.slug}`,
+      description: "",
+    });
+    const courseModule = await app.services.courses.addModule(seller.organization.id, course.id, "Módulo");
+    await app.services.courses.addLesson(seller.organization.id, courseModule!.id, {
+      title: "Aula",
+      type,
+      externalUrl: "https://files.example.com/aula",
+    });
+    return course;
+  }
+
+  it("é falso sem conteúdo nenhum e sem aula nenhuma", async () => {
+    const seller = await createSeller(app);
+    expect(await app.services.courses.hasVideoLessons(seller.organization.id)).toBe(false);
+
+    await app.services.courses.create(seller.organization.id, seller.user.id, {
+      productId: seller.product.id,
+      title: "Vazio",
+      slug: "vazio",
+      description: "",
+    });
+    expect(await app.services.courses.hasVideoLessons(seller.organization.id)).toBe(false);
+  });
+
+  it("é falso num ebook e verdadeiro quando há aula em vídeo", async () => {
+    const pdf = await createSeller(app);
+    await courseWith(app, pdf, "PDF");
+    expect(await app.services.courses.hasVideoLessons(pdf.organization.id)).toBe(false);
+
+    const video = await createSeller(app);
+    await courseWith(app, video, "VIDEO");
+    expect(await app.services.courses.hasVideoLessons(video.organization.id)).toBe(true);
+    // A aula em vídeo de uma organização não acende o aviso na outra.
+    expect(await app.services.courses.hasVideoLessons(pdf.organization.id)).toBe(false);
+  });
+});

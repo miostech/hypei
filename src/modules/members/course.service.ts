@@ -75,6 +75,10 @@ export class CourseService {
     return this.uow.repos.courses.list(organizationId);
   }
 
+  hasVideoLessons(organizationId: string) {
+    return this.uow.repos.courses.hasVideoLessons(organizationId);
+  }
+
   async get(organizationId: string, courseId: string) {
     const course = await this.uow.repos.courses.findById(organizationId, courseId);
     if (!course) throw new NotFoundError("Course", courseId);

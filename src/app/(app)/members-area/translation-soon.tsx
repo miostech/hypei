@@ -5,8 +5,9 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 const LANGUAGES = ["Português", "Inglês", "Espanhol"];
 
 /**
- * Anúncio, não funcionalidade: não existe nada por trás disto ainda. Fica só onde há aula em
- * vídeo, porque é o que se traduz — num ebook ou numa planilha o aviso seria ruído.
+ * Anúncio, não funcionalidade: não existe nada por trás disto ainda. Aparece na lista de
+ * conteúdos e no editor, sempre sob a mesma regra — só onde há aula em vídeo, porque é o que
+ * se traduz. Num ebook ou numa planilha o aviso seria ruído.
  *
  * Sem data e sem botão de propósito. "Em breve" com botão que não faz nada vira reclamação, e
  * data que não se cumpre custa mais caro do que não ter anunciado.
@@ -33,7 +34,7 @@ export function TranslationSoon() {
           ))}
         </ul>
         <p className="text-xs text-muted-foreground">
-          Ainda não está disponível e não há nada a fazer agora. Quando ficar pronto, aparece aqui.
+          Ainda não está disponível e não há nada para configurar agora.
         </p>
       </CardContent>
     </Card>

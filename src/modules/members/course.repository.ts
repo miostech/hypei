@@ -47,6 +47,8 @@ export interface CourseRepository {
 
   /** Module scoped to the organization that owns its course. */
   findModule(organizationId: string, moduleId: string): Promise<{ id: string; courseId: string } | null>;
+  /** Whether the organization has any video lesson at all, across every course. */
+  hasVideoLessons(organizationId: string): Promise<boolean>;
   countEnrollments(courseId: string): Promise<number>;
   /** Used when a subscription stops being paid; the row is kept for the history. */
   revokeEnrollment(courseId: string, customerId: string): Promise<void>;
@@ -217,6 +219,14 @@ export class PrismaCourseRepository implements CourseRepository {
       where: { id: moduleId, course: { organizationId } },
       select: { id: true, courseId: true },
     });
+  }
+
+  async hasVideoLessons(organizationId: string) {
+    const count = await this.db.lesson.count({
+      where: { type: "VIDEO", module: { course: { organizationId } } },
+      take: 1,
+    });
+    return count > 0;
   }
 
   async revokeEnrollment(courseId: string, customerId: string) {

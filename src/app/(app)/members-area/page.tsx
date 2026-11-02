@@ -8,15 +8,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { hasPermission } from "@/modules/organizations/permissions";
 import { getServices } from "@/server/container";
+import { TranslationSoon } from "./translation-soon";
 
 export const metadata = { title: "Área de membros" };
 
 export default async function MembersAreaPage() {
   const { organization, membership } = await requirePagePermission("products:read");
   const services = getServices();
-  const [courses, products] = await Promise.all([
+  const [courses, products, hasVideo] = await Promise.all([
     services.courses.list(organization.id),
     services.courses.availableProducts(organization.id),
+    services.courses.hasVideoLessons(organization.id),
   ]);
   const canEdit = hasPermission(membership.role, "products:write");
 
@@ -92,6 +94,13 @@ export default async function MembersAreaPage() {
               </Card>
             </Link>
           ))}
+        </div>
+      )}
+
+      {/* Mesma grade dos conteúdos só para alinhar a largura: o card é um aviso, não um item da lista. */}
+      {hasVideo && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <TranslationSoon />
         </div>
       )}
     </>
