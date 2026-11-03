@@ -8,15 +8,17 @@ import { SubmitButton } from "@/components/shared/submit-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BusinessType } from "@/generated/prisma/enums";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 import { SUPPORTED_CURRENCIES } from "@/lib/money/currency";
-import { COUNTRY_INFO, SUPPORTED_COUNTRIES, type CountryCode } from "@/modules/organizations/countries";
+import { COUNTRY_INFO, type CountryCode } from "@/modules/organizations/countries";
 import { TAX_ID_TYPES_BY_COUNTRY } from "@/modules/compliance/tax-id-types";
 import { completeOnboarding } from "./actions";
 import { idleState } from "@/lib/actions/action-state";
 
 // Recebimento não é passo: não pedia nada, só avisava. O aviso virou uma linha no último
 // passo e a verificação segue onde a ação mora, em Conta → Verificação.
-const STEPS = ["Organização", "País e cobrança", "Identidade fiscal"] as const;
+const STEPS = ["organization", "country", "tax"] as const;
 
 const TAX_PLACEHOLDER: Record<string, string> = {
   CPF: "000.000.000-00",
@@ -28,7 +30,17 @@ const TAX_PLACEHOLDER: Record<string, string> = {
   TIN: "000000000",
 };
 
-export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: string; providerName: string }) {
+export function OnboardingForm({
+  defaultEmail,
+  providerName,
+  countries,
+}: {
+  defaultEmail: string;
+  providerName: string;
+  /** Resolvidos no servidor: a tabela ICU do Node e a do navegador podem divergir. */
+  countries: { code: CountryCode; name: string }[];
+}) {
+  const t = useAppDictionary().onboarding;
   const [state, formAction] = useActionState(completeOnboarding, idleState);
   const [currentStep, setStep] = useState(0);
   const [country, setCountry] = useState<CountryCode>("BR");
@@ -70,8 +82,8 @@ export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: s
     <Card className="w-full max-w-xl">
       <CardHeader>
         <div className="flex items-center gap-1.5">
-          {STEPS.map((label, index) => (
-            <div key={label} className="flex flex-1 items-center gap-1.5">
+          {STEPS.map((key, index) => (
+            <div key={key} className="flex flex-1 items-center gap-1.5">
               <span
                 className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
                   index < step ? "bg-primary text-primary-foreground" : index === step ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
@@ -83,19 +95,15 @@ export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: s
             </div>
           ))}
         </div>
-        <CardTitle className="mt-4">{STEPS[step]}</CardTitle>
-        <CardDescription>
-          {step === 0 && "Como sua operação será identificada na Kabrun."}
-          {step === 1 && "Onde você vende e em qual moeda recebe."}
-          {step === 2 && "Necessário para emissão fiscal e verificação de identidade."}
-        </CardDescription>
+        <CardTitle className="mt-4">{t.steps[STEPS[step]].title}</CardTitle>
+        <CardDescription>{t.steps[STEPS[step]].description}</CardDescription>
       </CardHeader>
 
       <CardContent>
         <form action={formAction} className="space-y-4">
           <div className={step === 0 ? "space-y-4" : "hidden"}>
             <TextField
-              label="Nome da organização"
+              label={t.name}
               name="name"
               value={name}
               onChange={(e) => {
@@ -106,7 +114,7 @@ export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: s
               error={fieldError("name")}
             />
             <TextField
-              label="Identificador"
+              label={t.slug}
               name="slug"
               value={slug}
               onChange={(e) => {
@@ -114,37 +122,37 @@ export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: s
                 setSlug(slugify(e.target.value));
               }}
               required
-              hint="Usado nos links públicos da sua área de membros."
+              hint={t.slugHint}
               error={fieldError("slug")}
             />
-            <TextField label="E-mail de suporte" name="supportEmail" type="email" defaultValue={defaultEmail} required error={fieldError("supportEmail")} />
+            <TextField label={t.supportEmail} name="supportEmail" type="email" defaultValue={defaultEmail} required error={fieldError("supportEmail")} />
           </div>
 
           <div className={step === 1 ? "space-y-4" : "hidden"}>
             <SelectField
-              label="País"
+              label={t.country}
               name="country"
               value={country}
               onChange={(e) => setCountry(e.target.value as CountryCode)}
               error={fieldError("country")}
             >
-              {SUPPORTED_COUNTRIES.map((code) => (
+              {countries.map(({ code, name: label }) => (
                 <option key={code} value={code}>
-                  {COUNTRY_INFO[code].name}
+                  {label}
                 </option>
               ))}
             </SelectField>
             <SelectField
-              label="Tipo de negócio"
+              label={t.businessType}
               name="businessType"
               value={businessType}
               onChange={(e) => setBusinessType(e.target.value as keyof typeof BusinessType)}
               error={fieldError("businessType")}
             >
-              <option value="INDIVIDUAL">Pessoa física</option>
-              <option value="COMPANY">Empresa</option>
+              <option value="INDIVIDUAL">{t.individual}</option>
+              <option value="COMPANY">{t.company}</option>
             </SelectField>
-            <SelectField label="Moeda principal" name="currency" defaultValue={COUNTRY_INFO[country].currency} key={country} error={fieldError("currency")}>
+            <SelectField label={t.currency} name="currency" defaultValue={COUNTRY_INFO[country].currency} key={country} error={fieldError("currency")}>
               {SUPPORTED_CURRENCIES.map((currency) => (
                 <option key={currency} value={currency}>
                   {currency}
@@ -154,7 +162,7 @@ export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: s
           </div>
 
           <div className={step === 2 ? "space-y-4" : "hidden"}>
-            <SelectField label="Tipo de documento" name="taxIdType" key={`${country}-${businessType}`} defaultValue={taxTypes[0]} error={fieldError("taxIdType")}>
+            <SelectField label={t.taxIdType} name="taxIdType" key={`${country}-${businessType}`} defaultValue={taxTypes[0]} error={fieldError("taxIdType")}>
               {taxTypes.map((type) => (
                 <option key={type} value={type}>
                   {type}
@@ -162,39 +170,36 @@ export function OnboardingForm({ defaultEmail, providerName }: { defaultEmail: s
               ))}
             </SelectField>
             <TextField
-              label="Documento"
+              label={t.taxId}
               name="taxId"
               required
               placeholder={TAX_PLACEHOLDER[taxTypes[0]] ?? ""}
-              hint="Guardamos apenas os últimos dígitos — o número completo nunca é armazenado."
+              hint={t.taxIdHint}
               error={fieldError("taxId")}
             />
-            {businessType === "COMPANY" && <TextField label="Razão social" name="legalName" error={fieldError("legalName")} />}
-            <TextField label="Site (opcional)" name="website" type="url" placeholder="https://…" error={fieldError("website")} />
+            {businessType === "COMPANY" && <TextField label={t.legalName} name="legalName" error={fieldError("legalName")} />}
+            <TextField label={t.website} name="website" type="url" placeholder="https://…" error={fieldError("website")} />
           </div>
 
           {step === STEPS.length - 1 && (
             <p className="flex gap-2 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
               <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-primary" />
-              <span>
-                Criamos sua conta de recebimento no {providerName}. Documento e conta bancária você preenche no site dele quando quiser, em Conta →
-                Verificação — só o saque depende disso.
-              </span>
+              <span>{fill(t.providerNote, { provider: providerName })}</span>
             </p>
           )}
 
           <div className="flex items-center justify-between gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
               <ArrowLeftIcon />
-              Voltar
+              {t.back}
             </Button>
             {step < STEPS.length - 1 ? (
               <Button type="button" onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}>
-                Continuar
+                {t.next}
                 <ArrowRightIcon />
               </Button>
             ) : (
-              <SubmitButton pendingLabel="Criando…">Criar organização</SubmitButton>
+              <SubmitButton pendingLabel={t.submitting}>{t.submit}</SubmitButton>
             )}
           </div>
         </form>

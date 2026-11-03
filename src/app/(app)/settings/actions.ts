@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { requirePermission } from "@/modules/organizations/current-organization";
 import { taxSettingsSchema } from "@/modules/taxes/tax.schemas";
 import { runAction, type ActionState } from "@/server/actions/action-state";
@@ -17,9 +19,10 @@ export async function saveTaxSettings(_prev: ActionState, formData: FormData): P
 
     await getServices().taxSettings.save(organization.id, input);
     revalidatePath("/settings");
+    const { settings } = await getAppDictionary(await appLocale());
     return {
       status: "success",
-      message: input.regime === "NONE" ? "As vendas deixam de destacar imposto." : "Regime salvo. Vale para as próximas vendas.",
+      message: input.regime === "NONE" ? settings.regimeCleared : settings.regimeSaved,
     };
   });
 }

@@ -18,6 +18,7 @@ import {
   PaymentStatus,
   RefundStatus,
   SubscriptionStatus,
+  TaxRegime,
   VerificationStatus,
 } from "@/generated/prisma/enums";
 
@@ -175,6 +176,10 @@ describe("checkout dictionaries", () => {
       }
       for (const status of Object.values(PayoutStatus)) {
         expect(dict.payouts.statuses[status], `${locale}/payouts.statuses.${status}`).toBeTruthy();
+      }
+      for (const regime of Object.values(TaxRegime)) {
+        expect(dict.settings.taxRegimes[regime]?.label, `${locale}/settings.taxRegimes.${regime}`).toBeTruthy();
+        expect(dict.settings.taxRegimes[regime]?.hint, `${locale}/settings.taxRegimes.${regime}.hint`).toBeTruthy();
       }
       for (const status of Object.values(VerificationStatus)) {
         const entry = dict.verification.statuses[status];

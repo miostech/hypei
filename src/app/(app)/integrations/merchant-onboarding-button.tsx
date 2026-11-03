@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
 import { startMerchantOnboarding, syncMerchantAccount } from "./actions";
 
 export function MerchantOnboardingButton({ label }: { label: string }) {
+  const dict = useAppDictionary();
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -37,14 +39,14 @@ export function MerchantOnboardingButton({ label }: { label: string }) {
             const result = await syncMerchantAccount();
             if (result.status === "error") toast.error(result.message);
             else {
-              toast.success("Status atualizado");
+              toast.success(dict.toasts.statusUpdated);
               router.refresh();
             }
           })
         }
       >
         <RefreshCwIcon />
-        Sincronizar status
+        {dict.integrations.sync}
       </Button>
     </div>
   );

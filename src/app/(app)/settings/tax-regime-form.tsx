@@ -6,36 +6,37 @@ import { SelectField, TextField } from "@/components/shared/form-field";
 import { SubmitButton } from "@/components/shared/submit-button";
 import type { TaxRegime } from "@/generated/prisma/enums";
 import { idleState } from "@/lib/actions/action-state";
-import { TAX_REGIME_HINTS, TAX_REGIME_LABELS } from "@/modules/taxes/tax.schemas";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
 import type { TaxSettingsView } from "@/modules/taxes/tax-settings.service";
 import { saveTaxSettings } from "./actions";
 
-const REGIMES = Object.keys(TAX_REGIME_LABELS) as TaxRegime[];
-
 export function TaxRegimeForm({ settings }: { settings: TaxSettingsView }) {
+  const dict = useAppDictionary();
+  const t = dict.settings;
+  const regimes = Object.keys(t.taxRegimes) as TaxRegime[];
   const [state, formAction] = useActionState(saveTaxSettings, idleState);
   const [regime, setRegime] = useState<TaxRegime>(settings.regime);
   const error = (field: string) => (state.status === "error" ? state.fieldErrors?.[field] : undefined);
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Salvo");
-  }, [state]);
+    if (state.status === "success") toast.success(state.message ?? dict.toasts.saved);
+  }, [state, dict]);
 
   const charging = regime !== "NONE";
 
   return (
     <form action={formAction} className="space-y-4">
       <SelectField
-        label="Regime"
+        label={t.regime}
         name="regime"
         value={regime}
         onChange={(event) => setRegime(event.target.value as TaxRegime)}
-        hint={TAX_REGIME_HINTS[regime]}
+        hint={t.taxRegimes[regime].hint}
         error={error("regime")}
       >
-        {REGIMES.map((value) => (
+        {regimes.map((value) => (
           <option key={value} value={value}>
-            {TAX_REGIME_LABELS[value]}
+            {t.taxRegimes[value].label}
           </option>
         ))}
       </SelectField>
@@ -43,21 +44,21 @@ export function TaxRegimeForm({ settings }: { settings: TaxSettingsView }) {
       {charging && (
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
-            label="Alíquota (%)"
+            label={t.rate}
             name="rate"
             defaultValue={settings.rate}
             inputMode="decimal"
             placeholder="6"
-            hint="Já embutida no preço que você anuncia."
+            hint={t.rateHint}
             error={error("rate")}
           />
           {regime === "BR_ISS" && (
             <TextField
-              label="Município"
+              label={t.jurisdiction}
               name="jurisdiction"
               defaultValue={settings.jurisdiction}
               placeholder="São Paulo/SP"
-              hint="Aparece no detalhamento da venda."
+              hint={t.jurisdictionHint}
               error={error("jurisdiction")}
             />
           )}
@@ -66,7 +67,7 @@ export function TaxRegimeForm({ settings }: { settings: TaxSettingsView }) {
 
       {state.status === "error" && !state.fieldErrors && <p className="text-xs text-destructive">{state.message}</p>}
 
-      <SubmitButton>Salvar regime</SubmitButton>
+      <SubmitButton>{t.saveRegime}</SubmitButton>
     </form>
   );
 }

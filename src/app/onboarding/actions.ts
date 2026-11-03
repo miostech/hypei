@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { requireUser } from "@/modules/auth/current-user";
 import { cookieOptions, ORGANIZATION_COOKIE } from "@/modules/auth/session-token";
 import { onboardingSchema } from "@/modules/organizations/organization.schemas";
@@ -29,7 +31,7 @@ export async function completeOnboarding(_prev: ActionState, formData: FormData)
 
     const organization = await getServices().organizations.onboard(user, input);
     organizationId = organization.id;
-    return { status: "success", message: "Organização criada" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.organizationCreated };
   });
 
   if (organizationId) {

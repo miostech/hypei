@@ -11,7 +11,6 @@ import { appLocale } from "@/lib/i18n/app/server";
 import { fill } from "@/lib/i18n/locale";
 import { formatAmount, formatDateTime } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
-import { TAX_REGIME_LABELS } from "@/modules/taxes/tax.schemas";
 import { hasPermission } from "@/modules/organizations/permissions";
 import { getServices } from "@/server/container";
 import { ORDER_STATUS_VARIANT, PAYMENT_STATUS_VARIANT, REFUND_STATUS_VARIANT } from "../order-status";
@@ -118,7 +117,7 @@ export default async function SaleDetailPage({ params }: PageProps<"/sales/[orde
                     <Row label={t.payment.refunded}>− {formatAmount(payment.refundedAmount, payment.currency)}</Row>
                   )}
                   {order.taxAmount > 0n && (
-                    <Row label={fill(t.payment.taxIncluded, { regime: TAX_REGIME_LABELS[order.taxRegime] })}>
+                    <Row label={fill(t.payment.taxIncluded, { regime: dict.settings.taxRegimes[order.taxRegime].label })}>
                       {formatAmount(order.taxAmount, order.currency)}
                     </Row>
                   )}
