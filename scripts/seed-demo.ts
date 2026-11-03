@@ -96,6 +96,7 @@ async function main() {
         collectPhone: false,
         guaranteeDays: 7,
         enabledPaymentMethods: [],
+        orderBumps: [],
       }));
 
     catalogue.push({ checkout, weight: item.weight });

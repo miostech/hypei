@@ -25,6 +25,7 @@ async function recurringSeller(app: TestApp, options: { trialDays?: number } = {
     collectPhone: false,
     guaranteeDays: 7,
     enabledPaymentMethods: [],
+    orderBumps: [],
   });
   return { ...seller, offer, checkout };
 }

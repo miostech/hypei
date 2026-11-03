@@ -130,6 +130,7 @@ export async function createSeller(app: TestApp, options: { amount?: bigint; cur
     collectPhone: false,
     guaranteeDays: 7,
     enabledPaymentMethods: [],
+    orderBumps: [],
   });
   return { user, organization, product, offer, checkout };
 }
@@ -139,7 +140,7 @@ export async function startPurchase(
   app: TestApp,
   checkoutSlug: string,
   email = `buyer-${randomUUID().slice(0, 6)}@example.com`,
-  options: { couponCode?: string; referralCode?: string; locale?: Locale } = {},
+  options: { couponCode?: string; referralCode?: string; locale?: Locale; bumpOfferIds?: string[] } = {},
 ) {
   const result = await app.services.checkouts.start({
     slug: checkoutSlug,
@@ -150,6 +151,7 @@ export async function startPurchase(
     couponCode: options.couponCode,
     referralCode: options.referralCode,
     locale: options.locale,
+    bumpOfferIds: options.bumpOfferIds,
     tracking: { utm_source: "test" },
   });
   const payment = await app.prisma.payment.findUniqueOrThrow({ where: { id: result.paymentId } });

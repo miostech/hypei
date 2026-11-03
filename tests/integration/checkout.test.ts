@@ -65,6 +65,7 @@ describe("Checkout", () => {
       collectPhone: true,
       guaranteeDays: 30,
       enabledPaymentMethods: [],
+      orderBumps: [],
     });
     expect(version).toBe(2);
     const view = await app.services.checkouts.getPublic(checkout.slug);
@@ -198,6 +199,7 @@ describe("Imagens do produtor", () => {
       collectPhone: false,
       guaranteeDays: 7,
       enabledPaymentMethods: [],
+      orderBumps: [],
     });
 
     const view = await app.services.checkouts.getPublic(checkout.slug);

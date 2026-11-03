@@ -53,6 +53,7 @@ describe("Tenant isolation", () => {
         collectPhone: false,
         guaranteeDays: 7,
         enabledPaymentMethods: [],
+        orderBumps: [],
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
