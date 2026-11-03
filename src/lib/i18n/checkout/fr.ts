@@ -43,6 +43,13 @@ const fr: CheckoutDictionary = {
     failed: "Le paiement n'a pas pu être finalisé.",
   },
 
+  bump: {
+    title: "À ajouter à votre commande",
+    add: "Ajouter",
+    added: "Ajouté",
+    hint: "S'ajoute à la même commande, dans le même paiement.",
+  },
+
   summary: {
     title: "Récapitulatif de la commande",
     subtotal: "Sous-total",
@@ -107,6 +114,7 @@ const fr: CheckoutDictionary = {
       title: "Nous confirmons votre paiement",
       body: "Cela prend généralement quelques secondes. Cette page se met à jour toute seule.",
     },
+    alsoBought: "Également dans votre commande",
     access: "Accéder maintenant",
     accessHint: "Connectez-vous avec l'adresse e-mail utilisée pour cet achat.",
     watching: "En attente de la confirmation du prestataire de paiement…",

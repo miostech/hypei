@@ -43,6 +43,13 @@ const de: CheckoutDictionary = {
     failed: "Die Zahlung konnte nicht abgeschlossen werden.",
   },
 
+  bump: {
+    title: "Gleich mitnehmen",
+    add: "Hinzufügen",
+    added: "Hinzugefügt",
+    hint: "Kommt in dieselbe Bestellung, in derselben Zahlung.",
+  },
+
   summary: {
     title: "Bestellübersicht",
     subtotal: "Zwischensumme",
@@ -107,6 +114,7 @@ const de: CheckoutDictionary = {
       title: "Wir bestätigen Ihre Zahlung",
       body: "Das dauert meist einige Sekunden. Diese Seite aktualisiert sich selbst.",
     },
+    alsoBought: "Ebenfalls in Ihrer Bestellung",
     access: "Jetzt zugreifen",
     accessHint: "Melden Sie sich mit der E-Mail-Adresse an, die Sie für diesen Kauf verwendet haben.",
     watching: "Warten auf die Bestätigung des Zahlungsdienstleisters…",

@@ -7,7 +7,6 @@ import { ValidationError } from "@/lib/errors";
 import { getCheckoutDictionary, type CheckoutDictionary } from "@/lib/i18n/checkout";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/lib/i18n/locale";
 import { logger } from "@/lib/logger";
-import { formatAmount } from "@/lib/ui/format";
 import { InMemoryRateLimiter, RedisRateLimiter, type RateLimiter } from "@/lib/security/rate-limit";
 import { startCheckoutSchema, trackingSchema } from "@/modules/checkout/checkout.schemas";
 import { CouponNotUsableError } from "@/modules/coupons/coupon.service";
@@ -102,8 +101,14 @@ export interface ApplyCouponResult {
   ok: boolean;
   message?: string;
   code?: string;
-  discount?: string;
-  total?: string;
+  /**
+   * Desconto em unidades menores, não formatado.
+   *
+   * Vinha pronto para a tela, com o total junto. Não serve mais: o total agora depende também
+   * dos bumps marcados, que o servidor não sabe quais são na hora de validar um cupom. Quem
+   * compõe e formata é o cliente, onde as duas informações existem ao mesmo tempo.
+   */
+  discountAmount?: string;
 }
 
 /**
@@ -120,12 +125,7 @@ export async function applyCouponAction(input: unknown): Promise<ApplyCouponResu
     if (!allowed) return { ok: false, message: dict.errors.rateLimited };
 
     const result = await getServices().checkouts.previewCoupon(slug, code);
-    return {
-      ok: true,
-      code: result.code,
-      discount: formatAmount(result.discount, result.currency),
-      total: formatAmount(result.total, result.currency),
-    };
+    return { ok: true, code: result.code, discountAmount: String(result.discount) };
   } catch (error) {
     if (error instanceof z.ZodError) return { ok: false, message: dict.errors.invalidCode };
     if (error instanceof ValidationError) return { ok: false, message: buyerMessage(error, dict, dict.errors.couponFailed) };

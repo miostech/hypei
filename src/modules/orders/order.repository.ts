@@ -36,6 +36,14 @@ export interface OrderRepository {
   findDetail(organizationId: string, id: string): Promise<OrderDetail | null>;
   setStatus(id: string, status: OrderStatus): Promise<void>;
   productIds(orderId: string): Promise<string[]>;
+  /**
+   * Os produtos desta venda, com o nome que o comprador viu, na ordem em que foram cobrados.
+   *
+   * Existe por causa do order bump: `productIds` basta para conceder acesso, mas quem precisa
+   * CONTAR ao comprador o que ele comprou precisa também do nome — e do nome gravado no item,
+   * não do nome que o produto tem hoje.
+   */
+  itemProducts(orderId: string): Promise<{ productId: string; productName: string }[]>;
   list(organizationId: string, options: { limit: number }): Promise<OrderListItem[]>;
   /**
    * Finds a sale the way a producer looks for one: by who bought, what they
@@ -94,6 +102,20 @@ export class PrismaOrderRepository implements OrderRepository {
   async productIds(orderId: string) {
     const items = await this.db.orderItem.findMany({ where: { orderId }, select: { offer: { select: { productId: true } } } });
     return [...new Set(items.map((i) => i.offer.productId))];
+  }
+
+  async itemProducts(orderId: string) {
+    const items = await this.db.orderItem.findMany({
+      where: { orderId },
+      select: { productName: true, offer: { select: { productId: true } } },
+      orderBy: { unitAmount: "desc" },
+    });
+    const seen = new Set<string>();
+    return items.flatMap((item) => {
+      if (seen.has(item.offer.productId)) return [];
+      seen.add(item.offer.productId);
+      return [{ productId: item.offer.productId, productName: item.productName }];
+    });
   }
 
   list(organizationId: string, options: { limit: number }) {

@@ -205,6 +205,58 @@ describe("Order bump", () => {
     expect(payment.amount).toBe(10_000n);
   });
 
+  describe("tells the buyer about everything they paid for", () => {
+    it("lists every purchased product for the thank-you page, main offer first", async () => {
+      const seller = await createSeller(app, { amount: 10_000n });
+      const bump = await bumpProduct(app, seller);
+      const course = await app.services.courses.create(seller.organization.id, seller.user.id, {
+        productId: bump.product.id,
+        title: "Planilhas",
+        slug: "planilhas",
+        description: "",
+      });
+      const courseModule = await app.services.courses.addModule(seller.organization.id, course.id, "Módulo 1");
+      await app.services.courses.addLesson(seller.organization.id, courseModule.id, {
+        title: "Planilha",
+        type: "VIDEO",
+        externalUrl: "https://video.example.com/a.mp4",
+      });
+      await app.services.courses.setPublished(seller.organization.id, seller.user.id, course.id, true);
+      await saveBumps(app, seller, [{ offerId: bump.offer.id, headline: "Leve as planilhas", price: "29,00" }]);
+
+      const { result } = await startPurchase(app, seller.checkout.slug, "ana@example.com", { bumpOfferIds: [bump.offer.id] });
+      const purchased = await app.services.payments.purchasedProducts(result.paymentId);
+      expect(purchased).toEqual([
+        { name: "Curso Teste", courseSlug: null },
+        { name: "Produto planilhas", courseSlug: "planilhas" },
+      ]);
+    });
+
+    it("names the bump in the confirmation e-mail instead of mentioning one product", async () => {
+      const seller = await createSeller(app, { amount: 10_000n });
+      const bump = await bumpProduct(app, seller);
+      await saveBumps(app, seller, [{ offerId: bump.offer.id, headline: "Leve as planilhas", price: "29,00" }]);
+
+      const { payment } = await startPurchase(app, seller.checkout.slug, "compradora@example.com", { bumpOfferIds: [bump.offer.id] });
+      await confirmPayment(app, payment);
+
+      const receipt = app.email.to("compradora@example.com")[0];
+      expect(receipt.subject).toContain("Curso Teste");
+      expect(receipt.html).toContain("Produto planilhas");
+      expect(receipt.html).toContain("área de membros");
+    });
+
+    it("leaves a single-product receipt exactly as it was", async () => {
+      const seller = await createSeller(app, { amount: 10_000n });
+      const { payment } = await startPurchase(app, seller.checkout.slug, "sozinha@example.com");
+      await confirmPayment(app, payment);
+
+      const receipt = app.email.to("sozinha@example.com")[0];
+      expect(receipt.html).not.toContain("Também na compra");
+      expect(receipt.html).not.toContain("área de membros");
+    });
+  });
+
   describe("refuses a bump that cannot be delivered or charged", () => {
     it("rejects a subscription offer as a bump", async () => {
       const seller = await createSeller(app);

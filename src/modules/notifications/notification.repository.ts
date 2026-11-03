@@ -23,6 +23,14 @@ export interface PurchaseContext extends PartyContext {
   orderReference: string;
   /** Slug of the published course bought, when the product has one. */
   courseSlug: string | null;
+  /**
+   * Os outros produtos do mesmo pedido, quando houver — é o que o order bump cria.
+   *
+   * O e-mail nomeava só o primeiro item. Com um bump na compra isso virou omissão: a pessoa
+   * pagou por dois produtos e o comprovante mencionava um. Estes entram como linhas extras; o
+   * assunto e o botão continuam sendo do produto principal, que é o que ela veio comprar.
+   */
+  extraProductNames: string[];
 }
 
 export interface RefundContext extends PartyContext {
@@ -96,13 +104,16 @@ export class PrismaNotificationRepository implements NotificationRepository {
       include: {
         customer: true,
         organization: { include: { members: OWNER_SELECT } },
-        order: { include: { items: { include: { offer: { include: { product: { include: { course: true } } } } }, take: 1 } } },
+        // Sem `take`: o pedido pode ter mais de um item desde o order bump, e o comprovante
+        // precisa citar todos. São no máximo quatro (oferta + três bumps).
+        order: { include: { items: { include: { offer: { include: { product: { include: { course: true } } } } }, orderBy: { unitAmount: "desc" } } } },
       },
     });
     if (!payment) return null;
 
     const product = payment.order.items[0]?.offer.product;
     const course = product?.course;
+    const extraProductNames = [...new Set(payment.order.items.slice(1).map((item) => item.productName))];
     return {
       ...this.party(payment.organization),
       customerName: payment.customer.name,
@@ -114,6 +125,7 @@ export class PrismaNotificationRepository implements NotificationRepository {
       currency: payment.currency,
       orderReference: payment.order.id.slice(-8).toUpperCase(),
       courseSlug: course?.published ? course.slug : null,
+      extraProductNames,
     };
   }
 

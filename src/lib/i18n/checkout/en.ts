@@ -42,6 +42,13 @@ const en: CheckoutDictionary = {
     failed: "We couldn't complete the payment.",
   },
 
+  bump: {
+    title: "Add to your order",
+    add: "Add",
+    added: "Added",
+    hint: "Goes on the same order, in the same payment.",
+  },
+
   summary: {
     title: "Order summary",
     subtotal: "Subtotal",
@@ -106,6 +113,7 @@ const en: CheckoutDictionary = {
       title: "We're confirming your payment",
       body: "This usually takes a few seconds. This page updates on its own.",
     },
+    alsoBought: "Also in your order",
     access: "Access now",
     accessHint: "Sign in with the same email you used for this purchase.",
     watching: "Waiting for confirmation from the payment provider…",

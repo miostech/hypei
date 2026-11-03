@@ -284,4 +284,27 @@ export class PaymentService {
     if (!payment) throw new NotFoundError("Payment", paymentId);
     return { id: payment.id, status: payment.status, amount: payment.amount, currency: payment.currency };
   }
+
+  /**
+   * Tudo que esta compra entregou, com o link de cada conteúdo publicado.
+   *
+   * A tela de obrigado nomeava só o produto do checkout. Com order bump isso passou a ser
+   * mentira por omissão: quem pagou por três produtos era informado de um. A lista vem do
+   * pedido, não do checkout, porque é o pedido que sabe o que foi realmente cobrado.
+   *
+   * Exposto pelo id do pagamento, como o status: é o que o comprador tem na mão ao voltar do
+   * provedor, e não revela nada que ele já não tenha comprado.
+   */
+  async purchasedProducts(paymentId: string): Promise<{ name: string; courseSlug: string | null }[]> {
+    const payment = await this.uow.repos.payments.findById(paymentId);
+    if (!payment) throw new NotFoundError("Payment", paymentId);
+
+    const products = await this.uow.repos.orders.itemProducts(payment.orderId);
+    return Promise.all(
+      products.map(async (product) => {
+        const course = await this.uow.repos.courses.findByProductId(product.productId);
+        return { name: product.productName, courseSlug: course?.published ? course.slug : null };
+      }),
+    );
+  }
 }

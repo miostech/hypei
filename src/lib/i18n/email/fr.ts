@@ -22,6 +22,8 @@ const fr: EmailDictionary = {
     rowProduct: "Produit",
     rowAmount: "Montant",
     rowOrder: "Commande",
+    rowAlsoBought: "Également dans la commande",
+    noteExtras: "Les autres produits se trouvent dans votre espace membre, avec la même adresse e-mail.",
     cta: "Accéder au contenu",
     note: "Connectez-vous avec l'adresse e-mail utilisée pour cet achat.",
   },

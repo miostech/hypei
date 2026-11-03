@@ -8,10 +8,10 @@ import { localizedCountries } from "@/lib/i18n/countries";
 import { fill } from "@/lib/i18n/locale";
 import { fillNode } from "@/lib/i18n/fill-node";
 import { langParam, requestLocale } from "@/lib/i18n/server";
-import { formatAmount } from "@/lib/ui/format";
 import { KabrunLogo } from "@/components/brand/logo";
 import { CheckoutClient } from "./checkout-client";
-import { CouponProvider, OrderTotals } from "./coupon-context";
+import { CheckoutStateProvider, OrderTotals, type BumpOption } from "./checkout-state";
+import { OrderBumps } from "./order-bump";
 import { SafeImage } from "./safe-image";
 
 export async function generateMetadata({
@@ -53,7 +53,16 @@ export default async function PublicCheckoutPage({
   const dict = await getCheckoutDictionary(locale);
 
   const accent = checkout.config.theme.accentColor;
-  const price = formatAmount(checkout.offer.amount, checkout.offer.currency);
+  // `bigint` não atravessa o limite servidor → cliente como prop; vira string de centavos aqui
+  // e `bigint` de novo na primeira conta, do outro lado.
+  const bumps: BumpOption[] = checkout.orderBumps.map((bump) => ({
+    offerId: bump.offerId,
+    productName: bump.productName,
+    headline: bump.headline,
+    description: bump.description,
+    amount: String(bump.amount),
+    compareAtAmount: bump.compareAtAmount === null ? null : String(bump.compareAtAmount),
+  }));
   // Assinadas a cada renderização: a página é dinâmica, então a URL nunca chega vencida ao
   // comprador, e os objetos continuam privados no bucket como o resto da mídia.
   const [bannerUrl, logoUrl, thumbnailUrl] = await Promise.all([
@@ -72,7 +81,7 @@ export default async function PublicCheckoutPage({
         style={{ background: accent }}
       />
 
-      <CouponProvider>
+      <CheckoutStateProvider offerAmount={String(checkout.offer.amount)} currency={checkout.offer.currency} bumps={bumps}>
         <main className="mx-auto grid w-full max-w-5xl flex-1 gap-6 px-4 py-8 lg:grid-cols-[1fr_360px] lg:py-14">
           <section className="space-y-6">
             <SafeImage
@@ -93,6 +102,8 @@ export default async function PublicCheckoutPage({
               )}
             </header>
 
+            {checkout.acceptsPayments && <OrderBumps dict={dict} accentColor={accent} />}
+
             {checkout.acceptsPayments ? (
               <CheckoutClient
                 slug={slug}
@@ -109,7 +120,6 @@ export default async function PublicCheckoutPage({
                 }
                 accentColor={accent}
                 tracking={tracking}
-                amountLabel={price}
                 locale={locale}
                 dict={dict}
               />
@@ -161,7 +171,7 @@ export default async function PublicCheckoutPage({
                   </div>
                 </div>
 
-                <OrderTotals subtotalLabel={price} dict={dict} />
+                <OrderTotals dict={dict} />
               </div>
             </div>
 
@@ -199,7 +209,7 @@ export default async function PublicCheckoutPage({
             </p>
           </aside>
         </main>
-      </CouponProvider>
+      </CheckoutStateProvider>
 
       <footer className="border-t bg-card/60 py-5">
         <p className="mx-auto flex w-full max-w-5xl items-center justify-center gap-1.5 px-4 text-xs text-muted-foreground">

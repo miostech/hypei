@@ -50,6 +50,8 @@ export function purchaseConfirmed(
     customerName: string;
     /** Null quando o pedido não tem item identificável. */
     productName: string | null;
+    /** Os outros produtos do mesmo pedido, que o order bump pode ter somado. */
+    extraProductNames?: string[];
     amountLabel: string;
     orderReference: string;
     /** Present when the product has a published course. */
@@ -58,7 +60,13 @@ export function purchaseConfirmed(
 ): RenderedEmail {
   const name = firstName(dict, data.customerName);
   const product = data.productName ?? dict.fallbackPurchaseProduct;
+  const extras = data.extraProductNames ?? [];
   const t = dict.purchaseConfirmed;
+
+  // O assunto e o botão seguem sendo do produto principal: é o que a pessoa veio comprar, e um
+  // botão só pode apontar para um lugar. Os bumps viram linha no comprovante, e a nota diz
+  // onde encontrá-los — omitir seria cobrar por três e mencionar um.
+  const note = extras.length > 0 ? [data.accessUrl ? t.note : null, t.noteExtras].filter(Boolean).join(" ") : data.accessUrl ? t.note : undefined;
 
   return renderEmail(fill(t.subject, { product }), {
     preheader: fill(t.preheader, { amount: data.amountLabel }),
@@ -68,11 +76,12 @@ export function purchaseConfirmed(
       : fill(t.introWithoutAccess, { name, seller: data.organizationName }),
     rows: [
       { label: t.rowProduct, value: product },
+      ...extras.map((extra) => ({ label: t.rowAlsoBought, value: extra })),
       { label: t.rowAmount, value: data.amountLabel },
       { label: t.rowOrder, value: data.orderReference },
     ],
     cta: data.accessUrl ? { label: t.cta, url: data.accessUrl } : undefined,
-    note: data.accessUrl ? t.note : undefined,
+    note,
     lang: dict.localeTag,
     footer: buyerFooter(dict, data),
   });

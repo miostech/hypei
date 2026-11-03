@@ -39,8 +39,13 @@ export default async function CheckoutResultPage({ params, searchParams }: PageP
 
   // Esperar o e-mail chegar era a única porta de entrada, e em serverless ele pode atrasar um
   // ciclo do cron. O link só aparece com conteúdo publicado — a mesma regra do e-mail.
-  const course = payment.status === "PAID" ? await services.uow.repos.courses.findByProductId(checkout.product.id) : null;
-  const accessHref = course?.published ? memberCourseHref(checkout.organization.slug, course.slug) : null;
+  //
+  // A lista vem do PEDIDO e não do checkout: com order bump, quem pagou por três produtos
+  // precisa ver os três. O primeiro é o da oferta principal, e é dele o botão.
+  const purchased = payment.status === "PAID" ? await services.payments.purchasedProducts(paymentId) : [];
+  const main = purchased[0] ?? null;
+  const extras = purchased.slice(1);
+  const accessHref = main?.courseSlug ? memberCourseHref(checkout.organization.slug, main.courseSlug) : null;
 
   const state =
     payment.status === "PAID"
@@ -48,7 +53,7 @@ export default async function CheckoutResultPage({ params, searchParams }: PageP
           icon: CheckCircle2Icon,
           tone: "text-success",
           title: dict.result.paid.title,
-          description: fill(dict.result.paid.body, { product: checkout.product.name }),
+          description: fill(dict.result.paid.body, { product: main?.name ?? checkout.product.name }),
         } as const)
       : payment.status === "FAILED" || payment.status === "CANCELED"
         ? ({
@@ -76,6 +81,24 @@ export default async function CheckoutResultPage({ params, searchParams }: PageP
         <state.icon className={`mx-auto size-10 ${state.tone}`} aria-hidden />
         <h1 className="text-xl font-semibold tracking-tight">{state.title}</h1>
         <p className="text-pretty text-sm text-muted-foreground">{state.description}</p>
+
+        {extras.length > 0 && (
+          <ul className="space-y-1 rounded-xl bg-muted/60 p-3 text-left text-sm">
+            <li className="pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">{dict.result.alsoBought}</li>
+            {extras.map((product) => (
+              <li key={product.name} className="flex items-center gap-2">
+                <CheckCircle2Icon className="size-4 shrink-0 text-success" aria-hidden />
+                {product.courseSlug ? (
+                  <Link href={memberCourseHref(checkout.organization.slug, product.courseSlug)} className="min-w-0 truncate hover:underline">
+                    {product.name}
+                  </Link>
+                ) : (
+                  <span className="min-w-0 truncate">{product.name}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {accessHref && (
           <div className="space-y-1.5 pt-2">

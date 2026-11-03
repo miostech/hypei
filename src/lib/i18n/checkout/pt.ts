@@ -50,6 +50,13 @@ const pt = {
     failed: "Não foi possível concluir o pagamento.",
   },
 
+  bump: {
+    title: "Leve junto",
+    add: "Adicionar",
+    added: "Adicionado",
+    hint: "Entra na mesma compra, no mesmo pagamento.",
+  },
+
   summary: {
     title: "Resumo do pedido",
     subtotal: "Subtotal",
@@ -120,6 +127,7 @@ const pt = {
       title: "Estamos confirmando seu pagamento",
       body: "Isso costuma levar alguns segundos. Esta página atualiza sozinha.",
     },
+    alsoBought: "Também na sua compra",
     access: "Acessar agora",
     accessHint: "Entre com o mesmo e-mail que você usou nesta compra.",
     watching: "Aguardando confirmação do provedor de pagamento…",

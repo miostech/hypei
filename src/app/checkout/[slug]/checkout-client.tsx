@@ -13,7 +13,7 @@ import { fill, type Locale } from "@/lib/i18n/locale";
 import type { CountryCode } from "@/modules/organizations/countries";
 import type { TrackingInput } from "@/modules/checkout/checkout.schemas";
 import { applyCouponAction, registerAffiliateClick, startCheckoutAction, trackCheckoutEvent } from "./actions";
-import { useCoupon } from "./coupon-context";
+import { useCheckoutState } from "./checkout-state";
 import { MockPaymentPanel } from "./mock-payment-panel";
 import { StripePaymentPanel } from "./stripe-payment-panel";
 
@@ -42,7 +42,6 @@ export function CheckoutClient({
   publishableKey,
   accentColor,
   tracking,
-  amountLabel,
   locale,
   dict,
 }: {
@@ -57,7 +56,6 @@ export function CheckoutClient({
   publishableKey: string | null;
   accentColor: string;
   tracking: TrackingInput;
-  amountLabel: string;
   locale: Locale;
   dict: CheckoutDictionary;
 }) {
@@ -65,12 +63,12 @@ export function CheckoutClient({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [payment, setPayment] = useState<{ paymentId: string; clientSecret: string | null } | null>(null);
-  const { coupon, setCoupon } = useCoupon();
+  const { coupon, setCoupon, selectedBumps, total, format } = useCheckoutState();
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState<string | null>(null);
   const [checkingCoupon, setCheckingCoupon] = useState(false);
   const attemptId = useMemo(() => crypto.randomUUID(), []);
-  const payLabel = coupon?.total ?? amountLabel;
+  const payLabel = format(total);
 
   // A referral survives for 30 days: people rarely buy on the first visit, and the
   // affiliate who sent them should still get the credit when they come back.
@@ -93,7 +91,7 @@ export function CheckoutClient({
       setCouponError(result.message ?? dict.errors.invalidCode);
       return;
     }
-    setCoupon({ code: result.code, discount: result.discount!, total: result.total! });
+    setCoupon({ code: result.code, discountAmount: result.discountAmount! });
     toast.success(fill(dict.coupon.applied, { code: result.code }));
   }
 
@@ -129,6 +127,7 @@ export function CheckoutClient({
       phone: String(formData.get("phone") ?? ""),
       country: countries ? String(formData.get("country") ?? "") : undefined,
       couponCode: coupon?.code,
+      bumpOfferIds: selectedBumps,
       referralCode: currentReferral(),
       tracking: { ...tracking, referrer },
       locale,
@@ -246,7 +245,7 @@ export function CheckoutClient({
         {coupon && (
           <p className="flex items-center justify-between rounded-xl bg-success/10 px-3 py-2 text-sm text-success">
             <span>{fill(dict.coupon.line, { code: coupon.code })}</span>
-            <span className="font-semibold">− {coupon.discount}</span>
+            <span className="font-semibold">− {format(coupon.discountAmount)}</span>
           </p>
         )}
       </div>

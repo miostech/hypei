@@ -34,6 +34,8 @@ const pt = {
     rowProduct: "Produto",
     rowAmount: "Valor",
     rowOrder: "Pedido",
+    rowAlsoBought: "Também na compra",
+    noteExtras: "Os outros produtos ficam na sua área de membros, com o mesmo e-mail.",
     cta: "Acessar o conteúdo",
     note: "Use o mesmo e-mail desta compra para entrar.",
   },

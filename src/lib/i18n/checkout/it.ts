@@ -43,6 +43,13 @@ const it: CheckoutDictionary = {
     failed: "Non è stato possibile completare il pagamento.",
   },
 
+  bump: {
+    title: "Aggiungi all'ordine",
+    add: "Aggiungi",
+    added: "Aggiunto",
+    hint: "Entra nello stesso ordine, con lo stesso pagamento.",
+  },
+
   summary: {
     title: "Riepilogo dell'ordine",
     subtotal: "Subtotale",
@@ -107,6 +114,7 @@ const it: CheckoutDictionary = {
       title: "Stiamo confermando il tuo pagamento",
       body: "In genere ci vogliono pochi secondi. Questa pagina si aggiorna da sola.",
     },
+    alsoBought: "Anche nel tuo ordine",
     access: "Accedi ora",
     accessHint: "Accedi con la stessa e-mail che hai usato per questo acquisto.",
     watching: "In attesa della conferma del fornitore di pagamento…",

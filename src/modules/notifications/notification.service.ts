@@ -106,6 +106,7 @@ export class NotificationService {
       rendered: purchaseConfirmed(await this.buyerDictionary(context.customerLocale), {
         customerName: context.customerName,
         productName: context.productName,
+        extraProductNames: context.extraProductNames,
         amountLabel: this.amount(context.amount, context.currency),
         orderReference: context.orderReference,
         accessUrl,
