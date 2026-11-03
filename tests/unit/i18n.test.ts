@@ -7,6 +7,7 @@ import { DEFAULT_LOCALE, fill, plural, resolveLocale, SUPPORTED_LOCALES } from "
 import { getMembersDictionary } from "@/lib/i18n/members";
 import { SUPPORTED_COUNTRIES } from "@/modules/organizations/countries";
 import {
+  AffiliateCommissionStatus,
   DisputeStatus,
   LessonType,
   OrderStatus,
@@ -14,6 +15,7 @@ import {
   PaymentMethodType,
   PaymentStatus,
   RefundStatus,
+  SubscriptionStatus,
 } from "@/generated/prisma/enums";
 
 /** Cada família de dicionário, pelo seu carregador. */
@@ -154,6 +156,19 @@ describe("checkout dictionaries", () => {
           const labels: Record<string, string> = dict.status[group as keyof typeof ENUMS];
           expect(labels[value], `${locale}/status.${group}.${value}`).toBeTruthy();
         }
+      }
+    }
+  });
+
+  it("names every subscription and commission status the producer app can show", async () => {
+    // Estes dois selos ficam fora de `dict.status`: moram na seção da própria tela.
+    for (const locale of SUPPORTED_LOCALES) {
+      const dict = await getAppDictionary(locale);
+      for (const status of Object.values(SubscriptionStatus)) {
+        expect(dict.subscriptions.statuses[status], `${locale}/subscriptions.statuses.${status}`).toBeTruthy();
+      }
+      for (const status of Object.values(AffiliateCommissionStatus)) {
+        expect(dict.affiliates.statuses[status], `${locale}/affiliates.statuses.${status}`).toBeTruthy();
       }
     }
   });

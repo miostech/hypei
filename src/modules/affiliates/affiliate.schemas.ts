@@ -15,11 +15,3 @@ export const affiliateInputSchema = z.object({
 });
 
 export type AffiliateInput = z.infer<typeof affiliateInputSchema>;
-
-export const AFFILIATE_COMMISSION_STATUS_LABELS = {
-  PENDING: "Aguardando liberação",
-  APPROVED: "Aprovada",
-  AVAILABLE: "A pagar",
-  PAID: "Paga",
-  CANCELED: "Cancelada",
-} as const;
