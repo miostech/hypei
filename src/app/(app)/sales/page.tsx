@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { Metadata } from "next";
 import { getAppDictionary } from "@/lib/i18n/app";
 import { appLocale } from "@/lib/i18n/app/server";
-import { fill } from "@/lib/i18n/locale";
+import { fill, plural } from "@/lib/i18n/locale";
 import { formatAmount, formatDateTime } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
@@ -29,6 +29,20 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   const dict = await getAppDictionary(await appLocale());
   const t = dict.sales;
   const orders = query ? await repos.orders.search(organization.id, query, 100) : await repos.orders.list(organization.id, { limit: 100 });
+
+  /**
+   * O produto da venda, com o resto contado.
+   *
+   * Com order bump um pedido pode ter até quatro itens, e a lista tem espaço para um nome.
+   * Mostrar só o primeiro escondia do produtor que o bump converteu — que é exatamente a
+   * informação pela qual ele pôs o bump ali. A venda inteira continua na tela do pedido.
+   */
+  const productLabel = (items: { productName: string }[]) => {
+    const first = items[0]?.productName;
+    if (!first) return "—";
+    const extra = items.length - 1;
+    return extra > 0 ? `${first} · ${plural(dict.locale, extra, t.extraProducts)}` : first;
+  };
 
   return (
     <>
@@ -107,7 +121,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                         <span className="block truncate text-xs text-muted-foreground">{order.customer.email}</span>
                         {/* The columns hidden on small screens come back as context here. */}
                         <span className="block truncate text-xs text-muted-foreground lg:hidden">
-                          {order.items[0]?.productName ?? "—"}
+                          {productLabel(order.items)}
                         </span>
                         <span className="block text-xs text-muted-foreground md:hidden">{formatDateTime(order.createdAt, dict.localeTag)}</span>
                         {payment && (
@@ -116,7 +130,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="hidden text-muted-foreground lg:table-cell">{order.items[0]?.productName ?? "—"}</TableCell>
+                      <TableCell className="hidden text-muted-foreground lg:table-cell">{productLabel(order.items)}</TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <Badge variant={ORDER_STATUS_VARIANT[order.status]}>{dict.status.order[order.status]}</Badge>
                       </TableCell>

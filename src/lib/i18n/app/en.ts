@@ -71,6 +71,7 @@ const en: AppDictionary = {
     order: "Order",
     payment: "Payment",
     reason: "Reason",
+    subtotal: "Subtotal",
     total: "Total",
     discount: "Discount",
     cancel: "Cancel",
@@ -180,6 +181,8 @@ const en: AppDictionary = {
     viewAll: "View all sales",
     emptyTitle: "No sales recorded",
     emptyBody: "As soon as someone starts a purchase on your checkout, the order shows up here.",
+    /** The bump added to the order: "+1 product" next to the main one. */
+    extraProducts: { one: "+{count} product", other: "+{count} products" },
     viewCheckouts: "View checkouts",
   },
 

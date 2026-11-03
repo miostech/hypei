@@ -198,12 +198,24 @@ export default async function SaleDetailPage({ params }: PageProps<"/sales/[orde
               <Row label={t.order.reference}>
                 <span className="font-mono text-xs">{order.id.slice(-8).toUpperCase()}</span>
               </Row>
+              {/*
+                O valor BRUTO de cada linha, não o `totalAmount`: naquele campo o desconto já
+                está abatido da oferta principal, e mostrá-lo ao lado de uma linha de desconto
+                contava o mesmo abatimento duas vezes — as linhas não fechavam com o total. Com
+                order bump um pedido passa a ter várias linhas, e um painel que não soma vira
+                pergunta no suporte.
+              */}
               {order.items.map((item) => (
                 <Row key={item.id} label={item.productName}>
-                  {formatAmount(item.totalAmount, order.currency)}
+                  {formatAmount(item.unitAmount * BigInt(item.quantity), order.currency)}
                 </Row>
               ))}
-              {order.discountAmount > 0n && <Row label={dict.common.discount}>− {formatAmount(order.discountAmount, order.currency)}</Row>}
+              {order.discountAmount > 0n && (
+                <>
+                  <Row label={dict.common.subtotal}>{formatAmount(order.subtotalAmount, order.currency)}</Row>
+                  <Row label={dict.common.discount}>− {formatAmount(order.discountAmount, order.currency)}</Row>
+                </>
+              )}
               <Row label={dict.common.total} strong>
                 {formatAmount(order.totalAmount, order.currency)}
               </Row>

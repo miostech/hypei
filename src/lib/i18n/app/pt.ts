@@ -79,6 +79,7 @@ const pt = {
     order: "Pedido",
     payment: "Pagamento",
     reason: "Motivo",
+    subtotal: "Subtotal",
     total: "Total",
     discount: "Desconto",
     cancel: "Cancelar",
@@ -189,6 +190,8 @@ const pt = {
     viewAll: "Ver todas as vendas",
     emptyTitle: "Nenhuma venda registrada",
     emptyBody: "Assim que alguém iniciar uma compra no seu checkout, o pedido aparece aqui.",
+    /** O bump somado ao pedido: "+1 produto" ao lado do nome do principal. */
+    extraProducts: { one: "+{count} produto", other: "+{count} produtos" },
     viewCheckouts: "Ver checkouts",
   },
 

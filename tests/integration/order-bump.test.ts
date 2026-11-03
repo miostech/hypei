@@ -205,6 +205,34 @@ describe("Order bump", () => {
     expect(payment.amount).toBe(10_000n);
   });
 
+  /**
+   * A tela da venda lista uma linha por item e uma de desconto. Se o bruto das linhas não for
+   * o subtotal, o painel não fecha — e com bump um pedido deixa de ter uma linha só.
+   */
+  it("keeps the gross of every line equal to the order subtotal", async () => {
+    const seller = await createSeller(app, { amount: 10_000n });
+    const bump = await bumpProduct(app, seller);
+    await saveBumps(app, seller, [{ offerId: bump.offer.id, headline: "Leve as planilhas", price: "29,00" }]);
+    await app.services.coupons.create(seller.organization.id, seller.user.id, {
+      code: "META50",
+      type: "PERCENTAGE",
+      percentage: "50",
+      currency: "BRL",
+      oncePerCustomer: false,
+      active: true,
+    });
+
+    const { result } = await startPurchase(app, seller.checkout.slug, "fecha@example.com", {
+      couponCode: "META50",
+      bumpOfferIds: [bump.offer.id],
+    });
+    const order = await app.prisma.order.findUniqueOrThrow({ where: { id: result.orderId }, include: { items: true } });
+
+    const gross = order.items.reduce((sum, item) => sum + item.unitAmount * BigInt(item.quantity), 0n);
+    expect(gross).toBe(order.subtotalAmount);
+    expect(order.subtotalAmount - order.discountAmount).toBe(order.totalAmount);
+  });
+
   describe("tells the buyer about everything they paid for", () => {
     it("lists every purchased product for the thank-you page, main offer first", async () => {
       const seller = await createSeller(app, { amount: 10_000n });
