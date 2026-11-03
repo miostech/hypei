@@ -405,6 +405,28 @@ export class CheckoutService {
   }
 
   /**
+   * As ofertas que PODEM ser bump deste checkout.
+   *
+   * Mesma regra de `resolveBumps`, do outro lado: ali ela recusa, aqui ela filtra o que o
+   * produtor pode escolher. Duas listas divergentes dariam um seletor que oferece o que o
+   * salvamento recusa — por isso as duas leem os mesmos critérios.
+   */
+  async bumpCandidates(organizationId: string, mainOfferId: string) {
+    const main = await this.uow.repos.offers.findById(organizationId, mainOfferId);
+    if (!main) throw new NotFoundError("Offer", mainOfferId);
+
+    return (await this.uow.repos.offers.list(organizationId)).filter(
+      (offer) =>
+        offer.id !== main.id &&
+        offer.productId !== main.productId &&
+        offer.currency === main.currency &&
+        offer.billingType === "ONE_TIME" &&
+        offer.active &&
+        offer.product.status === "ACTIVE",
+    );
+  }
+
+  /**
    * Monta os bumps para a página pública, descartando em silêncio o que deixou de ser
    * vendável — oferta desativada, produto arquivado, oferta apagada.
    *

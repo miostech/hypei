@@ -23,6 +23,8 @@ export default async function NewCheckoutPage() {
   const offers = (await services.offers.list(organization.id)).filter((offer) => offer.active);
   if (offers.length === 0) redirect("/offers/new");
 
+  const bumpOffers = await services.checkouts.bumpCandidates(organization.id, offers[0].id);
+
   const t = (await getAppDictionary(await appLocale())).checkoutForm;
   const availableMethods = resolvePaymentMethods({
     provider: services.paymentProvider.type,
@@ -36,6 +38,7 @@ export default async function NewCheckoutPage() {
       <CheckoutForm
         action={createCheckout}
         offers={offers.map((o) => ({ id: o.id, label: `${o.product.name} — ${o.name} (${formatAmount(o.amount, o.currency)})` }))}
+        bumpOffers={bumpOffers.map((o) => ({ id: o.id, label: `${o.product.name} — ${o.name} (${formatAmount(o.amount, o.currency)})` }))}
         availableMethods={availableMethods}
         submitLabel={t.createSubmit}
         defaultValues={{
@@ -52,6 +55,7 @@ export default async function NewCheckoutPage() {
           collectPhone: false,
           guaranteeDays: GUARANTEE_MIN_DAYS,
           enabledPaymentMethods: [],
+          orderBumps: [],
         }}
       />
     </>

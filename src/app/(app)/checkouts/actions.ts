@@ -6,12 +6,41 @@ import type { ImageUploadRequest, ImageUploadResult } from "@/components/shared/
 import { PaymentMethodType } from "@/generated/prisma/enums";
 import { isDomainError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { checkoutBuilderSchema } from "@/modules/checkout/checkout.schemas";
+import { checkoutBuilderSchema, type OrderBumpInput } from "@/modules/checkout/checkout.schemas";
 import { requirePermission } from "@/modules/organizations/current-organization";
 import { getAppDictionary } from "@/lib/i18n/app";
 import { appLocale } from "@/lib/i18n/app/server";
 import { runAction, type ActionState } from "@/server/actions/action-state";
 import { getServices } from "@/server/container";
+
+/**
+ * Os order bumps chegam como nomes repetidos, uma entrada por linha do formulário, e aqui são
+ * casados pela posição. Remover uma linha a tira do formulário inteiro, então o que chega são
+ * as linhas que sobraram — sem buraco no meio para desalinhar os campos.
+ *
+ * Linha sem oferta escolhida é descartada em silêncio: é linha recém-adicionada e abandonada,
+ * não erro que valha travar o salvamento do resto da página.
+ */
+function parseBumps(formData: FormData): OrderBumpInput[] {
+  const offerIds = formData.getAll("bumpOfferId");
+  const headlines = formData.getAll("bumpHeadline");
+  const descriptions = formData.getAll("bumpDescription");
+  const prices = formData.getAll("bumpPrice");
+  const compareAtPrices = formData.getAll("bumpCompareAtPrice");
+
+  return offerIds.flatMap((offerId, index) => {
+    if (typeof offerId !== "string" || !offerId) return [];
+    return [
+      {
+        offerId,
+        headline: String(headlines[index] ?? ""),
+        description: String(descriptions[index] ?? ""),
+        price: String(prices[index] ?? ""),
+        compareAtPrice: String(compareAtPrices[index] ?? ""),
+      },
+    ];
+  });
+}
 
 function parse(formData: FormData) {
   return checkoutBuilderSchema.parse({
@@ -26,6 +55,7 @@ function parse(formData: FormData) {
     collectPhone: formData.get("collectPhone") === "on",
     guaranteeDays: formData.get("guaranteeDays"),
     enabledPaymentMethods: formData.getAll("enabledPaymentMethods").filter((m): m is PaymentMethodType => typeof m === "string" && m in PaymentMethodType),
+    orderBumps: parseBumps(formData),
   });
 }
 

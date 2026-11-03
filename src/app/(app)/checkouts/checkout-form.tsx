@@ -16,6 +16,7 @@ import { fill } from "@/lib/i18n/locale";
 import { GUARANTEE_MIN_DAYS } from "@/modules/checkout/checkout.schemas";
 import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { requestCheckoutImageUpload } from "./actions";
+import { OrderBumpFields, type OrderBumpFormValue } from "./order-bump-fields";
 
 export interface CheckoutFormValues {
   id?: string;
@@ -32,11 +33,13 @@ export interface CheckoutFormValues {
   collectPhone: boolean;
   guaranteeDays: number;
   enabledPaymentMethods: PaymentMethodType[];
+  orderBumps: OrderBumpFormValue[];
 }
 
 export function CheckoutForm({
   action,
   offers,
+  bumpOffers,
   availableMethods,
   defaultValues,
   submitLabel,
@@ -44,6 +47,8 @@ export function CheckoutForm({
 }: {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   offers: { id: string; label: string }[];
+  /** Ofertas que podem ser vendidas junto: cobrança única, mesma moeda, outro produto. */
+  bumpOffers: { id: string; label: string }[];
   availableMethods: PaymentMethodType[];
   defaultValues: CheckoutFormValues;
   submitLabel: string;
@@ -148,6 +153,8 @@ export function CheckoutForm({
             <p className="text-xs text-muted-foreground">{t.payment.allIfNone}</p>
           </CardContent>
         </Card>
+
+        <OrderBumpFields offers={bumpOffers} defaultValues={defaultValues.orderBumps} fieldError={fieldError} />
       </div>
 
       <div className="space-y-4">

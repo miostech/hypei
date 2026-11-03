@@ -9,6 +9,7 @@ import { NotFoundError } from "@/lib/errors";
 import { getAppDictionary } from "@/lib/i18n/app";
 import { appLocale } from "@/lib/i18n/app/server";
 import { fill } from "@/lib/i18n/locale";
+import { assertSupportedCurrency, convertMinorUnits } from "@/lib/money";
 import { formatAmount } from "@/lib/ui/format";
 import { GUARANTEE_MIN_DAYS } from "@/modules/checkout/checkout.schemas";
 import { resolvePaymentMethods } from "@/modules/payments/payment-method-resolver";
@@ -38,8 +39,11 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
     services.checkouts.assetUrl(config?.logoKey ?? null),
   ]);
 
+  const bumpOffers = await services.checkouts.bumpCandidates(organization.id, checkout.offerId);
+
   const dict = await getAppDictionary(await appLocale());
   const t = dict.checkoutForm;
+  const currency = assertSupportedCurrency(checkout.offer.currency);
   const availableMethods = resolvePaymentMethods({
     provider: services.paymentProvider.type,
     currency: checkout.offer.currency,
@@ -66,6 +70,7 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
       <CheckoutForm
         action={updateCheckout}
         offers={[{ id: checkout.offerId, label: `${checkout.offer.product.name} — ${checkout.offer.name}` }]}
+        bumpOffers={bumpOffers.map((o) => ({ id: o.id, label: `${o.product.name} — ${o.name} (${formatAmount(o.amount, o.currency)})` }))}
         availableMethods={availableMethods}
         submitLabel={t.saveSubmit}
         lockedOffer
@@ -84,6 +89,14 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
           collectPhone: config?.fields.phone ?? false,
           guaranteeDays: config?.guaranteeDays ?? GUARANTEE_MIN_DAYS,
           enabledPaymentMethods: config?.enabledPaymentMethods ?? [],
+          // O config guarda centavos; o formulário mostra o que uma pessoa digita.
+          orderBumps: (config?.orderBumps ?? []).map((bump) => ({
+            offerId: bump.offerId,
+            headline: bump.headline,
+            description: bump.description,
+            price: convertMinorUnits(BigInt(bump.amount), currency),
+            compareAtPrice: bump.compareAtAmount === null ? "" : convertMinorUnits(BigInt(bump.compareAtAmount), currency),
+          })),
         }}
       />
     </>
