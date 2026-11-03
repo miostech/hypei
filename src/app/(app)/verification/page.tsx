@@ -1,67 +1,52 @@
 import { AlertTriangleIcon, BanknoteIcon, CheckCircle2Icon, ClockIcon, ShieldCheckIcon, ShoppingBagIcon, XCircleIcon } from "lucide-react";
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { VerificationStatus } from "@/generated/prisma/enums";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { fill } from "@/lib/i18n/locale";
 import { formatDateTime } from "@/lib/ui/format";
+import { describeRequirements } from "@/modules/compliance/verification.requirements";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { hasPermission } from "@/modules/organizations/permissions";
 import { getServices } from "@/server/container";
 import { VerificationActions } from "./verification-actions";
 
-export const metadata = { title: "Verificação" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getAppDictionary(await appLocale())).verification.title };
+}
 
-const STATUS: Record<VerificationStatus, { label: string; description: string; variant: "success" | "warning" | "destructive" | "outline" }> = {
-  NOT_STARTED: {
-    label: "Não iniciada",
-    description: "Você ainda não enviou seus dados para verificação.",
-    variant: "outline",
-  },
-  PENDING: {
-    label: "Em análise",
-    description: "Seus dados foram enviados e o provedor de pagamento está analisando. Costuma levar de minutos a alguns dias.",
-    variant: "warning",
-  },
-  REQUIRES_ACTION: {
-    label: "Falta informação",
-    description: "O provedor precisa de mais alguma coisa antes de liberar sua conta.",
-    variant: "warning",
-  },
-  VERIFIED: {
-    label: "Verificada",
-    description: "Tudo certo: você pode vender e sacar normalmente.",
-    variant: "success",
-  },
-  REJECTED: {
-    label: "Recusada",
-    description: "O provedor não aprovou a verificação. Fale com o suporte para entender o motivo.",
-    variant: "destructive",
-  },
-  SUSPENDED: {
-    label: "Suspensa",
-    description: "Sua conta foi suspensa pelo provedor. Fale com o suporte.",
-    variant: "destructive",
-  },
+/** A cor de cada estado; o texto vem de `dict.verification.statuses`. */
+const STATUS_VARIANT: Record<VerificationStatus, "success" | "warning" | "destructive" | "outline"> = {
+  NOT_STARTED: "outline",
+  PENDING: "warning",
+  REQUIRES_ACTION: "warning",
+  VERIFIED: "success",
+  REJECTED: "destructive",
+  SUSPENDED: "destructive",
 };
 
 export default async function VerificationPage() {
   const { organization, membership } = await requirePagePermission("organization:read");
   const overview = await getServices().verification.overview(organization.id);
-  const status = STATUS[overview.status];
+  const dict = await getAppDictionary(await appLocale());
+  const t = dict.verification;
+
+  const variant = STATUS_VARIANT[overview.status];
+  const status = t.statuses[overview.status];
+  const requirements = describeRequirements(overview.requirementCodes, t.requirements);
   const canEdit = hasPermission(membership.role, "integrations:manage");
 
-  const actionLabel = !overview.hasAccount
-    ? "Iniciar verificação"
-    : overview.detailsSubmitted
-      ? "Revisar meus dados"
-      : "Continuar verificação";
+  const actionLabel = !overview.hasAccount ? t.start : overview.detailsSubmitted ? t.review : t.continue;
 
   return (
     <>
       <PageHeader
-        eyebrow="Conta"
-        title="Verificação"
-        description="Exigência dos meios de pagamento para que você possa receber. Os documentos vão direto para o provedor — a Kabrun não guarda essas informações."
+        eyebrow={t.eyebrow}
+        title={t.title}
+        description={t.description}
         actions={<VerificationActions label={actionLabel} canStart={canEdit} />}
       />
 
@@ -71,14 +56,14 @@ export default async function VerificationPage() {
             className={`flex size-11 items-center justify-center rounded-2xl ${
               overview.status === "VERIFIED"
                 ? "bg-success/12 text-success"
-                : status.variant === "destructive"
+                : variant === "destructive"
                   ? "bg-destructive/12 text-destructive"
                   : "bg-warning/12 text-warning"
             }`}
           >
             {overview.status === "VERIFIED" ? (
               <ShieldCheckIcon className="size-6" aria-hidden />
-            ) : status.variant === "destructive" ? (
+            ) : variant === "destructive" ? (
               <XCircleIcon className="size-6" aria-hidden />
             ) : (
               <ClockIcon className="size-6" aria-hidden />
@@ -87,12 +72,12 @@ export default async function VerificationPage() {
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-2 font-heading font-semibold">
               {status.label}
-              <Badge variant={status.variant}>{overview.provider}</Badge>
+              <Badge variant={variant}>{overview.provider}</Badge>
             </p>
             <p className="mt-0.5 text-sm text-muted-foreground">{status.description}</p>
           </div>
           {overview.verifiedAt && (
-            <p className="text-xs text-muted-foreground">Verificada em {formatDateTime(overview.verifiedAt)}</p>
+            <p className="text-xs text-muted-foreground">{fill(t.verifiedAt, { date: formatDateTime(overview.verifiedAt, dict.localeTag) })}</p>
           )}
         </CardContent>
       </Card>
@@ -104,9 +89,9 @@ export default async function VerificationPage() {
               <ShoppingBagIcon className="size-5" aria-hidden />
             </span>
             <div>
-              <p className="font-medium">{overview.canSell ? "Vendas liberadas" : "Vendas bloqueadas"}</p>
+              <p className="font-medium">{overview.canSell ? t.sellOn : t.sellOff}</p>
               <p className="text-sm text-muted-foreground">
-                {overview.canSell ? "Seus checkouts podem receber pagamentos." : "Enquanto não verificar, o checkout não cobra."}
+                {overview.canSell ? t.sellOnBody : t.sellOffBody}
               </p>
             </div>
           </CardContent>
@@ -118,26 +103,27 @@ export default async function VerificationPage() {
               <BanknoteIcon className="size-5" aria-hidden />
             </span>
             <div>
-              <p className="font-medium">{overview.canWithdraw ? "Saques liberados" : "Saques bloqueados"}</p>
+              <p className="font-medium">{overview.canWithdraw ? t.withdrawOn : t.withdrawOff}</p>
               <p className="text-sm text-muted-foreground">
-                {overview.canWithdraw ? "Você pode transferir seu saldo disponível." : "O dinheiro continua seu; só não sai até a verificação terminar."}
+                {overview.canWithdraw ? t.withdrawOnBody : t.withdrawOffBody}
               </p>
             </div>
           </CardContent>
         </Card>
       </section>
 
-      {overview.requirements.length > 0 && (
+      {requirements.length > 0 && (
         <Card className="border-warning/40">
           <CardHeader className="border-b pb-4">
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangleIcon className="size-4 text-warning" aria-hidden />O que ainda falta
+              <AlertTriangleIcon className="size-4 text-warning" aria-hidden />
+              {t.missingTitle}
             </CardTitle>
-            <CardDescription>Pendências que o provedor apontou. Elas são preenchidas no formulário dele.</CardDescription>
+            <CardDescription>{t.missingDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="divide-y">
-              {overview.requirements.map((requirement) => (
+              {requirements.map((requirement) => (
                 <li key={requirement.code} className="flex gap-3 py-3 first:pt-0 last:pb-0">
                   <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-warning/50 text-warning">
                     <span className="size-1.5 rounded-full bg-warning" />
@@ -155,23 +141,23 @@ export default async function VerificationPage() {
 
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle>Dados já informados</CardTitle>
-          <CardDescription>O que a Kabrun tem no cadastro desta organização.</CardDescription>
+          <CardTitle>{t.dataTitle}</CardTitle>
+          <CardDescription>{t.dataDescription}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
-          <Row label="Tipo" value={overview.businessType === "INDIVIDUAL" ? "Pessoa física" : "Empresa"} />
-          <Row label="Razão social" value={overview.legalName ?? organization.name} />
-          <Row label="País" value={overview.country} />
+          <Row label={t.businessType} value={overview.businessType === "INDIVIDUAL" ? t.individual : t.company} />
+          <Row label={t.legalName} value={overview.legalName ?? organization.name} />
+          <Row label={t.country} value={overview.country} />
           {overview.taxIdentities.map((identity) => (
             <Row key={identity.type} label={identity.type} value={identity.maskedValue} />
           ))}
-          {overview.submittedAt && <Row label="Enviada em" value={formatDateTime(overview.submittedAt)} />}
+          {overview.submittedAt && <Row label={t.submittedAt} value={formatDateTime(overview.submittedAt, dict.localeTag)} />}
         </CardContent>
       </Card>
 
       <p className="flex items-start gap-2 px-1 text-xs text-muted-foreground">
         <CheckCircle2Icon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-        Documentos e dados bancários são enviados e guardados pelo provedor de pagamento. A Kabrun recebe apenas o status da análise e o que ainda falta.
+        {t.footnote}
       </p>
     </>
   );

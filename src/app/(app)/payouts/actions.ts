@@ -3,6 +3,8 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { parseDecimalToMinorUnits, assertSupportedCurrency } from "@/lib/money";
 import { requirePermission } from "@/modules/organizations/current-organization";
 import { runAction, type ActionState } from "@/server/actions/action-state";
@@ -30,6 +32,6 @@ export async function requestPayout(_prev: ActionState, formData: FormData): Pro
 
     revalidatePath("/payouts");
     revalidatePath("/finance");
-    return { status: "success", message: "Saque solicitado. Você será notificado quando for pago." };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.payoutRequested };
   });
 }

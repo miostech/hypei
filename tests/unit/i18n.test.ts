@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getAppDictionary, languageOptions } from "@/lib/i18n/app";
+import pt from "@/lib/i18n/app/pt";
 import { getCheckoutDictionary } from "@/lib/i18n/checkout";
 import { localizedCountries } from "@/lib/i18n/countries";
 import { getEmailDictionary, storedLocale } from "@/lib/i18n/email";
@@ -10,12 +11,14 @@ import {
   AffiliateCommissionStatus,
   DisputeStatus,
   LessonType,
+  PayoutStatus,
   OrderStatus,
   OrganizationRole,
   PaymentMethodType,
   PaymentStatus,
   RefundStatus,
   SubscriptionStatus,
+  VerificationStatus,
 } from "@/generated/prisma/enums";
 
 /** Cada família de dicionário, pelo seu carregador. */
@@ -169,6 +172,27 @@ describe("checkout dictionaries", () => {
       }
       for (const status of Object.values(AffiliateCommissionStatus)) {
         expect(dict.affiliates.statuses[status], `${locale}/affiliates.statuses.${status}`).toBeTruthy();
+      }
+      for (const status of Object.values(PayoutStatus)) {
+        expect(dict.payouts.statuses[status], `${locale}/payouts.statuses.${status}`).toBeTruthy();
+      }
+      for (const status of Object.values(VerificationStatus)) {
+        const entry = dict.verification.statuses[status];
+        expect(entry?.label, `${locale}/verification.statuses.${status}.label`).toBeTruthy();
+        expect(entry?.description, `${locale}/verification.statuses.${status}.description`).toBeTruthy();
+      }
+    }
+  });
+
+  it("names every requirement code the provider mapping knows", async () => {
+    // O produtor nunca deve ler "individual.verification.document": se um idioma esquecer um
+    // código, é o código cru que aparece na lista de pendências dele.
+    const codes = Object.keys(pt.verification.requirements);
+    for (const locale of SUPPORTED_LOCALES) {
+      const dict = await getAppDictionary(locale);
+      for (const code of codes) {
+        const entry = dict.verification.requirements[code as keyof typeof dict.verification.requirements];
+        expect(entry?.label, `${locale}/verification.requirements.${code}`).toBeTruthy();
       }
     }
   });

@@ -10,18 +10,24 @@ import {
   SparklesIcon,
   UnlockIcon,
 } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BalanceHero } from "@/components/shared/balance-hero";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { fill } from "@/lib/i18n/locale";
 import { formatAmount, formatDate, formatDateTime } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
 import { SimulateSettlementButton } from "./simulate-settlement";
 
-export const metadata = { title: "Financeiro" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getAppDictionary(await appLocale())).finance.eyebrow };
+}
 
 /** Each journal type gets its own icon + tone, so a movement is readable at a glance. */
 const MOVEMENT_STYLE: Record<string, { icon: LucideIcon; className: string }> = {
@@ -44,6 +50,9 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   const requested = typeof params.currency === "string" ? params.currency : undefined;
   const currency = requested && currencies.includes(requested) ? requested : currencies[0];
 
+  const dict = await getAppDictionary(await appLocale());
+  const t = dict.finance;
+
   const [summary, movements, nextAvailable] = await Promise.all([
     services.finance.summary(organization.id, currency),
     services.finance.movements(organization.id, currency, 40),
@@ -53,9 +62,9 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   return (
     <>
       <PageHeader
-        eyebrow="Financeiro"
-        title="Seu dinheiro, lançamento por lançamento"
-        description="Todos os números vêm do ledger: cada movimentação é registrada em partida dobrada e nunca é editada."
+        eyebrow={t.eyebrow}
+        title={t.title}
+        description={t.description}
         actions={
           <>
             {currencies.length > 1 && (
@@ -80,43 +89,44 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
 
       <section className="grid gap-4 lg:grid-cols-3">
         <BalanceHero
+          dict={dict}
           className="lg:col-span-2"
           currency={currency}
           available={formatAmount(summary.available, currency)}
           pending={formatAmount(summary.pending, currency)}
           reserved={formatAmount(summary.reserved, currency)}
           footnote={
-            nextAvailable ? `Próxima liberação em ${formatDate(nextAvailable)}.` : "Sem liberações agendadas no momento."
+            nextAvailable ? fill(t.nextRelease, { date: formatDate(nextAvailable, dict.localeTag) }) : t.noRelease
           }
           actions={
             <Button className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90" render={<Link href="/payouts" />}>
               <BanknoteIcon />
-              Solicitar saque
+              {t.requestPayout}
             </Button>
           }
         />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-          <StatCard label="Receita bruta" value={formatAmount(summary.grossRevenue, currency)} icon={ReceiptIcon} hint="Total capturado dos compradores" />
-          <StatCard label="Taxas Kabrun" value={formatAmount(summary.platformFees, currency)} tone="gold" icon={SparklesIcon} hint="Comissão da plataforma" />
+          <StatCard label={t.grossRevenue} value={formatAmount(summary.grossRevenue, currency)} icon={ReceiptIcon} hint={t.grossRevenueHint} />
+          <StatCard label={t.platformFees} value={formatAmount(summary.platformFees, currency)} tone="gold" icon={SparklesIcon} hint={t.platformFeesHint} />
         </div>
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Taxas de processamento" value={formatAmount(summary.processorFees, currency)} tone="muted" />
-        <StatCard label="Reembolsos" value={formatAmount(summary.refunds, currency)} icon={RotateCcwIcon} tone="muted" />
-        <StatCard label="Chargebacks" value={formatAmount(summary.chargebacks, currency)} icon={AlertTriangleIcon} tone="muted" />
-        <StatCard label="Saldo reservado" value={formatAmount(summary.reserved, currency)} icon={LockIcon} tone={summary.reserved > 0n ? "warning" : "muted"} hint="Retido por disputas" />
+        <StatCard label={t.processorFees} value={formatAmount(summary.processorFees, currency)} tone="muted" />
+        <StatCard label={t.refunds} value={formatAmount(summary.refunds, currency)} icon={RotateCcwIcon} tone="muted" />
+        <StatCard label={t.chargebacks} value={formatAmount(summary.chargebacks, currency)} icon={AlertTriangleIcon} tone="muted" />
+        <StatCard label={t.reserved} value={formatAmount(summary.reserved, currency)} icon={LockIcon} tone={summary.reserved > 0n ? "warning" : "muted"} hint={t.reservedHint} />
       </section>
 
       <Card>
         <CardHeader className="border-b pb-4">
-          <CardTitle>Movimentações</CardTitle>
-          <CardDescription>Saldo do produtor após cada lançamento (pendente + disponível + reservado).</CardDescription>
+          <CardTitle>{t.movementsTitle}</CardTitle>
+          <CardDescription>{t.movementsDescription}</CardDescription>
         </CardHeader>
         <CardContent className="px-0">
           {movements.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">Nenhuma movimentação financeira ainda.</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">{t.noMovements}</p>
           ) : (
             <ul className="divide-y">
               {movements.map((row) => {
@@ -130,7 +140,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{row.description}</p>
                       <p className="text-xs text-muted-foreground">
-                        {row.typeLabel} · {formatDateTime(row.date)}
+                        {t.journalTypes[row.type as keyof typeof t.journalTypes] ?? row.type} · {formatDateTime(row.date, dict.localeTag)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -142,7 +152,9 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
                         {row.amount > 0n ? "+" : ""}
                         {formatAmount(row.amount, currency)}
                       </p>
-                      <p className="tabular text-xs text-muted-foreground">saldo {formatAmount(row.balanceAfter, currency)}</p>
+                      <p className="tabular text-xs text-muted-foreground">
+                        {fill(t.balanceAfter, { amount: formatAmount(row.balanceAfter, currency) })}
+                      </p>
                     </div>
                   </li>
                 );
