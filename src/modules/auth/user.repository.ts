@@ -12,6 +12,7 @@ export interface UpsertIdentityInput {
 export interface UserRepository {
   findById(id: string): Promise<User | null>;
   upsertFromIdentity(input: UpsertIdentityInput): Promise<User>;
+  updateLocale(id: string, locale: string): Promise<void>;
 }
 
 export class PrismaUserRepository implements UserRepository {
@@ -31,7 +32,14 @@ export class PrismaUserRepository implements UserRepository {
         platformRole: input.platformRole,
         ...(input.locale ? { locale: input.locale } : {}),
       },
+      // `locale` fica fora do update de propósito: o Keycloak semeia o idioma no primeiro
+      // login, e dali em diante quem manda é o seletor do app. Refrescar daqui desfaria a
+      // escolha do produtor a cada login.
       update: { email: input.email.toLowerCase(), name: input.name, platformRole: input.platformRole },
     });
+  }
+
+  async updateLocale(id: string, locale: string) {
+    await this.db.user.update({ where: { id }, data: { locale } });
   }
 }

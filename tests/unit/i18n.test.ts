@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { getAppDictionary, languageOptions } from "@/lib/i18n/app";
 import { getCheckoutDictionary } from "@/lib/i18n/checkout";
 import { localizedCountries } from "@/lib/i18n/countries";
 import { getEmailDictionary, storedLocale } from "@/lib/i18n/email";
 import { DEFAULT_LOCALE, fill, resolveLocale, SUPPORTED_LOCALES } from "@/lib/i18n/locale";
 import { getMembersDictionary } from "@/lib/i18n/members";
 import { SUPPORTED_COUNTRIES } from "@/modules/organizations/countries";
-import { LessonType, PaymentMethodType } from "@/generated/prisma/enums";
+import { LessonType, OrganizationRole, PaymentMethodType } from "@/generated/prisma/enums";
 
 /** Cada família de dicionário, pelo seu carregador. */
 const FAMILIES = {
   checkout: getCheckoutDictionary,
   members: getMembersDictionary,
   email: getEmailDictionary,
+  app: getAppDictionary,
 } as const;
 
 const OTHER_LOCALES = SUPPORTED_LOCALES.filter((locale) => locale !== "pt");
@@ -96,6 +98,22 @@ describe("checkout dictionaries", () => {
     }
   });
 
+  it("names every role and every nav entry the producer shell can render", async () => {
+    // A barra lateral e o cabeçalho leem por chave: uma chave faltando vira buraco na navegação.
+    for (const locale of SUPPORTED_LOCALES) {
+      const dict = await getAppDictionary(locale);
+      for (const role of Object.values(OrganizationRole)) {
+        expect(dict.roles[role], `${locale}/${role}`).toBeTruthy();
+      }
+      for (const [key, label] of Object.entries(dict.nav.items)) {
+        expect(label, `${locale}/nav.items.${key}`).toBeTruthy();
+      }
+      for (const [key, label] of Object.entries(dict.nav.groups)) {
+        expect(label, `${locale}/nav.groups.${key}`).toBeTruthy();
+      }
+    }
+  });
+
   it("names every lesson type the member area can render", async () => {
     for (const locale of SUPPORTED_LOCALES) {
       const dict = await getMembersDictionary(locale);
@@ -110,6 +128,7 @@ describe("checkout dictionaries", () => {
     const checkoutPt = await getCheckoutDictionary("pt");
     const membersPt = await getMembersDictionary("pt");
     const emailPt = await getEmailDictionary("pt");
+    const appPt = await getAppDictionary("pt");
 
     for (const locale of OTHER_LOCALES) {
       const checkout = await getCheckoutDictionary(locale);
@@ -125,7 +144,22 @@ describe("checkout dictionaries", () => {
       const email = await getEmailDictionary(locale);
       expect(email.purchaseConfirmed.heading, locale).not.toBe(emailPt.purchaseConfirmed.heading);
       expect(email.footer.processedBy, locale).not.toBe(emailPt.footer.processedBy);
+
+      const app = await getAppDictionary(locale);
+      expect(app.topbar.organizations, locale).not.toBe(appPt.topbar.organizations);
+      expect(app.nav.testEnvironment, locale).not.toBe(appPt.nav.testEnvironment);
+      expect(app.roles.OWNER, locale).not.toBe(appPt.roles.OWNER);
     }
+  });
+});
+
+describe("languageOptions", () => {
+  it("offers every supported language, each written in itself", async () => {
+    // O seletor é a única tela que uma pessoa lê num idioma que não é o dela: ela precisa
+    // reconhecer "Deutsch" sem saber alemão. Traduzir os nomes acabaria com isso.
+    const options = await languageOptions();
+    expect(options.map((option) => option.locale)).toEqual([...SUPPORTED_LOCALES]);
+    expect(options.map((option) => option.name)).toEqual(["Português", "English", "Español", "Français", "Deutsch", "Italiano"]);
   });
 });
 
