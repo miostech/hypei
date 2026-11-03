@@ -1,8 +1,7 @@
 import { LanguagesIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-const LANGUAGES = ["Português", "Inglês", "Espanhol"];
+import type { AppDictionary } from "@/lib/i18n/app";
 
 /**
  * Anúncio, não funcionalidade: não existe nada por trás disto ainda. Aparece na lista de
@@ -12,30 +11,30 @@ const LANGUAGES = ["Português", "Inglês", "Espanhol"];
  * Sem data e sem botão de propósito. "Em breve" com botão que não faz nada vira reclamação, e
  * data que não se cumpre custa mais caro do que não ter anunciado.
  */
-export function TranslationSoon() {
+export function TranslationSoon({ dict }: { dict: AppDictionary }) {
+  const t = dict.membersArea.translationSoon;
+
   return (
     <Card>
       <CardHeader className="border-b pb-4">
         <CardTitle className="flex items-center gap-2">
           <LanguagesIcon className="size-4 text-muted-foreground" aria-hidden />
-          Traduzir as aulas
+          {t.title}
         </CardTitle>
-        <CardDescription>Vender o mesmo conteúdo em outro idioma, sem regravar as aulas.</CardDescription>
+        <CardDescription>{t.description}</CardDescription>
         <CardAction>
-          <Badge variant="warning">Em breve</Badge>
+          <Badge variant="warning">{t.badge}</Badge>
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-3">
         <ul className="flex flex-wrap gap-1.5">
-          {LANGUAGES.map((language) => (
+          {t.languages.map((language) => (
             <li key={language}>
               <Badge variant="outline">{language}</Badge>
             </li>
           ))}
         </ul>
-        <p className="text-xs text-muted-foreground">
-          Ainda não está disponível e não há nada para configurar agora.
-        </p>
+        <p className="text-xs text-muted-foreground">{t.note}</p>
       </CardContent>
     </Card>
   );

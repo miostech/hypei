@@ -5,6 +5,8 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 import { uploadToStorage } from "@/lib/ui/upload";
 import type { LessonType } from "@/generated/prisma/enums";
 import { requestLessonUpload } from "./actions";
@@ -42,6 +44,8 @@ export function LessonFileField({
   onChange: (file: UploadedFile | null) => void;
   fieldId: string;
 }) {
+  const dict = useAppDictionary();
+  const t = dict.membersArea.file;
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,9 +69,9 @@ export function LessonFileField({
 
       await uploadToStorage(authorized.url, authorized.headers, file, setProgress);
       onChange({ key: authorized.key, filename: file.name, contentType: file.type || "application/octet-stream", bytes: file.size });
-      toast.success("Arquivo enviado");
+      toast.success(t.sentToast);
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Falha no envio");
+      setError(uploadError instanceof Error ? uploadError.message : t.failed);
     } finally {
       setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
@@ -76,7 +80,7 @@ export function LessonFileField({
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={`file-${fieldId}`}>Arquivo da aula</Label>
+      <Label htmlFor={`file-${fieldId}`}>{t.label}</Label>
 
       <input
         ref={inputRef}
@@ -95,9 +99,11 @@ export function LessonFileField({
           <FileIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{value.filename}</p>
-            <p className="text-xs text-muted-foreground">{formatBytes(value.bytes)} · enviado</p>
+            <p className="text-xs text-muted-foreground">
+              {formatBytes(value.bytes)} · {t.sent}
+            </p>
           </div>
-          <Button type="button" variant="ghost" size="icon-sm" aria-label="Remover arquivo" onClick={() => onChange(null)}>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={t.remove} onClick={() => onChange(null)}>
             <XIcon />
           </Button>
         </div>
@@ -105,7 +111,7 @@ export function LessonFileField({
         <div className="space-y-2 rounded-xl border p-3">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2Icon className="size-4 animate-spin" aria-hidden />
-            Enviando… {progress}%
+            {fill(t.uploading, { percent: progress })}
           </p>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div className="bg-brand-gradient h-full rounded-full transition-all" style={{ width: `${Math.max(progress, 3)}%` }} />
@@ -119,9 +125,9 @@ export function LessonFileField({
         >
           <UploadCloudIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <span className="text-sm">
-            Escolher arquivo
+            {t.pick}
             <span className="block text-xs text-muted-foreground">
-              {type === "VIDEO" ? "Vídeo até 2 GB" : type === "AUDIO" ? "Áudio até 300 MB" : type === "PDF" ? "PDF até 100 MB" : "Até 300 MB"}
+              {type === "VIDEO" ? t.limits.VIDEO : type === "AUDIO" ? t.limits.AUDIO : type === "PDF" ? t.limits.PDF : t.limits.other}
             </span>
           </span>
         </button>

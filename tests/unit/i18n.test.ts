@@ -173,11 +173,15 @@ describe("checkout dictionaries", () => {
     }
   });
 
-  it("names every lesson type the member area can render", async () => {
+  it("names every lesson type on both sides of the members area", async () => {
+    // O aluno vê a sua lista e o produtor vê o seletor do editor: os dois dicionários nomeiam
+    // os mesmos tipos, e um tipo novo no Prisma tem de aparecer nos dois.
     for (const locale of SUPPORTED_LOCALES) {
-      const dict = await getMembersDictionary(locale);
+      const members = await getMembersDictionary(locale);
+      const app = await getAppDictionary(locale);
       for (const type of Object.values(LessonType)) {
-        expect(dict.lessonTypes[type], `${locale}/${type}`).toBeTruthy();
+        expect(members.lessonTypes[type], `${locale}/members/${type}`).toBeTruthy();
+        expect(app.membersArea.lessonTypes[type], `${locale}/app/${type}`).toBeTruthy();
       }
     }
   });

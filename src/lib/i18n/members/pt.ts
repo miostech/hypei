@@ -62,7 +62,7 @@ const pt = {
     signOut: "Sair",
   },
 
-  /** Os mesmos tipos de `LESSON_TYPE_LABELS`, que segue em pt-BR para o app do produtor. */
+  /** Os mesmos tipos de `membersArea.lessonTypes`, no dicionário do app do produtor. */
   lessonTypes: {
     VIDEO: "Vídeo",
     TEXT: "Texto",

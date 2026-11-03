@@ -662,6 +662,135 @@ const pt = {
     },
   },
 
+  membersArea: {
+    eyebrow: "Área de membros",
+    title: "Conteúdo dos seus alunos",
+    description: "O acesso é liberado automaticamente quando o pagamento do produto é confirmado.",
+    view: "Ver área de membros",
+    newCourse: "Novo curso",
+    emptyTitle: "Nenhum curso criado",
+    emptyBody: "Crie um curso, organize os módulos e publique. Quem comprar o produto entra automaticamente.",
+    allProductsTaken: "Todos os seus produtos já têm curso. Crie um novo produto para começar outro conteúdo.",
+    createCourse: "Criar curso",
+    createProduct: "Criar produto",
+    published: "Publicado",
+    draft: "Rascunho",
+    moduleCount: { one: "{count} módulo", other: "{count} módulos" },
+    lessonCount: { one: "{count} aula", other: "{count} aulas" },
+    studentCount: { one: "{count} aluno", other: "{count} alunos" },
+
+    new: {
+      title: "Novo curso",
+      description: "O curso fica ligado a um produto: quem compra, entra.",
+      noProductTitle: "Nenhum produto disponível",
+      noProductBody: "Cada curso pertence a um produto, e cada produto pode ter um curso. Crie um novo produto para continuar.",
+      formTitle: "Informações do curso",
+      formDescription: "Você organiza os módulos e as aulas no próximo passo.",
+    },
+
+    editor: {
+      title: "Editar curso",
+      viewAsStudent: "Ver como aluno",
+      publish: "Publicar curso",
+      unpublish: "Despublicar",
+      contentTitle: "Conteúdo",
+      contentDescription: "Os alunos assistem na ordem em que os módulos e as aulas aparecem aqui.",
+      noModulesTitle: "Nenhum módulo ainda",
+      noModulesBody: "Comece criando o primeiro módulo do curso.",
+      moveUp: "Mover para cima",
+      moveDown: "Mover para baixo",
+      deleteModule: "Excluir módulo",
+      deleteLesson: "Excluir aula",
+      minutes: "{count} min",
+      settingsTitle: "Configurações",
+      settingsDescription: "Título, link e descrição vistos pelo aluno.",
+      accessTitle: "Acesso",
+      accessDescription: "Quem compra o produto entra automaticamente.",
+      viewProduct: "ver produto",
+      students: "Alunos",
+      needsLesson: "Crie pelo menos uma aula para poder publicar o curso.",
+      dangerTitle: "Apagar conteúdo",
+      dangerDescription: "Use quando o conteúdo foi criado no produto errado — é um conteúdo por produto.",
+    },
+
+    courseForm: {
+      product: "Produto",
+      title: "Título do curso",
+      slug: "Link do curso",
+      slugHint: "Usado no endereço da área de membros.",
+    },
+
+    moduleDialog: {
+      rename: "Renomear módulo",
+      new: "Novo módulo",
+      description: "Módulos agrupam as aulas na ordem em que o aluno deve assistir.",
+      add: "Adicionar módulo",
+      create: "Criar módulo",
+      fieldTitle: "Título",
+    },
+
+    lessonDialog: {
+      edit: "Editar aula",
+      new: "Nova aula",
+      add: "Adicionar aula",
+      description: "Envie o arquivo ou aponte para um link, se o vídeo já estiver hospedado em outro lugar.",
+      duration: "Duração (min)",
+      fieldTitle: "Título",
+      content: "Conteúdo",
+      orLink: "ou use um link",
+      externalUrl: "Link do arquivo ou vídeo",
+      externalUrlHint: "YouTube, Vimeo ou qualquer URL acessível ao aluno.",
+      save: "Salvar aula",
+    },
+
+    lessonTypes: {
+      VIDEO: "Vídeo",
+      TEXT: "Texto",
+      PDF: "PDF",
+      AUDIO: "Áudio",
+      LIVE: "Ao vivo",
+      DOWNLOAD: "Download",
+    },
+
+    file: {
+      label: "Arquivo da aula",
+      pick: "Escolher arquivo",
+      limits: {
+        VIDEO: "Vídeo até 2 GB",
+        AUDIO: "Áudio até 300 MB",
+        PDF: "PDF até 100 MB",
+        other: "Até 300 MB",
+      },
+      sent: "enviado",
+      remove: "Remover arquivo",
+      uploading: "Enviando… {percent}%",
+      sentToast: "Arquivo enviado",
+      failed: "Falha no envio",
+      fallbackName: "arquivo",
+    },
+
+    deleteCourse: {
+      blocked: {
+        one: "Não dá para apagar: {count} aluno tem acesso. Despublique para esconder da área de membros sem perder o histórico.",
+        other: "Não dá para apagar: {count} alunos têm acesso. Despublique para esconder da área de membros sem perder o histórico.",
+      },
+      trigger: "Apagar conteúdo",
+      title: "Apagar “{title}”?",
+      description:
+        "Os módulos, as aulas e os arquivos enviados vão junto, e não há como desfazer. O produto continua existindo e pode receber um conteúdo novo.",
+      confirm: "Apagar",
+      pending: "Apagando…",
+    },
+
+    translationSoon: {
+      title: "Traduzir as aulas",
+      description: "Vender o mesmo conteúdo em outro idioma, sem regravar as aulas.",
+      badge: "Em breve",
+      note: "Ainda não está disponível e não há nada para configurar agora.",
+      languages: ["Português", "Inglês", "Espanhol"],
+    },
+  },
+
   /** O que cada Server Action devolve como aviso de sucesso. */
   toasts: {
     productCreated: "Produto criado",
