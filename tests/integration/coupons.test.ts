@@ -127,6 +127,74 @@ describe("Coupons", () => {
     await expect(startPurchase(app, s.checkout.slug, "outra@example.com", { couponCode: "UMAVEZ" })).resolves.toBeDefined();
   });
 
+  /** O provedor avisando que a cobrança não foi: é por aqui que o uso do cupom volta. */
+  function failPayment(payment: { providerPaymentId: string | null }) {
+    return app.deliver({ type: "payment.failed", providerPaymentId: payment.providerPaymentId!, reason: "card_declined" });
+  }
+
+  it("gives the use back when the payment fails, so the next buyer still gets the coupon", async () => {
+    const s = await seller();
+    await app.services.coupons.create(s.organization.id, s.user.id, {
+      ...BASE_COUPON,
+      code: "SOUM",
+      percentage: "10",
+      maxRedemptions: 1,
+    });
+
+    const { payment } = await startPurchase(app, s.checkout.slug, "recusada@example.com", { couponCode: "SOUM" });
+    await failPayment(payment);
+
+    expect((await app.prisma.coupon.findFirstOrThrow()).redemptions).toBe(0);
+    expect(await app.prisma.couponRedemption.count()).toBe(0);
+    // O PIX abandonado não pode ter comido o único uso anunciado.
+    await expect(startPurchase(app, s.checkout.slug, "seguinte@example.com", { couponCode: "SOUM" })).resolves.toBeDefined();
+  });
+
+  it("lets the same buyer try again after a declined card", async () => {
+    const s = await seller();
+    await app.services.coupons.create(s.organization.id, s.user.id, {
+      ...BASE_COUPON,
+      code: "UMAVEZSO",
+      percentage: "10",
+      oncePerCustomer: true,
+    });
+
+    const { payment } = await startPurchase(app, s.checkout.slug, "tentando@example.com", { couponCode: "UMAVEZSO" });
+    await failPayment(payment);
+
+    const retry = await startPurchase(app, s.checkout.slug, "tentando@example.com", { couponCode: "UMAVEZSO" });
+    await confirmPayment(app, retry.payment);
+    expect(retry.payment.amount).toBe(9000n);
+    // A segunda vez, essa sim paga: agora o cupom está fechado para ela.
+    await expect(startPurchase(app, s.checkout.slug, "tentando@example.com", { couponCode: "UMAVEZSO" })).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+  });
+
+  it("takes the use back when a failed payment is confirmed later", async () => {
+    const s = await seller();
+    await app.services.coupons.create(s.organization.id, s.user.id, {
+      ...BASE_COUPON,
+      code: "ATRASADO",
+      percentage: "10",
+      maxRedemptions: 1,
+    });
+
+    const { payment } = await startPurchase(app, s.checkout.slug, "atrasada@example.com", { couponCode: "ATRASADO" });
+    await failPayment(payment);
+    await confirmPayment(app, payment);
+
+    expect((await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).status).toBe("PAID");
+    const coupon = await app.prisma.coupon.findFirstOrThrow();
+    expect(coupon.redemptions).toBe(1);
+    const redemption = await app.prisma.couponRedemption.findUniqueOrThrow({ where: { orderId: payment.orderId } });
+    expect(redemption.amount).toBe(1000n);
+    // A venda com desconto aconteceu, então o único uso está gasto de novo.
+    await expect(startPurchase(app, s.checkout.slug, "tarde@example.com", { couponCode: "ATRASADO" })).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+  });
+
   it("does not accept a code from another organization", async () => {
     const a = await seller({ slug: "org-a" });
     const b = await seller({ slug: "org-b" });
