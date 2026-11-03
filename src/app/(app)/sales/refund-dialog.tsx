@@ -8,6 +8,8 @@ import { SubmitButton } from "@/components/shared/submit-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { idleState } from "@/lib/actions/action-state";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 import { formatAmount } from "@/lib/ui/format";
 import { requestRefund } from "./actions";
 
@@ -22,6 +24,8 @@ export function RefundDialog({
   currency: string;
   partiallyRefunded: boolean;
 }) {
+  const dict = useAppDictionary();
+  const t = dict.refundDialog;
   const [opened, setOpened] = useState(false);
   const [state, formAction] = useActionState(requestRefund, idleState);
   const [scope, setScope] = useState<"full" | "partial">("full");
@@ -32,8 +36,8 @@ export function RefundDialog({
   const refundable = formatAmount(refundableAmount, currency);
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Reembolso solicitado");
-  }, [state]);
+    if (state.status === "success") toast.success(state.message ?? t.submitted);
+  }, [state, t.submitted]);
 
   return (
     <Dialog open={open} onOpenChange={setOpened}>
@@ -41,16 +45,16 @@ export function RefundDialog({
         render={
           <Button variant="outline">
             <RotateCcwIcon />
-            Reembolsar
+            {t.trigger}
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Reembolsar pagamento</DialogTitle>
+          <DialogTitle>{t.title}</DialogTitle>
           <DialogDescription>
-            O valor volta para o cliente e sai do seu saldo. {partiallyRefunded ? "Este pagamento já teve um reembolso parcial." : ""} Disponível
-            para reembolso: {refundable}.
+            {t.description} {partiallyRefunded ? `${t.partialNote} ` : ""}
+            {fill(t.available, { amount: refundable })}
           </DialogDescription>
         </DialogHeader>
 
@@ -70,9 +74,9 @@ export function RefundDialog({
                   scope === option ? "border-primary bg-accent/60 font-medium" : "hover:bg-muted/60"
                 }`}
               >
-                {option === "full" ? "Valor total" : "Valor parcial"}
+                {option === "full" ? t.full : t.partial}
                 <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                  {option === "full" ? refundable : "Você escolhe quanto devolver"}
+                  {option === "full" ? refundable : t.partialHint}
                 </span>
               </button>
             ))}
@@ -80,10 +84,10 @@ export function RefundDialog({
 
           {scope === "partial" && (
             <TextField
-              label="Valor a devolver"
+              label={t.amountLabel}
               name="amount"
               inputMode="decimal"
-              placeholder="97,00"
+              placeholder={t.amountPlaceholder}
               required
               autoFocus
               error={state.status === "error" ? state.fieldErrors?.amount : undefined}
@@ -91,20 +95,20 @@ export function RefundDialog({
           )}
 
           <TextField
-            label="Motivo (opcional)"
+            label={t.reasonLabel}
             name="reason"
             maxLength={200}
-            placeholder="Pedido da cliente, fora do prazo de garantia…"
-            hint="Fica registrado no histórico da venda."
+            placeholder={t.reasonPlaceholder}
+            hint={t.reasonHint}
           />
 
           {state.status === "error" && !state.fieldErrors && <p className="text-xs text-destructive">{state.message}</p>}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpened(false)}>
-              Cancelar
+              {dict.common.cancel}
             </Button>
-            <SubmitButton>Reembolsar</SubmitButton>
+            <SubmitButton>{t.trigger}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

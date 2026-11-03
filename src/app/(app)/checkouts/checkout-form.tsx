@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { PaymentMethodType } from "@/generated/prisma/enums";
-import { PAYMENT_METHOD_LABELS } from "@/modules/payments/payment-method-resolver";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
 import { GUARANTEE_MIN_DAYS } from "@/modules/checkout/checkout.schemas";
 import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { requestCheckoutImageUpload } from "./actions";
@@ -48,6 +48,7 @@ export function CheckoutForm({
   submitLabel: string;
   lockedOffer?: boolean;
 }) {
+  const dict = useAppDictionary();
   const [state, formAction] = useActionState(action, idleState);
   const [accent, setAccent] = useState(defaultValues.accentColor);
   const [headline, setHeadline] = useState(defaultValues.headline);
@@ -140,7 +141,7 @@ export function CheckoutForm({
                   defaultChecked={defaultValues.enabledPaymentMethods.includes(method)}
                 />
                 <Label htmlFor={`method-${method}`} className="font-normal">
-                  {PAYMENT_METHOD_LABELS[method]}
+                  {dict.status.paymentMethod[method]}
                 </Label>
               </div>
             ))}

@@ -3,7 +3,7 @@
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export interface RevenuePoint {
-  /** Axis label, already localized (e.g. "14 set"). */
+  /** Axis label, already localized (e.g. "14 set."). */
   label: string;
   /** Full date label used in the tooltip. */
   fullLabel: string;
@@ -27,12 +27,12 @@ function formatter(currency: string, locale: string, compact = false) {
 export function RevenueChart({
   data,
   currency,
-  locale = "pt-BR",
+  locale,
   height = 260,
 }: {
   data: RevenuePoint[];
   currency: string;
-  locale?: string;
+  locale: string;
   height?: number;
 }) {
   const money = formatter(currency, locale);

@@ -85,3 +85,16 @@ export function fill(template: string, values: Record<string, string | number>):
     key in values ? String(values[key]) : placeholder,
   );
 }
+
+/**
+ * Escolhe entre singular e plural, e preenche o {count}.
+ *
+ * O zero é a única divergência real entre os seis: em francês "0 commande" é singular, nos
+ * outros cinco é plural. Fica explícito aqui em vez de sair do `Intl.PluralRules` porque isto
+ * roda nos dois lados — e regra que o Node e o navegador calculam separado é erro de hidratação
+ * esperando acontecer.
+ */
+export function plural(locale: Locale, count: number, forms: { one: string; other: string }): string {
+  const singular = locale === "fr" ? count <= 1 : count === 1;
+  return fill(singular ? forms.one : forms.other, { count });
+}

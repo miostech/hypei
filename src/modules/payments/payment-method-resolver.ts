@@ -61,14 +61,3 @@ export function resolvePaymentMethods(input: ResolvePaymentMethodsInput): Paymen
     .filter((m) => !input.checkoutEnabledMethods?.length || input.checkoutEnabledMethods.includes(m));
 }
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethodType, string> = {
-  CREDIT_CARD: "Cartão de crédito",
-  DEBIT_CARD: "Cartão de débito",
-  PIX: "Pix",
-  BOLETO: "Boleto",
-  SEPA_DEBIT: "Débito SEPA",
-  BANK_TRANSFER: "Transferência bancária",
-  APPLE_PAY: "Apple Pay",
-  GOOGLE_PAY: "Google Pay",
-  PAYPAL: "PayPal",
-};

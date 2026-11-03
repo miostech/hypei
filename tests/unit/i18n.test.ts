@@ -3,10 +3,18 @@ import { getAppDictionary, languageOptions } from "@/lib/i18n/app";
 import { getCheckoutDictionary } from "@/lib/i18n/checkout";
 import { localizedCountries } from "@/lib/i18n/countries";
 import { getEmailDictionary, storedLocale } from "@/lib/i18n/email";
-import { DEFAULT_LOCALE, fill, resolveLocale, SUPPORTED_LOCALES } from "@/lib/i18n/locale";
+import { DEFAULT_LOCALE, fill, plural, resolveLocale, SUPPORTED_LOCALES } from "@/lib/i18n/locale";
 import { getMembersDictionary } from "@/lib/i18n/members";
 import { SUPPORTED_COUNTRIES } from "@/modules/organizations/countries";
-import { LessonType, OrganizationRole, PaymentMethodType } from "@/generated/prisma/enums";
+import {
+  DisputeStatus,
+  LessonType,
+  OrderStatus,
+  OrganizationRole,
+  PaymentMethodType,
+  PaymentStatus,
+  RefundStatus,
+} from "@/generated/prisma/enums";
 
 /** Cada família de dicionário, pelo seu carregador. */
 const FAMILIES = {
@@ -56,6 +64,21 @@ describe("fill", () => {
 
   it("accepts numbers, which is what guaranteeDays is", () => {
     expect(fill("Garantia de {days} dias", { days: 7 })).toBe("Garantia de 7 dias");
+  });
+});
+
+describe("plural", () => {
+  it("picks the form and fills the count", () => {
+    expect(plural("pt", 1, { one: "{count} pedido pago", other: "{count} pedidos pagos" })).toBe("1 pedido pago");
+    expect(plural("pt", 3, { one: "{count} pedido pago", other: "{count} pedidos pagos" })).toBe("3 pedidos pagos");
+  });
+
+  it("treats zero as plural, except in French", () => {
+    // "0 commande payée" é singular em francês; "0 pedidos pagos" é plural em português.
+    expect(plural("pt", 0, { one: "{count} pedido", other: "{count} pedidos" })).toBe("0 pedidos");
+    expect(plural("de", 0, { one: "{count} Bestellung", other: "{count} Bestellungen" })).toBe("0 Bestellungen");
+    expect(plural("fr", 0, { one: "{count} commande", other: "{count} commandes" })).toBe("0 commande");
+    expect(plural("fr", 2, { one: "{count} commande", other: "{count} commandes" })).toBe("2 commandes");
   });
 });
 
@@ -114,6 +137,27 @@ describe("checkout dictionaries", () => {
     }
   });
 
+  it("names every status the producer app can show", async () => {
+    // Status sem nome vira "undefined" num selo colorido, que é pior do que sem selo.
+    const ENUMS = {
+      order: OrderStatus,
+      payment: PaymentStatus,
+      refund: RefundStatus,
+      dispute: DisputeStatus,
+      paymentMethod: PaymentMethodType,
+    } as const;
+
+    for (const locale of SUPPORTED_LOCALES) {
+      const dict = await getAppDictionary(locale);
+      for (const [group, values] of Object.entries(ENUMS)) {
+        for (const value of Object.values(values)) {
+          const labels: Record<string, string> = dict.status[group as keyof typeof ENUMS];
+          expect(labels[value], `${locale}/status.${group}.${value}`).toBeTruthy();
+        }
+      }
+    }
+  });
+
   it("names every lesson type the member area can render", async () => {
     for (const locale of SUPPORTED_LOCALES) {
       const dict = await getMembersDictionary(locale);
@@ -149,6 +193,10 @@ describe("checkout dictionaries", () => {
       expect(app.topbar.organizations, locale).not.toBe(appPt.topbar.organizations);
       expect(app.nav.testEnvironment, locale).not.toBe(appPt.nav.testEnvironment);
       expect(app.roles.OWNER, locale).not.toBe(appPt.roles.OWNER);
+      expect(app.dashboard.description, locale).not.toBe(appPt.dashboard.description);
+      expect(app.sale.payment.taxNote, locale).not.toBe(appPt.sale.payment.taxNote);
+      expect(app.refunds.disputes.description, locale).not.toBe(appPt.refunds.disputes.description);
+      expect(app.status.order.PENDING_PAYMENT, locale).not.toBe(appPt.status.order.PENDING_PAYMENT);
     }
   });
 });

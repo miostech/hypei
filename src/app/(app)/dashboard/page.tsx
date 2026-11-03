@@ -10,14 +10,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { fill, plural } from "@/lib/i18n/locale";
 import { formatAmount, formatDate } from "@/lib/ui/format";
 import { timezoneForCountry, todayAgainstYesterday } from "@/lib/time/day-window";
 import { buildDailySeries } from "@/lib/ui/series";
 import { requireOrganization } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
-import { ORDER_STATUS_BADGE } from "../sales/order-status";
+import { ORDER_STATUS_VARIANT } from "../sales/order-status";
 
-export const metadata = { title: "Dashboard" };
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getAppDictionary(await appLocale());
+  return { title: dict.dashboard.title };
+}
 
 const WINDOW_DAYS = 30;
 
@@ -25,6 +33,9 @@ export default async function DashboardPage() {
   const { organization } = await requireOrganization();
   const services = getServices();
   const currency = organization.defaultCurrency;
+  const locale = await appLocale();
+  const dict = await getAppDictionary(locale);
+  const d = dict.dashboard;
 
   // "Hoje" segue o fuso do produtor, não o do servidor.
   const day = todayAgainstYesterday(timezoneForCountry(organization.country));
@@ -56,22 +67,23 @@ export default async function DashboardPage() {
   const series = buildDailySeries(
     daily.filter((row) => row.currency === currency),
     WINDOW_DAYS,
+    dict.localeTag,
   );
 
   return (
     <>
       <PageHeader
-        eyebrow="Painel"
-        title={`Olá, ${organization.name}`}
-        description="Como está o seu dia e o que precisa da sua atenção. O saldo fica no Financeiro."
+        eyebrow={d.eyebrow}
+        title={fill(d.greeting, { name: organization.name })}
+        description={d.description}
         actions={
           <>
             <Button variant="outline" render={<Link href="/checkouts" />}>
-              Ver checkouts
+              {d.viewCheckouts}
             </Button>
             <Button render={<Link href="/products/new" />}>
               <PackageIcon />
-              Novo produto
+              {d.newProduct}
             </Button>
           </>
         }
@@ -87,14 +99,15 @@ export default async function DashboardPage() {
           averageTicket={formatAmount(todayAverageTicket, currency)}
           yesterday={formatAmount(yesterdayTotal, currency)}
           changePercent={dayOverDay}
+          dict={dict}
           actions={
             <>
               <Button className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90" render={<Link href="/sales" />}>
                 <ShoppingBagIcon />
-                Ver vendas
+                {d.today.viewSales}
               </Button>
               <Button variant="ghost" className="text-white hover:bg-white/12 hover:text-white" render={<Link href="/finance" />}>
-                Ver financeiro
+                {d.today.viewFinance}
                 <ArrowUpRightIcon />
               </Button>
             </>
@@ -103,17 +116,17 @@ export default async function DashboardPage() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
           <StatCard
-            label={`Vendas (${WINDOW_DAYS} dias)`}
+            label={fill(d.salesWindow, { days: WINDOW_DAYS })}
             value={formatAmount(salesTotal, currency)}
             icon={ShoppingBagIcon}
-            hint={`${salesCount} ${salesCount === 1 ? "pedido pago" : "pedidos pagos"}`}
+            hint={plural(locale, salesCount, d.today.paidOrders)}
           />
           <StatCard
-            label="Ticket médio"
+            label={d.averageTicket}
             value={formatAmount(averageTicket, currency)}
             icon={ReceiptIcon}
             tone="muted"
-            hint="No mesmo período"
+            hint={d.samePeriod}
           />
         </div>
       </section>
@@ -121,31 +134,31 @@ export default async function DashboardPage() {
       <section className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="border-b pb-4">
-            <CardTitle>Vendas confirmadas</CardTitle>
-            <CardDescription>Volume pago por dia nos últimos {WINDOW_DAYS} dias.</CardDescription>
+            <CardTitle>{d.chart.title}</CardTitle>
+            <CardDescription>{fill(d.chart.description, { days: WINDOW_DAYS })}</CardDescription>
           </CardHeader>
           <CardContent>
             {salesCount === 0 ? (
               <div className="flex h-[260px] flex-col items-center justify-center gap-1 text-center">
-                <p className="text-sm font-medium">Ainda sem vendas no período</p>
-                <p className="text-sm text-muted-foreground">O gráfico aparece assim que o primeiro pagamento for confirmado.</p>
+                <p className="text-sm font-medium">{d.chart.emptyTitle}</p>
+                <p className="text-sm text-muted-foreground">{d.chart.emptyBody}</p>
               </div>
             ) : (
-              <RevenueChart data={series} currency={currency} />
+              <RevenueChart data={series} currency={currency} locale={dict.localeTag} />
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="border-b pb-4">
-            <CardTitle>Próximos passos</CardTitle>
-            <CardDescription>Deixe sua operação pronta para vender.</CardDescription>
+            <CardTitle>{d.steps.title}</CardTitle>
+            <CardDescription>{d.steps.description}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Step done={products.length > 0} href="/products/new" label="Criar seu primeiro produto" />
-            <Step done={products.some((p) => p._count.offers > 0)} href="/offers/new" label="Definir uma oferta e preço" />
-            <Step done={orders.length > 0} href="/checkouts/new" label="Publicar um checkout" />
-            <Step done={verification.canWithdraw} href="/verification" label="Concluir verificação para receber" />
+            <Step done={products.length > 0} href="/products/new" label={d.steps.product} />
+            <Step done={products.some((p) => p._count.offers > 0)} href="/offers/new" label={d.steps.offer} />
+            <Step done={orders.length > 0} href="/checkouts/new" label={d.steps.checkout} />
+            <Step done={verification.canWithdraw} href="/verification" label={d.steps.verification} />
           </CardContent>
         </Card>
       </section>
@@ -153,11 +166,11 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader className="flex-row items-center justify-between border-b pb-4">
           <div>
-            <CardTitle>Vendas recentes</CardTitle>
-            <CardDescription>Os últimos pedidos criados no seu checkout.</CardDescription>
+            <CardTitle>{d.recent.title}</CardTitle>
+            <CardDescription>{d.recent.description}</CardDescription>
           </div>
           <Button variant="ghost" size="sm" render={<Link href="/sales" />}>
-            Ver todas
+            {d.recent.viewAll}
             <ArrowRightIcon />
           </Button>
         </CardHeader>
@@ -166,11 +179,11 @@ export default async function DashboardPage() {
             <div className="px-5 pb-2">
               <EmptyState
                 icon={ShoppingBagIcon}
-                title="Nenhuma venda ainda"
-                description="Crie um produto, publique um checkout e compartilhe o link para começar a vender."
+                title={d.recent.emptyTitle}
+                description={d.recent.emptyBody}
                 action={
                   <Button variant="outline" render={<Link href="/checkouts/new" />}>
-                    Criar checkout
+                    {d.recent.createCheckout}
                   </Button>
                 }
               />
@@ -179,10 +192,10 @@ export default async function DashboardPage() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="pl-5">Cliente</TableHead>
-                  <TableHead className="hidden lg:table-cell">Produto</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead className="pr-5 text-right">Valor</TableHead>
+                  <TableHead className="pl-5">{dict.common.customer}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{dict.common.product}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{dict.common.status}</TableHead>
+                  <TableHead className="pr-5 text-right">{dict.common.amount}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -198,16 +211,16 @@ export default async function DashboardPage() {
                           <span className="block truncate text-xs text-muted-foreground lg:hidden">
                             {order.items[0]?.productName ?? "—"}
                           </span>
-                          <span className="block text-xs text-muted-foreground">{formatDate(order.createdAt)}</span>
-                          <Badge className="mt-1 sm:hidden" variant={ORDER_STATUS_BADGE[order.status].variant}>
-                            {ORDER_STATUS_BADGE[order.status].label}
+                          <span className="block text-xs text-muted-foreground">{formatDate(order.createdAt, dict.localeTag)}</span>
+                          <Badge className="mt-1 sm:hidden" variant={ORDER_STATUS_VARIANT[order.status]}>
+                            {dict.status.order[order.status]}
                           </Badge>
                         </span>
                       </span>
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell">{order.items[0]?.productName ?? "—"}</TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      <Badge variant={ORDER_STATUS_BADGE[order.status].variant}>{ORDER_STATUS_BADGE[order.status].label}</Badge>
+                      <Badge variant={ORDER_STATUS_VARIANT[order.status]}>{dict.status.order[order.status]}</Badge>
                     </TableCell>
                     <TableCell className="tabular pr-5 text-right font-medium">{formatAmount(order.totalAmount, order.currency)}</TableCell>
                   </TableRow>
