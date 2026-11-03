@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { SubscriptionStatus } from "@/generated/prisma/enums";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { formatAmount, formatDate } from "@/lib/ui/format";
-import { BILLING_INTERVAL_LABELS } from "@/modules/offers/offer.schemas";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
 import { CancelSubscriptionDialog } from "./cancel-dialog";
@@ -30,6 +31,7 @@ const LIVE: SubscriptionStatus[] = ["ACTIVE", "TRIALING"];
 export default async function SubscriptionsPage() {
   const { organization } = await requirePagePermission("sales:read");
   const subscriptions = await getServices().subscriptions.list(organization.id);
+  const dict = await getAppDictionary(await appLocale());
 
   const live = subscriptions.filter((subscription) => LIVE.includes(subscription.status));
   const monthlyRevenue = live.reduce((total, subscription) => {
@@ -98,7 +100,7 @@ export default async function SubscriptionsPage() {
                           <span className="block truncate text-xs text-muted-foreground">{subscription.customer.email}</span>
                           <span className="block truncate text-xs text-muted-foreground lg:hidden">
                             {subscription.offer.product.name}
-                            {subscription.offer.billingInterval ? ` · ${BILLING_INTERVAL_LABELS[subscription.offer.billingInterval]}` : ""}
+                            {subscription.offer.billingInterval ? ` · ${dict.offers.billingIntervals[subscription.offer.billingInterval]}` : ""}
                           </span>
                           <Badge className="mt-1 sm:hidden" variant={badge.variant}>
                             {badge.label}
@@ -106,7 +108,7 @@ export default async function SubscriptionsPage() {
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground lg:table-cell">{subscription.offer.product.name}</TableCell>
                         <TableCell className="hidden text-muted-foreground lg:table-cell">
-                          {subscription.offer.billingInterval ? BILLING_INTERVAL_LABELS[subscription.offer.billingInterval] : "—"}
+                          {subscription.offer.billingInterval ? dict.offers.billingIntervals[subscription.offer.billingInterval] : "—"}
                         </TableCell>
                         <TableCell className="tabular hidden text-right text-muted-foreground xl:table-cell">
                           {subscription._count.payments}

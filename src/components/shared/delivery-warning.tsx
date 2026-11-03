@@ -2,35 +2,26 @@ import { AlertTriangleIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import type { AppDictionary } from "@/lib/i18n/app";
 import type { ProductDelivery } from "@/modules/products/product-delivery";
-
-const COPY = {
-  missing: {
-    title: "Este produto não entrega nada",
-    description: "Quem comprar vai pagar e não vai receber acesso a nada. Crie o conteúdo antes de divulgar o checkout.",
-    action: "Criar conteúdo",
-  },
-  empty: {
-    title: "O conteúdo deste produto está vazio",
-    description: "O conteúdo existe, mas não tem nenhuma aula. Quem comprar entra na área de membros e não encontra nada.",
-    action: "Adicionar conteúdo",
-  },
-  unpublished: {
-    title: "O conteúdo deste produto não está publicado",
-    description: "Enquanto for rascunho, quem comprar não consegue abrir — e o e-mail de confirmação vai sem o link de acesso.",
-    action: "Publicar conteúdo",
-  },
-} as const;
 
 /**
  * Shown wherever a producer could put a product on sale, because nothing stops them from
  * selling a product with no content: the charge goes through and the buyer receives an
  * e-mail with no access link.
  */
-export function DeliveryWarning({ delivery, productId }: { delivery: ProductDelivery; productId: string }) {
+export function DeliveryWarning({
+  delivery,
+  productId,
+  dict,
+}: {
+  delivery: ProductDelivery;
+  productId: string;
+  dict: AppDictionary;
+}) {
   if (delivery.ready) return null;
 
-  const copy = COPY[delivery.reason];
+  const copy = dict.delivery[delivery.reason];
   // Typed routes só aceitam o literal: montar o link aqui evita duplicar o botão.
   const target =
     delivery.reason === "missing" ? (

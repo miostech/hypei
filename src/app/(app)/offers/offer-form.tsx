@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { BillingInterval, BillingType } from "@/generated/prisma/enums";
 import { SUPPORTED_CURRENCIES } from "@/lib/money/currency";
-import { BILLING_INTERVAL_LABELS, BILLING_TYPE_LABELS } from "@/modules/offers/offer.schemas";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
 
 export interface OfferFormValues {
   id?: string;
@@ -36,44 +36,46 @@ export function OfferForm({
   defaultValues: OfferFormValues;
   submitLabel: string;
 }) {
+  const dict = useAppDictionary();
+  const t = dict.offerForm;
   const [state, formAction] = useActionState(action, idleState);
   const [billingType, setBillingType] = useState(defaultValues.billingType);
   const fieldError = (field: string) => (state.status === "error" ? state.fieldErrors?.[field] : undefined);
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Salvo");
+    if (state.status === "success") toast.success(state.message ?? dict.actions.saved);
     if (state.status === "error" && !state.fieldErrors) toast.error(state.message);
-  }, [state]);
+  }, [state, dict.actions.saved]);
 
   return (
     <form action={formAction} className="grid gap-4 lg:grid-cols-3">
       {defaultValues.id && <input type="hidden" name="id" value={defaultValues.id} />}
       <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle>Oferta</CardTitle>
-          <CardDescription>Este é o preço oficial cobrado no checkout.</CardDescription>
+          <CardTitle>{t.card.title}</CardTitle>
+          <CardDescription>{t.card.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <SelectField label="Produto" name="productId" defaultValue={defaultValues.productId} required error={fieldError("productId")}>
+          <SelectField label={dict.common.product} name="productId" defaultValue={defaultValues.productId} required error={fieldError("productId")}>
             {products.map((product) => (
               <option key={product.id} value={product.id}>
                 {product.name}
               </option>
             ))}
           </SelectField>
-          <TextField label="Nome da oferta" name="name" defaultValue={defaultValues.name} required error={fieldError("name")} />
+          <TextField label={t.name} name="name" defaultValue={defaultValues.name} required error={fieldError("name")} />
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
-              label="Preço"
+              label={dict.common.price}
               name="price"
               inputMode="decimal"
-              placeholder="97,00"
+              placeholder={t.pricePlaceholder}
               defaultValue={defaultValues.price}
               required
-              hint="Use vírgula ou ponto para os centavos."
+              hint={t.priceHint}
               error={fieldError("price")}
             />
-            <SelectField label="Moeda" name="currency" defaultValue={defaultValues.currency} error={fieldError("currency")}>
+            <SelectField label={t.currency} name="currency" defaultValue={defaultValues.currency} error={fieldError("currency")}>
               {SUPPORTED_CURRENCIES.map((currency) => (
                 <option key={currency} value={currency}>
                   {currency}
@@ -82,7 +84,7 @@ export function OfferForm({
             </SelectField>
           </div>
           <SelectField
-            label="Forma de cobrança"
+            label={t.billingType}
             name="billingType"
             value={billingType}
             onChange={(e) => setBillingType(e.target.value)}
@@ -90,33 +92,33 @@ export function OfferForm({
           >
             {Object.values(BillingType).map((type) => (
               <option key={type} value={type}>
-                {BILLING_TYPE_LABELS[type]}
+                {dict.offers.billingTypes[type]}
               </option>
             ))}
           </SelectField>
 
           {billingType === "SUBSCRIPTION" && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <SelectField label="Recorrência" name="billingInterval" defaultValue={defaultValues.billingInterval ?? "MONTH"} error={fieldError("billingInterval")}>
+              <SelectField label={t.interval} name="billingInterval" defaultValue={defaultValues.billingInterval ?? "MONTH"} error={fieldError("billingInterval")}>
                 {Object.values(BillingInterval).map((interval) => (
                   <option key={interval} value={interval}>
-                    {BILLING_INTERVAL_LABELS[interval]}
+                    {dict.offers.billingIntervals[interval]}
                   </option>
                 ))}
               </SelectField>
-              <TextField label="Dias de teste" name="trialDays" type="number" min={0} max={90} defaultValue={defaultValues.trialDays ?? 0} error={fieldError("trialDays")} />
+              <TextField label={t.trialDays} name="trialDays" type="number" min={0} max={90} defaultValue={defaultValues.trialDays ?? 0} error={fieldError("trialDays")} />
             </div>
           )}
 
           {billingType === "INSTALLMENTS" && (
             <TextField
-              label="Número de parcelas"
+              label={t.installments}
               name="installments"
               type="number"
               min={2}
               max={12}
               defaultValue={defaultValues.installments ?? 12}
-              hint="O parcelamento depende do que o provedor de pagamento suporta no país."
+              hint={t.installmentsHint}
               error={fieldError("installments")}
             />
           )}
@@ -125,12 +127,12 @@ export function OfferForm({
 
       <Card className="h-fit">
         <CardHeader>
-          <CardTitle>Disponibilidade</CardTitle>
-          <CardDescription>Ofertas inativas somem dos checkouts.</CardDescription>
+          <CardTitle>{t.availability.title}</CardTitle>
+          <CardDescription>{t.availability.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="active">Oferta ativa</Label>
+            <Label htmlFor="active">{t.availability.active}</Label>
             <Switch id="active" name="active" defaultChecked={defaultValues.active} />
           </div>
           {state.status === "error" && !state.fieldErrors && <p className="text-xs text-destructive">{state.message}</p>}

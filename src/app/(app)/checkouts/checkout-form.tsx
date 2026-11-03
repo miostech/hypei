@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PaymentMethodType } from "@/generated/prisma/enums";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
 import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 import { GUARANTEE_MIN_DAYS } from "@/modules/checkout/checkout.schemas";
 import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { requestCheckoutImageUpload } from "./actions";
@@ -49,15 +50,16 @@ export function CheckoutForm({
   lockedOffer?: boolean;
 }) {
   const dict = useAppDictionary();
+  const t = dict.checkoutForm;
   const [state, formAction] = useActionState(action, idleState);
   const [accent, setAccent] = useState(defaultValues.accentColor);
   const [headline, setHeadline] = useState(defaultValues.headline);
   const fieldError = (field: string) => (state.status === "error" ? state.fieldErrors?.[field] : undefined);
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Salvo");
+    if (state.status === "success") toast.success(state.message ?? dict.actions.saved);
     if (state.status === "error" && !state.fieldErrors) toast.error(state.message);
-  }, [state]);
+  }, [state, dict.actions.saved]);
 
   return (
     <form action={formAction} className="grid gap-4 lg:grid-cols-3">
@@ -67,12 +69,12 @@ export function CheckoutForm({
       <div className="space-y-4 lg:col-span-2">
         <Card>
           <CardHeader>
-            <CardTitle>Conteúdo</CardTitle>
-            <CardDescription>O que o comprador vê na página de pagamento.</CardDescription>
+            <CardTitle>{t.content.title}</CardTitle>
+            <CardDescription>{t.content.description}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {!lockedOffer && (
-              <SelectField label="Oferta" name="offerId" defaultValue={defaultValues.offerId} required error={fieldError("offerId")}>
+              <SelectField label={t.content.offer} name="offerId" defaultValue={defaultValues.offerId} required error={fieldError("offerId")}>
                 {offers.map((offer) => (
                   <option key={offer.id} value={offer.id}>
                     {offer.label}
@@ -81,28 +83,28 @@ export function CheckoutForm({
               </SelectField>
             )}
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextField label="Nome interno" name="name" defaultValue={defaultValues.name} required error={fieldError("name")} />
+              <TextField label={t.content.name} name="name" defaultValue={defaultValues.name} required error={fieldError("name")} />
               <TextField
-                label="Link do checkout"
+                label={t.content.slug}
                 name="slug"
                 defaultValue={defaultValues.slug}
                 required
-                hint="kabrun.com.br/checkout/seu-link"
+                hint={t.content.slugHint}
                 error={fieldError("slug")}
                 readOnly={Boolean(defaultValues.id)}
               />
             </div>
-            <TextField label="Headline" name="headline" value={headline} onChange={(e) => setHeadline(e.target.value)} required error={fieldError("headline")} />
+            <TextField label={t.content.headline} name="headline" value={headline} onChange={(e) => setHeadline(e.target.value)} required error={fieldError("headline")} />
             <div className="space-y-1.5">
-              <Label htmlFor="description">Descrição</Label>
+              <Label htmlFor="description">{dict.common.description}</Label>
               <Textarea id="description" name="description" rows={4} defaultValue={defaultValues.description} maxLength={600} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <ImageUploadField
                 name="logoKey"
-                label="Logo"
-                hint="fica no topo, acima do título"
-                pendingNote="Crie o checkout primeiro. O logo fica disponível na tela de edição."
+                label={t.content.logo}
+                hint={t.content.logoHint}
+                pendingNote={t.content.logoPending}
                 previewClass="h-11 w-auto"
                 ownerId={defaultValues.id}
                 defaultKey={defaultValues.logoKey}
@@ -111,9 +113,9 @@ export function CheckoutForm({
               />
               <ImageUploadField
                 name="bannerKey"
-                label="Banner"
-                hint="16:5 fica melhor"
-                pendingNote="Crie o checkout primeiro. O banner fica disponível na tela de edição."
+                label={t.content.banner}
+                hint={t.content.bannerHint}
+                pendingNote={t.content.bannerPending}
                 previewClass="aspect-[16/5] w-full"
                 ownerId={defaultValues.id}
                 defaultKey={defaultValues.bannerKey}
@@ -126,10 +128,8 @@ export function CheckoutForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>Pagamento</CardTitle>
-            <CardDescription>
-              Selecione os métodos aceitos. A disponibilidade real depende do país, da moeda e da sua conta no provedor.
-            </CardDescription>
+            <CardTitle>{t.payment.title}</CardTitle>
+            <CardDescription>{t.payment.description}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {availableMethods.map((method) => (
@@ -145,7 +145,7 @@ export function CheckoutForm({
                 </Label>
               </div>
             ))}
-            <p className="text-xs text-muted-foreground">Sem nenhum selecionado, todos os métodos disponíveis são exibidos.</p>
+            <p className="text-xs text-muted-foreground">{t.payment.allIfNone}</p>
           </CardContent>
         </Card>
       </div>
@@ -153,11 +153,11 @@ export function CheckoutForm({
       <div className="space-y-4">
         <Card className="h-fit">
           <CardHeader>
-            <CardTitle>Aparência</CardTitle>
+            <CardTitle>{t.appearance.title}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="accentColor">Cor de destaque</Label>
+              <Label htmlFor="accentColor">{t.appearance.accentColor}</Label>
               <div className="flex items-center gap-2">
                 <input
                   id="accentColor"
@@ -171,17 +171,17 @@ export function CheckoutForm({
               </div>
             </div>
             <TextField
-              label="Garantia (dias)"
+              label={t.appearance.guaranteeDays}
               name="guaranteeDays"
               type="number"
               min={GUARANTEE_MIN_DAYS}
               max={365}
               defaultValue={defaultValues.guaranteeDays}
-              hint={`No mínimo ${GUARANTEE_MIN_DAYS} dias: é o direito de arrependimento do CDC em compra pela internet.`}
+              hint={fill(t.appearance.guaranteeHint, { days: GUARANTEE_MIN_DAYS })}
               error={fieldError("guaranteeDays")}
             />
             <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="collectPhone">Pedir telefone</Label>
+              <Label htmlFor="collectPhone">{t.appearance.collectPhone}</Label>
               <Switch id="collectPhone" name="collectPhone" defaultChecked={defaultValues.collectPhone} />
             </div>
             {state.status === "error" && !state.fieldErrors && <p className="text-xs text-destructive">{state.message}</p>}
@@ -191,11 +191,11 @@ export function CheckoutForm({
 
         <Card className="overflow-hidden">
           <CardHeader>
-            <CardTitle>Prévia</CardTitle>
+            <CardTitle>{t.preview.title}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="rounded-lg border p-4" style={{ borderTopColor: accent, borderTopWidth: 3 }}>
-              <p className="text-sm font-semibold">{headline || "Headline do checkout"}</p>
+              <p className="text-sm font-semibold">{headline || t.preview.placeholder}</p>
               <div className="mt-3 h-2 w-3/4 rounded bg-muted" />
               <div className="mt-2 h-2 w-1/2 rounded bg-muted" />
               <div className="mt-4 h-8 rounded-lg" style={{ background: accent }} />

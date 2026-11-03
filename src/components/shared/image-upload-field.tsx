@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { IMAGE_MAX_BYTES } from "@/lib/images";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 import { uploadToStorage } from "@/lib/ui/upload";
 
 export interface ImageUploadRequest {
@@ -47,6 +49,8 @@ export function ImageUploadField({
   previewUrl: string | null;
   requestUpload: (input: ImageUploadRequest) => Promise<ImageUploadResult>;
 }) {
+  const dict = useAppDictionary();
+  const t = dict.upload;
   const inputRef = useRef<HTMLInputElement>(null);
   const [storageKey, setStorageKey] = useState(defaultKey);
   const [preview, setPreview] = useState(previewUrl);
@@ -82,9 +86,9 @@ export function ImageUploadField({
       setStorageKey(authorized.key);
       // A URL assinada só existe depois de salvar; até lá o próprio arquivo serve de prévia.
       setPreview(URL.createObjectURL(file));
-      toast.success("Imagem enviada. Salve para publicar.");
+      toast.success(t.sent);
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Falha no envio");
+      setError(uploadError instanceof Error ? uploadError.message : t.failed);
     } finally {
       setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
@@ -111,7 +115,7 @@ export function ImageUploadField({
         <div className="space-y-2 rounded-xl border p-3">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2Icon className="size-4 animate-spin" aria-hidden />
-            Enviando… {progress}%
+            {fill(t.uploading, { percent: progress })}
           </p>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div className="bg-brand-gradient h-full rounded-full transition-all" style={{ width: `${Math.max(progress, 3)}%` }} />
@@ -125,13 +129,13 @@ export function ImageUploadField({
           )}
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => inputRef.current?.click()}>
-              Trocar imagem
+              {t.replace}
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label={`Remover ${label.toLowerCase()}`}
+              aria-label={fill(t.remove, { label })}
               onClick={() => {
                 setStorageKey("");
                 setPreview(null);
@@ -149,9 +153,9 @@ export function ImageUploadField({
         >
           <UploadCloudIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <span className="text-sm">
-            Enviar imagem
+            {t.pick}
             <span className="block text-xs text-muted-foreground">
-              JPG, PNG ou WebP até {Math.round(IMAGE_MAX_BYTES / 1_000_000)} MB · {hint}
+              {fill(t.limits, { mb: Math.round(IMAGE_MAX_BYTES / 1_000_000), hint })}
             </span>
           </span>
         </button>

@@ -8,6 +8,8 @@ import { isDomainError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { checkoutBuilderSchema } from "@/modules/checkout/checkout.schemas";
 import { requirePermission } from "@/modules/organizations/current-organization";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { runAction, type ActionState } from "@/server/actions/action-state";
 import { getServices } from "@/server/container";
 
@@ -43,7 +45,7 @@ export async function requestCheckoutImageUpload(input: ImageUploadRequest): Pro
   } catch (error) {
     if (isDomainError(error)) return { ok: false, message: error.message };
     logger.error({ err: error }, "checkout image upload authorization failed");
-    return { ok: false, message: "Não foi possível preparar o envio da imagem." };
+    return { ok: false, message: (await getAppDictionary(await appLocale())).toasts.imageUploadFailed };
   }
 }
 
@@ -54,7 +56,7 @@ export async function createCheckout(_prev: ActionState, formData: FormData): Pr
     const checkout = await getServices().checkouts.create(organization.id, userId, parse(formData));
     checkoutId = checkout.id;
     revalidatePath("/checkouts");
-    return { status: "success", message: "Checkout criado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.checkoutCreated };
   });
   if (checkoutId) redirect(`/checkouts/${checkoutId}?created=1`);
   return result;

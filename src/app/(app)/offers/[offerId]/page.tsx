@@ -1,13 +1,20 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
+import type { Metadata } from "next";
 import { NotFoundError } from "@/lib/errors";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { fill } from "@/lib/i18n/locale";
 import { convertMinorUnits, assertSupportedCurrency } from "@/lib/money";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
 import { updateOffer } from "../actions";
 import { OfferForm } from "../offer-form";
 
-export const metadata = { title: "Editar oferta" };
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getAppDictionary(await appLocale());
+  return { title: dict.offers.title };
+}
 
 export default async function OfferPage({ params }: PageProps<"/offers/[offerId]">) {
   const { offerId } = await params;
@@ -19,14 +26,15 @@ export default async function OfferPage({ params }: PageProps<"/offers/[offerId]
     throw error;
   });
   const products = await services.products.list(organization.id);
+  const dict = await getAppDictionary(await appLocale());
 
   return (
     <>
-      <PageHeader title={offer.name} description={`Oferta de ${offer.product.name}`} />
+      <PageHeader title={offer.name} description={fill(dict.offerForm.editDescription, { product: offer.product.name })} />
       <OfferForm
         action={updateOffer}
         products={products.map((p) => ({ id: p.id, name: p.name }))}
-        submitLabel="Salvar alterações"
+        submitLabel={dict.common.saveChanges}
         defaultValues={{
           id: offer.id,
           productId: offer.productId,

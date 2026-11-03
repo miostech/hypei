@@ -29,15 +29,3 @@ export const offerInputSchema = z
 
 export type OfferInput = z.infer<typeof offerInputSchema>;
 
-export const BILLING_TYPE_LABELS: Record<BillingType, string> = {
-  ONE_TIME: "Pagamento único",
-  SUBSCRIPTION: "Assinatura",
-  INSTALLMENTS: "Parcelado",
-};
-
-export const BILLING_INTERVAL_LABELS: Record<BillingInterval, string> = {
-  DAY: "Diária",
-  WEEK: "Semanal",
-  MONTH: "Mensal",
-  YEAR: "Anual",
-};

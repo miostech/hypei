@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ImageUploadRequest, ImageUploadResult } from "@/components/shared/image-upload-field";
 import { isDomainError } from "@/lib/errors";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { logger } from "@/lib/logger";
 import { productInputSchema } from "@/modules/products/product.schemas";
 import { requirePermission } from "@/modules/organizations/current-organization";
@@ -37,7 +39,7 @@ export async function requestThumbnailUpload(input: ImageUploadRequest): Promise
   } catch (error) {
     if (isDomainError(error)) return { ok: false, message: error.message };
     logger.error({ err: error }, "product thumbnail upload authorization failed");
-    return { ok: false, message: "Não foi possível preparar o envio da imagem." };
+    return { ok: false, message: (await getAppDictionary(await appLocale())).toasts.imageUploadFailed };
   }
 }
 
@@ -48,7 +50,7 @@ export async function createProduct(_prev: ActionState, formData: FormData): Pro
     const product = await getServices().products.create(organization.id, userId, parse(formData));
     productId = product.id;
     revalidatePath("/products");
-    return { status: "success", message: "Produto criado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.productCreated };
   });
   if (productId) redirect(`/products/${productId}?created=1`);
   return result;
@@ -61,7 +63,7 @@ export async function updateProduct(_prev: ActionState, formData: FormData): Pro
     await getServices().products.update(organization.id, userId, id, parse(formData));
     revalidatePath("/products");
     revalidatePath(`/products/${id}`);
-    return { status: "success", message: "Produto atualizado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.productUpdated };
   });
 }
 

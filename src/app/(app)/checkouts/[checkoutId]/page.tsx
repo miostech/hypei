@@ -4,7 +4,11 @@ import { notFound } from "next/navigation";
 import { DeliveryWarning } from "@/components/shared/delivery-warning";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
 import { NotFoundError } from "@/lib/errors";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { fill } from "@/lib/i18n/locale";
 import { formatAmount } from "@/lib/ui/format";
 import { GUARANTEE_MIN_DAYS } from "@/modules/checkout/checkout.schemas";
 import { resolvePaymentMethods } from "@/modules/payments/payment-method-resolver";
@@ -13,7 +17,10 @@ import { getServices } from "@/server/container";
 import { updateCheckout } from "../actions";
 import { CheckoutForm } from "../checkout-form";
 
-export const metadata = { title: "Editar checkout" };
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getAppDictionary(await appLocale());
+  return { title: dict.checkouts.title };
+}
 
 export default async function CheckoutDetailPage({ params }: PageProps<"/checkouts/[checkoutId]">) {
   const { checkoutId } = await params;
@@ -31,6 +38,8 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
     services.checkouts.assetUrl(config?.logoKey ?? null),
   ]);
 
+  const dict = await getAppDictionary(await appLocale());
+  const t = dict.checkoutForm;
   const availableMethods = resolvePaymentMethods({
     provider: services.paymentProvider.type,
     currency: checkout.offer.currency,
@@ -41,21 +50,24 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
     <>
       <PageHeader
         title={checkout.name}
-        description={`Versão atual: v${checkout.currentVersion} · ${formatAmount(checkout.offer.amount, checkout.offer.currency)}`}
+        description={fill(t.editDescription, {
+          version: checkout.currentVersion,
+          price: formatAmount(checkout.offer.amount, checkout.offer.currency),
+        })}
         actions={
           <Button variant="outline" render={<Link href={`/checkout/${checkout.slug}`} target="_blank" />}>
             <ExternalLinkIcon />
-            Abrir checkout
+            {dict.checkouts.open}
           </Button>
         }
       />
-      <DeliveryWarning delivery={delivery} productId={checkout.offer.productId} />
+      <DeliveryWarning delivery={delivery} productId={checkout.offer.productId} dict={dict} />
 
       <CheckoutForm
         action={updateCheckout}
         offers={[{ id: checkout.offerId, label: `${checkout.offer.product.name} — ${checkout.offer.name}` }]}
         availableMethods={availableMethods}
-        submitLabel="Salvar nova versão"
+        submitLabel={t.saveSubmit}
         lockedOffer
         defaultValues={{
           id: checkout.id,

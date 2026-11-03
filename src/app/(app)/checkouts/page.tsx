@@ -6,26 +6,34 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { Metadata } from "next";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { formatAmount } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
 
-export const metadata = { title: "Checkout" };
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getAppDictionary(await appLocale());
+  return { title: dict.checkouts.title };
+}
 
 export default async function CheckoutsPage() {
   const { organization } = await requirePagePermission("products:read");
   const services = getServices();
   const [checkouts, offers] = await Promise.all([services.checkouts.list(organization.id), services.offers.list(organization.id)]);
+  const dict = await getAppDictionary(await appLocale());
+  const t = dict.checkouts;
 
   if (offers.length === 0) {
     return (
       <>
-        <PageHeader title="Checkout" description="Páginas de pagamento das suas ofertas." />
+        <PageHeader title={t.title} description={t.shortDescription} />
         <EmptyState
           icon={CreditCardIcon}
-          title="Crie uma oferta primeiro"
-          description="Todo checkout aponta para uma oferta, que define o preço cobrado."
-          action={<Button render={<Link href="/offers/new" />}>Criar oferta</Button>}
+          title={t.needOfferTitle}
+          description={t.needOfferBody}
+          action={<Button render={<Link href="/offers/new" />}>{t.createOffer}</Button>}
         />
       </>
     );
@@ -34,12 +42,12 @@ export default async function CheckoutsPage() {
   return (
     <>
       <PageHeader
-        title="Checkout"
-        description="A aparência é versionada: ao salvar, criamos uma nova versão e as vendas antigas mantêm a que o comprador viu."
+        title={t.title}
+        description={t.description}
         actions={
           <Button render={<Link href="/checkouts/new" />}>
             <PlusIcon />
-            Novo checkout
+            {t.new}
           </Button>
         }
       />
@@ -47,9 +55,9 @@ export default async function CheckoutsPage() {
       {checkouts.length === 0 ? (
         <EmptyState
           icon={CreditCardIcon}
-          title="Nenhum checkout publicado"
-          description="Monte a página de pagamento e compartilhe o link para vender."
-          action={<Button render={<Link href="/checkouts/new" />}>Criar checkout</Button>}
+          title={t.emptyTitle}
+          description={t.emptyBody}
+          action={<Button render={<Link href="/checkouts/new" />}>{t.create}</Button>}
         />
       ) : (
         <Card className="py-0">
@@ -57,11 +65,11 @@ export default async function CheckoutsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Checkout</TableHead>
-                  <TableHead className="hidden lg:table-cell">Oferta</TableHead>
-                  <TableHead className="hidden xl:table-cell">Versão</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead className="text-right">Preço</TableHead>
+                  <TableHead>{t.checkout}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{dict.offers.offer}</TableHead>
+                  <TableHead className="hidden xl:table-cell">{t.version}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{dict.common.status}</TableHead>
+                  <TableHead className="text-right">{dict.common.price}</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -75,17 +83,19 @@ export default async function CheckoutsPage() {
                       <span className="block truncate text-xs text-muted-foreground">/checkout/{checkout.slug}</span>
                       <span className="block truncate text-xs text-muted-foreground lg:hidden">{checkout.offer.product.name}</span>
                       <Badge className="mt-1 sm:hidden" variant={checkout.status === "ACTIVE" ? "success" : "secondary"}>
-                        {checkout.status === "ACTIVE" ? "Ativo" : "Inativo"}
+                        {checkout.status === "ACTIVE" ? t.active : t.inactive}
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell">{checkout.offer.product.name}</TableCell>
                     <TableCell className="tabular hidden text-muted-foreground xl:table-cell">v{checkout.currentVersion}</TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      <Badge variant={checkout.status === "ACTIVE" ? "success" : "secondary"}>{checkout.status === "ACTIVE" ? "Ativo" : "Inativo"}</Badge>
+                      <Badge variant={checkout.status === "ACTIVE" ? "success" : "secondary"}>
+                        {checkout.status === "ACTIVE" ? t.active : t.inactive}
+                      </Badge>
                     </TableCell>
                     <TableCell className="tabular text-right">{formatAmount(checkout.offer.amount, checkout.offer.currency)}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon-sm" aria-label="Abrir checkout" render={<Link href={`/checkout/${checkout.slug}`} target="_blank" />}>
+                      <Button variant="ghost" size="icon-sm" aria-label={t.open} render={<Link href={`/checkout/${checkout.slug}`} target="_blank" />}>
                         <ExternalLinkIcon />
                       </Button>
                     </TableCell>
