@@ -10,6 +10,19 @@ export interface PlatformFeeRule {
 
 export const NO_PLATFORM_FEE: PlatformFeeRule = { percentageBps: 0, fixedAmount: 0n };
 
+/**
+ * A taxa que a landing page anuncia, e o padrão que o seed grava.
+ *
+ * Existe para que preço anunciado e preço cobrado não possam divergir em silêncio: antes disto
+ * a página não dizia nada e o seed gravava 10%, então qualquer número escrito à mão na página
+ * nasceria errado. A verdade final continua sendo a PlatformFeePolicy no banco — uma
+ * organização pode ter condição negociada —, mas o padrão sai daqui.
+ *
+ * O fixo é em unidades menores da moeda da venda: 249 vira R$ 2,49, € 2,49 ou US$ 2,49. Em euro
+ * e dólar isso é bem mais caro em valor; se a condição lá fora for outra, é aqui que muda.
+ */
+export const PUBLISHED_PLATFORM_FEE: PlatformFeeRule = { percentageBps: 899, fixedAmount: 249n };
+
 /** Supports percentage, fixed, or percentage + fixed (e.g. 5% + R$1,00). */
 export function calculatePlatformFee(gross: Money, rule: PlatformFeeRule): Money {
   return addMoney(calculatePercentage(gross, rule.percentageBps), money(rule.fixedAmount, gross.currency));

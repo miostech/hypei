@@ -5,6 +5,10 @@ import { cn } from "cn";
  * Official Kabrun artwork (public/brand). The bolt PNG is transparent, so it works on
  * any surface; the lockup's wordmark is deep purple, so dark surfaces use the knockout
  * variant instead.
+ *
+ * O roxo das artes é o mesmo --brand-purple do resto do site (matiz 264°). Elas vieram com
+ * um roxo mais magenta, que destoava do gradiente das headlines; a matiz foi girada pixel a
+ * pixel, preservando o relevo metálico e o dourado do raio.
  */
 export function KabrunMark({ className }: { className?: string }) {
   return (

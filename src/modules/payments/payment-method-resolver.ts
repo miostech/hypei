@@ -26,6 +26,13 @@ const PROVIDER_CAPABILITIES: Partial<Record<PaymentProviderType, Partial<Record<
   },
 };
 
+/**
+ * Quantos meios o provedor de produção consegue processar. A landing page anuncia este número,
+ * e número de página de venda envelhece calado: deixar que ele saia da matriz é o que impede
+ * prometer um meio que a Kabrun não processa.
+ */
+export const PROCESSABLE_PAYMENT_METHODS = Object.keys(PROVIDER_CAPABILITIES.STRIPE ?? {}).length;
+
 export interface ResolvePaymentMethodsInput {
   provider: PaymentProviderType;
   currency: string;
@@ -54,14 +61,3 @@ export function resolvePaymentMethods(input: ResolvePaymentMethodsInput): Paymen
     .filter((m) => !input.checkoutEnabledMethods?.length || input.checkoutEnabledMethods.includes(m));
 }
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethodType, string> = {
-  CREDIT_CARD: "Cartão de crédito",
-  DEBIT_CARD: "Cartão de débito",
-  PIX: "Pix",
-  BOLETO: "Boleto",
-  SEPA_DEBIT: "Débito SEPA",
-  BANK_TRANSFER: "Transferência bancária",
-  APPLE_PAY: "Apple Pay",
-  GOOGLE_PAY: "Google Pay",
-  PAYPAL: "PayPal",
-};

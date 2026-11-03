@@ -6,27 +6,34 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { Metadata } from "next";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { formatAmount } from "@/lib/ui/format";
-import { BILLING_TYPE_LABELS } from "@/modules/offers/offer.schemas";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
 
-export const metadata = { title: "Ofertas" };
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getAppDictionary(await appLocale());
+  return { title: dict.offers.title };
+}
 
 export default async function OffersPage() {
   const { organization } = await requirePagePermission("products:read");
   const services = getServices();
   const [offers, products] = await Promise.all([services.offers.list(organization.id), services.products.list(organization.id)]);
+  const dict = await getAppDictionary(await appLocale());
+  const t = dict.offers;
 
   if (products.length === 0) {
     return (
       <>
-        <PageHeader title="Ofertas" description="Preços e formas de cobrança dos seus produtos." />
+        <PageHeader title={t.title} description={t.shortDescription} />
         <EmptyState
           icon={TagIcon}
-          title="Crie um produto primeiro"
-          description="Ofertas pertencem a um produto. Cadastre o produto e depois defina o preço."
-          action={<Button render={<Link href="/products/new" />}>Criar produto</Button>}
+          title={t.needProductTitle}
+          description={t.needProductBody}
+          action={<Button render={<Link href="/products/new" />}>{t.createProduct}</Button>}
         />
       </>
     );
@@ -35,12 +42,12 @@ export default async function OffersPage() {
   return (
     <>
       <PageHeader
-        title="Ofertas"
-        description="O preço oficial de cada venda vem daqui — nunca da configuração visual do checkout."
+        title={t.title}
+        description={t.description}
         actions={
           <Button render={<Link href="/offers/new" />}>
             <PlusIcon />
-            Nova oferta
+            {t.new}
           </Button>
         }
       />
@@ -48,9 +55,9 @@ export default async function OffersPage() {
       {offers.length === 0 ? (
         <EmptyState
           icon={TagIcon}
-          title="Nenhuma oferta criada"
-          description="Defina o preço e a forma de cobrança do seu produto."
-          action={<Button render={<Link href="/offers/new" />}>Criar oferta</Button>}
+          title={t.emptyTitle}
+          description={t.emptyBody}
+          action={<Button render={<Link href="/offers/new" />}>{t.create}</Button>}
         />
       ) : (
         <Card className="py-0">
@@ -58,11 +65,11 @@ export default async function OffersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Oferta</TableHead>
-                  <TableHead className="hidden lg:table-cell">Produto</TableHead>
-                  <TableHead className="hidden lg:table-cell">Cobrança</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead className="text-right">Preço</TableHead>
+                  <TableHead>{t.offer}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{dict.common.product}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t.billing}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{dict.common.status}</TableHead>
+                  <TableHead className="text-right">{dict.common.price}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -73,16 +80,16 @@ export default async function OffersPage() {
                         {offer.name}
                       </Link>
                       <span className="block truncate text-xs text-muted-foreground lg:hidden">
-                        {offer.product.name} · {BILLING_TYPE_LABELS[offer.billingType]}
+                        {offer.product.name} · {t.billingTypes[offer.billingType]}
                       </span>
                       <Badge className="mt-1 sm:hidden" variant={offer.active ? "success" : "secondary"}>
-                        {offer.active ? "Ativa" : "Inativa"}
+                        {offer.active ? t.active : t.inactive}
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell">{offer.product.name}</TableCell>
-                    <TableCell className="hidden text-muted-foreground lg:table-cell">{BILLING_TYPE_LABELS[offer.billingType]}</TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">{t.billingTypes[offer.billingType]}</TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      <Badge variant={offer.active ? "success" : "secondary"}>{offer.active ? "Ativa" : "Inativa"}</Badge>
+                      <Badge variant={offer.active ? "success" : "secondary"}>{offer.active ? t.active : t.inactive}</Badge>
                     </TableCell>
                     <TableCell className="tabular text-right font-medium">{formatAmount(offer.amount, offer.currency)}</TableCell>
                   </TableRow>

@@ -8,6 +8,8 @@ import { TextField } from "@/components/shared/form-field";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { idleState } from "@/lib/actions/action-state";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 import { requestPayout } from "./actions";
 
 export function RequestPayoutDialog({
@@ -21,6 +23,8 @@ export function RequestPayoutDialog({
   availableLabel: string;
   disabled: boolean;
 }) {
+  const dict = useAppDictionary();
+  const t = dict.payouts.dialog;
   const [requested, setRequested] = useState(false);
   const [state, formAction] = useActionState(requestPayout, idleState);
   // Stable per dialog session: retrying the same request never creates a second payout.
@@ -30,8 +34,8 @@ export function RequestPayoutDialog({
   const open = requested && state.status !== "success";
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Saque solicitado");
-  }, [state]);
+    if (state.status === "success") toast.success(state.message ?? dict.toasts.payoutRequested);
+  }, [state, dict]);
 
   const maxDecimal = (Number(availableAmount) / 100).toFixed(2);
 
@@ -47,21 +51,19 @@ export function RequestPayoutDialog({
         render={
           <Button disabled={disabled}>
             <BanknoteIcon />
-            Solicitar saque
+            {dict.finance.requestPayout}
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Solicitar saque</DialogTitle>
-          <DialogDescription>
-            Disponível para saque: <strong>{availableLabel}</strong>. O valor sai do saldo disponível assim que a solicitação é registrada.
-          </DialogDescription>
+          <DialogTitle>{t.title}</DialogTitle>
+          <DialogDescription>{fill(t.description, { amount: availableLabel })}</DialogDescription>
         </DialogHeader>
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="requestId" value={requestId} />
           <TextField
-            label={`Valor (${currency})`}
+            label={fill(t.amount, { currency })}
             name="amount"
             inputMode="decimal"
             placeholder={maxDecimal}
@@ -71,9 +73,9 @@ export function RequestPayoutDialog({
           />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setRequested(false)}>
-              Cancelar
+              {dict.common.cancel}
             </Button>
-            <SubmitButton pendingLabel="Solicitando…">Confirmar saque</SubmitButton>
+            <SubmitButton pendingLabel={t.pending}>{t.confirm}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

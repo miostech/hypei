@@ -8,6 +8,8 @@ import { SubmitButton } from "@/components/shared/submit-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { idleState } from "@/lib/actions/action-state";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 import { createAffiliate, updateAffiliate } from "./actions";
 
 export interface AffiliateValues {
@@ -24,65 +26,65 @@ export function AffiliateDialog({
   affiliate?: AffiliateValues;
   checkouts: { id: string; name: string }[];
 }) {
+  const dict = useAppDictionary();
+  const t = dict.affiliates.dialog;
   const [opened, setOpened] = useState(false);
   const [state, formAction] = useActionState(affiliate ? updateAffiliate : createAffiliate, idleState);
   const open = opened && state.status !== "success";
   const error = (field: string) => (state.status === "error" ? state.fieldErrors?.[field] : undefined);
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Salvo");
-  }, [state]);
+    if (state.status === "success") toast.success(state.message ?? dict.toasts.saved);
+  }, [state, dict]);
 
   return (
     <Dialog open={open} onOpenChange={setOpened}>
       <DialogTrigger
         render={
           affiliate ? (
-            <Button variant="ghost" size="icon-sm" aria-label={`Editar ${affiliate.name}`}>
+            <Button variant="ghost" size="icon-sm" aria-label={fill(dict.affiliates.edit, { name: affiliate.name })}>
               <PencilIcon />
             </Button>
           ) : (
             <Button>
               <PlusIcon />
-              Novo afiliado
+              {t.new}
             </Button>
           )
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{affiliate ? "Editar afiliado" : "Novo afiliado"}</DialogTitle>
-          <DialogDescription>
-            A comissão sai da sua parte da venda, depois das taxas, e fica reservada até você pagar o afiliado.
-          </DialogDescription>
+          <DialogTitle>{affiliate ? t.editTitle : t.new}</DialogTitle>
+          <DialogDescription>{t.description}</DialogDescription>
         </DialogHeader>
 
         <form action={formAction} className="space-y-4">
           {affiliate && <input type="hidden" name="affiliateId" value={affiliate.id} />}
 
-          <TextField label="Nome" name="name" defaultValue={affiliate?.name} required autoFocus error={error("name")} />
+          <TextField label={dict.common.name} name="name" defaultValue={affiliate?.name} required autoFocus error={error("name")} />
           <TextField
-            label="E-mail"
+            label={t.email}
             name="email"
             type="email"
             defaultValue={affiliate?.email}
             required
-            hint="É por ele que você identifica e paga o afiliado."
+            hint={t.emailHint}
             error={error("email")}
           />
           <TextField
-            label="Comissão (%)"
+            label={t.commission}
             name="commissionBps"
             inputMode="decimal"
             placeholder="30"
             defaultValue={affiliate?.commission}
             required
-            hint="Percentual sobre o valor da venda, já com desconto aplicado."
+            hint={t.commissionHint}
             error={error("commissionBps")}
           />
 
           {!affiliate && checkouts.length > 0 && (
-            <SelectField label="Link para qual checkout" name="checkoutId" error={error("checkoutId")}>
+            <SelectField label={t.checkout} name="checkoutId" error={error("checkoutId")}>
               {checkouts.map((checkout) => (
                 <option key={checkout.id} value={checkout.id}>
                   {checkout.name}
@@ -95,9 +97,9 @@ export function AffiliateDialog({
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpened(false)}>
-              Cancelar
+              {dict.common.cancel}
             </Button>
-            <SubmitButton>{affiliate ? "Salvar" : "Cadastrar"}</SubmitButton>
+            <SubmitButton>{affiliate ? dict.common.save : t.create}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

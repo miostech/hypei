@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import pt from "@/lib/i18n/app/pt";
 import { describeRequirements } from "@/modules/compliance/verification.requirements";
 import { confirmPayment, createSeller, createTestApp, startPurchase, type TestApp } from "../support/test-app";
 
@@ -21,7 +22,7 @@ describe("Identity verification", () => {
       businessType: "INDIVIDUAL",
       country: "BR",
     });
-    expect(overview.requirements).toHaveLength(0);
+    expect(overview.requirementCodes).toHaveLength(0);
     expect(overview.taxIdentities[0]).toMatchObject({ type: "CPF" });
   });
 
@@ -39,17 +40,18 @@ describe("Identity verification", () => {
 
     const overview = await app.services.verification.overview(seller.organization.id);
     expect(overview).toMatchObject({ canSell: false, canWithdraw: false });
-    expect(overview.requirements.map((requirement) => requirement.label)).toEqual([
+    const requirements = describeRequirements(overview.requirementCodes, pt.verification.requirements);
+    expect(requirements.map((requirement) => requirement.label)).toEqual([
       "Documento de identidade",
       "Conta bancária para receber",
       // day/month/year collapse into one line.
       "Data de nascimento do titular",
     ]);
-    expect(overview.requirements[0].hint).toContain("RG ou CNH");
+    expect(requirements[0].hint).toContain("RG ou CNH");
   });
 
   it("keeps an unknown requirement code visible instead of hiding it", () => {
-    const requirements = describeRequirements(["company.something_new", "external_account"]);
+    const requirements = describeRequirements(["company.something_new", "external_account"], pt.verification.requirements);
     expect(requirements.map((requirement) => requirement.label)).toEqual(["company.something_new", "Conta bancária para receber"]);
   });
 

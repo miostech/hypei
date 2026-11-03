@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import type { LessonType } from "@/generated/prisma/enums";
 import { isDomainError } from "@/lib/errors";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { logger } from "@/lib/logger";
 import { redirect } from "next/navigation";
 import { courseInputSchema, courseSettingsSchema, lessonInputSchema, moduleInputSchema } from "@/modules/members/course.schemas";
@@ -31,7 +33,7 @@ export async function createCourse(_prev: ActionState, formData: FormData): Prom
     const course = await getServices().courses.create(organization.id, userId, input);
     courseId = course.id;
     revalidateCourse();
-    return { status: "success", message: "Curso criado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.courseCreated };
   });
   if (courseId) redirect(`/members-area/${courseId}`);
   return result;
@@ -48,7 +50,7 @@ export async function updateCourseSettings(_prev: ActionState, formData: FormDat
     });
     await getServices().courses.updateSettings(organization.id, userId, courseId, input);
     revalidateCourse(courseId);
-    return { status: "success", message: "Curso atualizado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.courseUpdated };
   });
 }
 
@@ -59,6 +61,14 @@ export async function setCoursePublished(formData: FormData): Promise<void> {
   revalidateCourse(courseId);
 }
 
+export async function deleteCourse(formData: FormData): Promise<void> {
+  const { organization, userId } = await requirePermission(EDIT);
+  await getServices().courses.remove(organization.id, userId, String(formData.get("courseId")));
+  // Sem id: a rota do curso não existe mais.
+  revalidateCourse();
+  redirect("/members-area");
+}
+
 // ── Modules ────────────────────────────────────────────────────────────────
 export async function addModule(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
@@ -67,7 +77,7 @@ export async function addModule(_prev: ActionState, formData: FormData): Promise
     const { title } = moduleInputSchema.parse({ title: formData.get("title") });
     await getServices().courses.addModule(organization.id, courseId, title);
     revalidateCourse(courseId);
-    return { status: "success", message: "Módulo criado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.moduleCreated };
   });
 }
 
@@ -77,7 +87,7 @@ export async function renameModule(_prev: ActionState, formData: FormData): Prom
     const { title } = moduleInputSchema.parse({ title: formData.get("title") });
     await getServices().courses.renameModule(organization.id, String(formData.get("moduleId")), title);
     revalidateCourse(String(formData.get("courseId")));
-    return { status: "success", message: "Módulo atualizado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.moduleUpdated };
   });
 }
 
@@ -117,7 +127,7 @@ export async function requestLessonUpload(input: {
   } catch (error) {
     if (isDomainError(error)) return { ok: false, message: error.message };
     logger.error({ err: error }, "lesson upload authorization failed");
-    return { ok: false, message: "Não foi possível preparar o envio do arquivo." };
+    return { ok: false, message: (await getAppDictionary(await appLocale())).toasts.fileUploadFailed };
   }
 }
 
@@ -141,7 +151,7 @@ export async function addLesson(_prev: ActionState, formData: FormData): Promise
     const { organization } = await requirePermission(EDIT);
     await getServices().courses.addLesson(organization.id, String(formData.get("moduleId")), parseLesson(formData));
     revalidateCourse(String(formData.get("courseId")));
-    return { status: "success", message: "Aula adicionada" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.lessonCreated };
   });
 }
 
@@ -150,7 +160,7 @@ export async function updateLesson(_prev: ActionState, formData: FormData): Prom
     const { organization } = await requirePermission(EDIT);
     await getServices().courses.updateLesson(organization.id, String(formData.get("lessonId")), parseLesson(formData));
     revalidateCourse(String(formData.get("courseId")));
-    return { status: "success", message: "Aula atualizada" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.lessonUpdated };
   });
 }
 

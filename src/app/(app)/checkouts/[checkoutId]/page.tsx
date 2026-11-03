@@ -1,17 +1,27 @@
 import { ExternalLinkIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DeliveryWarning } from "@/components/shared/delivery-warning";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
 import { NotFoundError } from "@/lib/errors";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { fill } from "@/lib/i18n/locale";
+import { assertSupportedCurrency, convertMinorUnits } from "@/lib/money";
 import { formatAmount } from "@/lib/ui/format";
+import { GUARANTEE_MIN_DAYS } from "@/modules/checkout/checkout.schemas";
 import { resolvePaymentMethods } from "@/modules/payments/payment-method-resolver";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
 import { updateCheckout } from "../actions";
 import { CheckoutForm } from "../checkout-form";
 
-export const metadata = { title: "Editar checkout" };
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getAppDictionary(await appLocale());
+  return { title: dict.checkouts.title };
+}
 
 export default async function CheckoutDetailPage({ params }: PageProps<"/checkouts/[checkoutId]">) {
   const { checkoutId } = await params;
@@ -23,6 +33,17 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
     throw error;
   });
 
+  const delivery = await services.products.delivery(organization.id, checkout.offer.productId);
+  const [bannerUrl, logoUrl] = await Promise.all([
+    services.checkouts.assetUrl(config?.bannerKey ?? null),
+    services.checkouts.assetUrl(config?.logoKey ?? null),
+  ]);
+
+  const bumpOffers = await services.checkouts.bumpCandidates(organization.id, checkout.offerId);
+
+  const dict = await getAppDictionary(await appLocale());
+  const t = dict.checkoutForm;
+  const currency = assertSupportedCurrency(checkout.offer.currency);
   const availableMethods = resolvePaymentMethods({
     provider: services.paymentProvider.type,
     currency: checkout.offer.currency,
@@ -33,19 +54,25 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
     <>
       <PageHeader
         title={checkout.name}
-        description={`Versão atual: v${checkout.currentVersion} · ${formatAmount(checkout.offer.amount, checkout.offer.currency)}`}
+        description={fill(t.editDescription, {
+          version: checkout.currentVersion,
+          price: formatAmount(checkout.offer.amount, checkout.offer.currency),
+        })}
         actions={
           <Button variant="outline" render={<Link href={`/checkout/${checkout.slug}`} target="_blank" />}>
             <ExternalLinkIcon />
-            Abrir checkout
+            {dict.checkouts.open}
           </Button>
         }
       />
+      <DeliveryWarning delivery={delivery} productId={checkout.offer.productId} dict={dict} />
+
       <CheckoutForm
         action={updateCheckout}
         offers={[{ id: checkout.offerId, label: `${checkout.offer.product.name} — ${checkout.offer.name}` }]}
+        bumpOffers={bumpOffers.map((o) => ({ id: o.id, label: `${o.product.name} — ${o.name} (${formatAmount(o.amount, o.currency)})` }))}
         availableMethods={availableMethods}
-        submitLabel="Salvar nova versão"
+        submitLabel={t.saveSubmit}
         lockedOffer
         defaultValues={{
           id: checkout.id,
@@ -55,10 +82,21 @@ export default async function CheckoutDetailPage({ params }: PageProps<"/checkou
           headline: config?.headline ?? checkout.offer.product.name,
           description: config?.description ?? "",
           accentColor: config?.theme.accentColor ?? "#5B3DF5",
-          logoUrl: config?.logoUrl ?? "",
+          logoKey: config?.logoKey ?? "",
+          logoUrl,
+          bannerKey: config?.bannerKey ?? "",
+          bannerUrl,
           collectPhone: config?.fields.phone ?? false,
-          guaranteeDays: config?.guaranteeDays ?? 7,
+          guaranteeDays: config?.guaranteeDays ?? GUARANTEE_MIN_DAYS,
           enabledPaymentMethods: config?.enabledPaymentMethods ?? [],
+          // O config guarda centavos; o formulário mostra o que uma pessoa digita.
+          orderBumps: (config?.orderBumps ?? []).map((bump) => ({
+            offerId: bump.offerId,
+            headline: bump.headline,
+            description: bump.description,
+            price: convertMinorUnits(BigInt(bump.amount), currency),
+            compareAtPrice: bump.compareAtAmount === null ? "" : convertMinorUnits(BigInt(bump.compareAtAmount), currency),
+          })),
         }}
       />
     </>

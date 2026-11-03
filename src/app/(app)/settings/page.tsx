@@ -1,23 +1,18 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { COUNTRY_INFO, type CountryCode } from "@/modules/organizations/countries";
-import { TAX_REGIME_LABELS } from "@/modules/taxes/tax.schemas";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { countryName } from "@/lib/i18n/countries";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
 import { TaxRegimeForm } from "./tax-regime-form";
 
-export const metadata = { title: "Configurações" };
-
-const ROLE_LABELS: Record<string, string> = {
-  OWNER: "Proprietário",
-  ADMIN: "Administrador",
-  FINANCE: "Financeiro",
-  SUPPORT: "Suporte",
-  MARKETING: "Marketing",
-  VIEWER: "Visualizador",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getAppDictionary(await appLocale())).settings.title };
+}
 
 export default async function SettingsPage() {
   const { organization, membership } = await requirePagePermission("organization:read");
@@ -28,43 +23,45 @@ export default async function SettingsPage() {
     services.taxSettings.get(organization.id),
   ]);
   const canManage = membership.role === "OWNER" || membership.role === "ADMIN";
+  const dict = await getAppDictionary(await appLocale());
+  const t = dict.settings;
 
   return (
     <>
-      <PageHeader title="Configurações" description="Dados da organização, identidade fiscal e seu nível de acesso." />
+      <PageHeader title={t.title} description={t.description} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Organização</CardTitle>
-            <CardDescription>Estes dados definem moeda, país e regras financeiras aplicadas às suas vendas.</CardDescription>
+            <CardTitle>{t.organizationTitle}</CardTitle>
+            <CardDescription>{t.organizationDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="grid gap-3 sm:grid-cols-2">
-              <Item label="Nome" value={organization.name} />
-              <Item label="Identificador" value={`/${organization.slug}`} />
-              <Item label="País" value={COUNTRY_INFO[organization.country as CountryCode]?.name ?? organization.country} />
-              <Item label="Moeda padrão" value={organization.defaultCurrency} />
-              <Item label="Tipo" value={organization.businessType === "COMPANY" ? "Empresa" : "Pessoa física"} />
-              <Item label="Seu acesso" value={ROLE_LABELS[membership.role] ?? membership.role} />
-              <Item label="E-mail de suporte" value={organization.supportEmail ?? "—"} />
-              <Item label="Site" value={organization.website ?? "—"} />
+              <Item label={dict.common.name} value={organization.name} />
+              <Item label={t.slug} value={`/${organization.slug}`} />
+              <Item label={dict.verification.country} value={countryName(dict.localeTag, organization.country)} />
+              <Item label={t.defaultCurrency} value={organization.defaultCurrency} />
+              <Item label={t.businessType} value={organization.businessType === "COMPANY" ? t.company : t.individual} />
+              <Item label={t.yourAccess} value={dict.roles[membership.role] ?? membership.role} />
+              <Item label={t.supportEmail} value={organization.supportEmail ?? "—"} />
+              <Item label={t.website} value={organization.website ?? "—"} />
             </dl>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Identidade fiscal e verificação</CardTitle>
-            <CardDescription>Guardamos apenas os últimos dígitos do documento; o valor completo nunca é armazenado.</CardDescription>
+            <CardTitle>{t.taxTitle}</CardTitle>
+            <CardDescription>{t.taxDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Documento</TableHead>
-                  <TableHead>País</TableHead>
+                  <TableHead>{dict.common.type}</TableHead>
+                  <TableHead>{t.document}</TableHead>
+                  <TableHead>{dict.verification.country}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -78,9 +75,9 @@ export default async function SettingsPage() {
               </TableBody>
             </Table>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Verificação:</span>
+              <span className="text-muted-foreground">{t.verificationLabel}</span>
               <Badge variant={verification?.status === "VERIFIED" ? "success" : verification?.status === "REJECTED" ? "destructive" : "warning"}>
-                {verification?.status ?? "NOT_STARTED"}
+                {dict.verification.statuses[verification?.status ?? "NOT_STARTED"].label}
               </Badge>
             </div>
           </CardContent>
@@ -88,19 +85,16 @@ export default async function SettingsPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Regime tributário</CardTitle>
-            <CardDescription>
-              Quem vende é você, então o imposto é seu para recolher. A Kabrun calcula quanto do preço é tributo e mostra
-              no detalhe de cada venda — o valor que o comprador paga não muda.
-            </CardDescription>
+            <CardTitle>{t.regimeTitle}</CardTitle>
+            <CardDescription>{t.regimeDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             {canManage ? (
               <TaxRegimeForm settings={taxSettings} />
             ) : (
               <p className="text-sm text-muted-foreground">
-                Somente proprietário e administrador alteram o regime. Atual:{" "}
-                <span className="font-medium text-foreground">{TAX_REGIME_LABELS[taxSettings.regime]}</span>
+                {t.regimeReadOnly}{" "}
+                <span className="font-medium text-foreground">{t.taxRegimes[taxSettings.regime].label}</span>
                 {taxSettings.rate && <> · {taxSettings.rate}%</>}
               </p>
             )}

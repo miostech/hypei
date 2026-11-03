@@ -8,7 +8,7 @@ import type { NormalizedProviderEvent, PaymentProvider } from "@/lib/providers/p
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import { calculateFeeBreakdown, NO_PLATFORM_FEE } from "@/modules/fees/fee.calculator";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
-import type { Repositories } from "@/server/repositories";
+import { grantOrderAccess } from "@/modules/members/access";
 import type { UnitOfWork } from "@/server/unit-of-work";
 import { canTransition, isCaptured } from "./payment-status";
 
@@ -230,7 +230,7 @@ export class PaymentService {
         });
       }
 
-      await this.grantAccess(repos, payment.orderId, payment.customerId);
+      await grantOrderAccess(repos, payment.orderId, payment.customerId);
       await repos.outbox.add(
         createDomainEvent("payment.paid", payment.id, payment.organizationId, {
           orderId: payment.orderId,
@@ -241,14 +241,6 @@ export class PaymentService {
       );
       return "applied";
     });
-  }
-
-  /** Enrolls the buyer in any course sold by the order (member area access). */
-  private async grantAccess(repos: Repositories, orderId: string, customerId: string) {
-    for (const productId of await repos.orders.productIds(orderId)) {
-      const course = await repos.courses.findByProductId(productId);
-      if (course) await repos.courses.enroll({ courseId: course.id, customerId, orderId });
-    }
   }
 
   async applyStatus(
@@ -291,5 +283,28 @@ export class PaymentService {
     const payment = await this.uow.repos.payments.findById(paymentId);
     if (!payment) throw new NotFoundError("Payment", paymentId);
     return { id: payment.id, status: payment.status, amount: payment.amount, currency: payment.currency };
+  }
+
+  /**
+   * Tudo que esta compra entregou, com o link de cada conteúdo publicado.
+   *
+   * A tela de obrigado nomeava só o produto do checkout. Com order bump isso passou a ser
+   * mentira por omissão: quem pagou por três produtos era informado de um. A lista vem do
+   * pedido, não do checkout, porque é o pedido que sabe o que foi realmente cobrado.
+   *
+   * Exposto pelo id do pagamento, como o status: é o que o comprador tem na mão ao voltar do
+   * provedor, e não revela nada que ele já não tenha comprado.
+   */
+  async purchasedProducts(paymentId: string): Promise<{ name: string; courseSlug: string | null }[]> {
+    const payment = await this.uow.repos.payments.findById(paymentId);
+    if (!payment) throw new NotFoundError("Payment", paymentId);
+
+    const products = await this.uow.repos.orders.itemProducts(payment.orderId);
+    return Promise.all(
+      products.map(async (product) => {
+        const course = await this.uow.repos.courses.findByProductId(product.productId);
+        return { name: product.productName, courseSlug: course?.published ? course.slug : null };
+      }),
+    );
   }
 }

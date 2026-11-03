@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { getPaymentStatus } from "../actions";
 
 /** Polls the Kabrun payment status until the provider webhook settles it. */
-export function PaymentStatusWatcher({ paymentId }: { paymentId: string }) {
+export function PaymentStatusWatcher({ paymentId, label }: { paymentId: string; label: string }) {
   const router = useRouter();
 
   useEffect(() => {
@@ -21,5 +21,5 @@ export function PaymentStatusWatcher({ paymentId }: { paymentId: string }) {
     return () => clearInterval(interval);
   }, [paymentId, router]);
 
-  return <p className="text-xs text-muted-foreground">Aguardando confirmação do provedor de pagamento…</p>;
+  return <p className="text-xs text-muted-foreground">{label}</p>;
 }

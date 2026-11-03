@@ -93,10 +93,10 @@ async function main() {
         headline: `Garanta seu acesso a ${item.name}`,
         description: "Pagamento seguro. Acesso liberado na hora.",
         accentColor: "#4B168C",
-        logoUrl: "",
         collectPhone: false,
         guaranteeDays: 7,
         enabledPaymentMethods: [],
+        orderBumps: [],
       }));
 
     catalogue.push({ checkout, weight: item.weight });

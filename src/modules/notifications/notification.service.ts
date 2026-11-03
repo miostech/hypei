@@ -1,5 +1,6 @@
 import type { DomainEvent } from "@/lib/events/domain-event";
 import type { EventBus } from "@/lib/events/event-bus";
+import { getEmailDictionary, storedLocale } from "@/lib/i18n/email";
 import { logger } from "@/lib/logger";
 import { formatMoney, money, type CurrencyCode } from "@/lib/money";
 import type { EmailProvider } from "@/lib/providers/email/email-provider";
@@ -35,6 +36,15 @@ export class NotificationService {
 
   private url(path: string): string {
     return new URL(path, this.config.appUrl).toString();
+  }
+
+  /**
+   * O idioma do comprador vem do cadastro dele, não da requisição: isto roda no outbox, depois
+   * do commit e sem navegador nenhum por perto. Quem comprou antes da coluna existir cai em
+   * português, que é o que estes e-mails já diziam.
+   */
+  private buyerDictionary(locale: string | null) {
+    return getEmailDictionary(storedLocale(locale));
   }
 
   /**
@@ -93,9 +103,10 @@ export class NotificationService {
       template: "purchase.confirmed",
       recipient: context.customerEmail,
       organizationId: context.organizationId,
-      rendered: purchaseConfirmed({
+      rendered: purchaseConfirmed(await this.buyerDictionary(context.customerLocale), {
         customerName: context.customerName,
         productName: context.productName,
+        extraProductNames: context.extraProductNames,
         amountLabel: this.amount(context.amount, context.currency),
         orderReference: context.orderReference,
         accessUrl,
@@ -130,7 +141,7 @@ export class NotificationService {
       template: "refund.completed",
       recipient: context.customerEmail,
       organizationId: context.organizationId,
-      rendered: refundCompleted({
+      rendered: refundCompleted(await this.buyerDictionary(context.customerLocale), {
         customerName: context.customerName,
         productName: context.productName,
         amountLabel: this.amount(context.amount, context.currency),

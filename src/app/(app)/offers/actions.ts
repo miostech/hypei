@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { offerInputSchema } from "@/modules/offers/offer.schemas";
 import { requirePermission } from "@/modules/organizations/current-organization";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { runAction, type ActionState } from "@/server/actions/action-state";
 import { getServices } from "@/server/container";
 
@@ -29,7 +31,7 @@ export async function createOffer(_prev: ActionState, formData: FormData): Promi
     const offer = await getServices().offers.create(organization.id, userId, parse(formData));
     offerId = offer.id;
     revalidatePath("/offers");
-    return { status: "success", message: "Oferta criada" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.offerCreated };
   });
   if (offerId) redirect(`/offers/${offerId}?created=1`);
   return result;
@@ -42,6 +44,6 @@ export async function updateOffer(_prev: ActionState, formData: FormData): Promi
     await getServices().offers.update(organization.id, userId, id, parse(formData));
     revalidatePath("/offers");
     revalidatePath(`/offers/${id}`);
-    return { status: "success", message: "Oferta atualizada" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.offerUpdated };
   });
 }

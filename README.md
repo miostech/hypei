@@ -455,15 +455,25 @@ ambiente de produção. Não são dívidas de código soltas: cada um tem conseq
 
 **Impedem o funcionamento**
 
-- **Nada roda o worker.** Liberar settlement (`PENDING → AVAILABLE`), publicar o outbox e repetir
-  webhooks falhados só acontece em [`src/workers/index.ts`](src/workers/index.ts) ou
-  [`scripts/run-settlement.ts`](scripts/run-settlement.ts) — ambos precisam de `tsx` e do `src/`,
-  que não existem no estágio `runner` do [`Dockerfile`](Dockerfile), e o `compose` só tem o serviço
-  `app`. Sem isso a venda entra no ledger como pendente e o produtor nunca consegue sacar.
-- **Nada aplica as migrations no deploy.** A imagem carrega o `prisma/` para que
-  `npm run db:deploy` possa rodar, mas nenhum entrypoint ou release command o executa.
-- **Fila em processo.** Só `QUEUE_DRIVER=memory` tem implementação, então os jobs se perdem a cada
-  restart e não é seguro subir mais de uma instância da app.
+- **Nada aplica as migrations no deploy.** Ninguém executa `npm run db:deploy`. Na Vercel o
+  caminho usual é o comando de build, com um porém sério: *preview deploys* rodariam migrations
+  contra o banco que estiver em `DATABASE_URL`. Precisa ser resolvido com cuidado.
+- **Fila em processo.** Só `QUEUE_DRIVER=memory` tem implementação. Em serverless isso é pior do
+  que parece: trabalho agendado depois da resposta pode nunca rodar, porque a função é congelada.
+  Hoje o cron cobre o estrago — `retryDue` reclama eventos `RECEIVED` presos —, então nada se
+  perde, mas há latência de até um ciclo. A correção limpa é `after()` do `next/server` na rota
+  de webhook.
+
+**Worker — resolvido na Vercel**
+
+O worker roda por cron, não por processo longo: [`vercel.json`](vercel.json) agenda
+`GET /api/cron/worker` a cada minuto, e a rota chama a mesma `runWorkerTick` que o
+`npm run worker` usa localmente. **O agendamento por minuto exige plano Pro** — no Hobby o cron
+é diário, e settlement, outbox e retry de webhook ficariam com um dia de atraso.
+
+A rota **falha fechada**: sem `CRON_SECRET` ela recusa tudo, e por isso o boot em produção também
+é recusado sem esse segredo — senão o worker nunca rodaria e o saldo ficaria preso em pendente,
+sem erro visível.
 
 **Identidade**
 

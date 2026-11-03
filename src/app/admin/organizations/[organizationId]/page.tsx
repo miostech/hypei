@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { NotFoundError } from "@/lib/errors";
 import { formatAmount, formatDateTime } from "@/lib/ui/format";
+import pt from "@/lib/i18n/app/pt";
 import { describeRequirements } from "@/modules/compliance/verification.requirements";
 import { getServices } from "@/server/container";
 import { PAYMENT_BADGE, VERIFICATION_BADGE } from "../../status-badges";
@@ -24,7 +25,8 @@ export default async function AdminOrganizationPage({ params }: PageProps<"/admi
     });
 
   const badge = VERIFICATION_BADGE[organization.verificationStatus ?? "NOT_STARTED"];
-  const requirements = describeRequirements(organization.requirementsDue);
+  const requirements = // O admin é da equipe Kabrun e fica em português; só reaproveita as frases do dicionário.
+  describeRequirements(organization.requirementsDue, pt.verification.requirements);
 
   return (
     <>

@@ -49,7 +49,3 @@ export const couponInputSchema = z
 
 export type CouponInput = z.infer<typeof couponInputSchema>;
 
-export const COUPON_TYPE_LABELS: Record<CouponType, string> = {
-  PERCENTAGE: "Percentual",
-  FIXED_AMOUNT: "Valor fixo",
-};

@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createSeller, createTestApp, type TestApp } from "../support/test-app";
+import { checkoutConfigSchema } from "@/modules/checkout/checkout-config.schema";
+import { checkoutBuilderSchema, GUARANTEE_MIN_DAYS } from "@/modules/checkout/checkout.schemas";
+import { createSeller, createTestApp, startPurchase, type TestApp } from "../support/test-app";
 
 describe("Checkout", () => {
   let app: TestApp;
@@ -63,6 +65,7 @@ describe("Checkout", () => {
       collectPhone: true,
       guaranteeDays: 30,
       enabledPaymentMethods: [],
+      orderBumps: [],
     });
     expect(version).toBe(2);
     const view = await app.services.checkouts.getPublic(checkout.slug);
@@ -70,9 +73,160 @@ describe("Checkout", () => {
     expect(view?.version).toBe(2);
   });
 
+  /**
+   * O input do formulário tem min=7, mas isso é só o navegador. Quem posta direto no server
+   * action tem que esbarrar na mesma parede: o art. 49 do CDC dá sete dias ao comprador, e
+   * anunciar menos só criaria promessa que a plataforma quebraria no primeiro reembolso.
+   */
+  it("recusa garantia menor que o mínimo do CDC", () => {
+    const base = {
+      offerId: "off_1",
+      name: "Checkout",
+      slug: "checkout",
+      headline: "Garanta seu acesso",
+      accentColor: "#111111",
+      collectPhone: false,
+      enabledPaymentMethods: [],
+    };
+
+    expect(() => checkoutBuilderSchema.parse({ ...base, guaranteeDays: 0 })).toThrow();
+    expect(() => checkoutBuilderSchema.parse({ ...base, guaranteeDays: GUARANTEE_MIN_DAYS - 1 })).toThrow();
+    expect(checkoutBuilderSchema.parse({ ...base, guaranteeDays: GUARANTEE_MIN_DAYS }).guaranteeDays).toBe(GUARANTEE_MIN_DAYS);
+  });
+
+  /** Versão antiga com garantia menor continua legível: recusá-la derrubaria a página. */
+  it("ainda lê uma configuração gravada antes do piso", () => {
+    const config = checkoutConfigSchema.parse({ theme: {}, headline: "Oi", fields: {}, guaranteeDays: 3 });
+    expect(config.guaranteeDays).toBe(3);
+  });
+
   it("hides checkouts of inactive offers", async () => {
     const { checkout, organization, user, offer } = await createSeller(app);
     await app.services.offers.setActive(organization.id, user.id, offer.id, false);
     expect(await app.services.checkouts.getPublic(checkout.slug)).toBeNull();
+  });
+
+  /**
+   * A tela de Verificação promete ao produtor que o checkout não cobra antes de ele
+   * verificar. Esta é a trava que torna a promessa verdadeira — sem ela o comprador é
+   * cobrado e o dinheiro fica preso, porque o saque também é bloqueado.
+   */
+  it("recusa a venda enquanto o provedor não liberou cobranças", async () => {
+    const { checkout, organization } = await createSeller(app);
+    await app.prisma.merchantAccount.updateMany({
+      where: { organizationId: organization.id },
+      data: { status: "REQUIRES_ACTION", chargesEnabled: false, requirementsDue: ["individual.verification.document"] },
+    });
+
+    expect(await app.services.checkouts.getPublic(checkout.slug)).toMatchObject({ acceptsPayments: false });
+    await expect(startPurchase(app, checkout.slug)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await app.prisma.order.count({ where: { organizationId: organization.id } })).toBe(0);
+    expect(await app.prisma.payment.count({ where: { organizationId: organization.id } })).toBe(0);
+  });
+});
+
+/** Arte que o produtor envia. O objeto continua privado: a página assina na hora de mostrar. */
+describe("Imagens do produtor", () => {
+  let app: TestApp;
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  const image = { filename: "capa.png", contentType: "image/png", sizeBytes: 300_000 };
+
+  it("autoriza o envio numa chave do próprio checkout", async () => {
+    const { organization, checkout } = await createSeller(app);
+
+    const target = await app.services.checkouts.createImageUpload(organization.id, checkout.id, image);
+
+    expect(target.key).toBe(app.storage.uploads[0].key);
+    expect(target.key.startsWith(`organizations/${organization.id}/checkouts/${checkout.id}/`)).toBe(true);
+    expect(target.key.endsWith(".png")).toBe(true);
+  });
+
+  it("autoriza a capa numa chave do próprio produto", async () => {
+    const { organization, product } = await createSeller(app);
+
+    const target = await app.services.products.createThumbnailUpload(organization.id, product.id, image);
+
+    expect(target.key).toBe(app.storage.uploads[0].key);
+    expect(target.key.startsWith(`organizations/${organization.id}/products/${product.id}/`)).toBe(true);
+  });
+
+  it("recusa o que não é imagem e o que é grande demais", async () => {
+    const { organization, checkout, product } = await createSeller(app);
+
+    await expect(
+      app.services.checkouts.createImageUpload(organization.id, checkout.id, { ...image, filename: "a.pdf", contentType: "application/pdf" }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(
+      app.services.checkouts.createImageUpload(organization.id, checkout.id, { ...image, sizeBytes: 9_000_000 }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    // Mesma política nas duas telas: a validação é compartilhada, não copiada.
+    await expect(
+      app.services.products.createThumbnailUpload(organization.id, product.id, { ...image, contentType: "image/heic" }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+
+    expect(app.storage.uploads).toHaveLength(0);
+  });
+
+  it("não deixa enviar para o checkout nem para o produto de outra organização", async () => {
+    const mine = await createSeller(app);
+    const theirs = await createSeller(app);
+
+    await expect(app.services.checkouts.createImageUpload(mine.organization.id, theirs.checkout.id, image)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(app.services.products.createThumbnailUpload(mine.organization.id, theirs.product.id, image)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    expect(app.storage.uploads).toHaveLength(0);
+  });
+
+  it("guarda banner e logo na versão da configuração e entrega assinados para a página", async () => {
+    const { organization, user, checkout, offer } = await createSeller(app);
+    const banner = await app.services.checkouts.createImageUpload(organization.id, checkout.id, image);
+    const logo = await app.services.checkouts.createImageUpload(organization.id, checkout.id, { ...image, filename: "logo.png" });
+
+    await app.services.checkouts.updateConfig(organization.id, user.id, checkout.id, {
+      offerId: offer.id,
+      name: "Checkout",
+      slug: checkout.slug,
+      headline: "Garanta seu acesso",
+      accentColor: "#111111",
+      bannerKey: banner.key,
+      logoKey: logo.key,
+      collectPhone: false,
+      guaranteeDays: 7,
+      enabledPaymentMethods: [],
+      orderBumps: [],
+    });
+
+    const view = await app.services.checkouts.getPublic(checkout.slug);
+    expect(view?.config.bannerKey).toBe(banner.key);
+    expect(view?.config.logoKey).toBe(logo.key);
+    expect(await app.services.checkouts.assetUrl(view!.config.bannerKey)).toContain(encodeURIComponent(banner.key));
+    expect(await app.services.checkouts.assetUrl(view!.config.logoKey)).toContain(encodeURIComponent(logo.key));
+    // Sem imagem não há URL: a página não deve renderizar um <img> vazio.
+    expect(await app.services.checkouts.assetUrl(null)).toBeNull();
+  });
+
+  it("leva a capa do produto para o resumo do pedido", async () => {
+    const { organization, user, product, checkout } = await createSeller(app);
+    const target = await app.services.products.createThumbnailUpload(organization.id, product.id, image);
+
+    await app.services.products.update(organization.id, user.id, product.id, {
+      name: product.name,
+      slug: product.slug,
+      type: product.type,
+      status: product.status,
+      thumbnailKey: target.key,
+    });
+
+    // A capa é do produto, mas quem a mostra é o checkout: tem que atravessar a view pública.
+    const view = await app.services.checkouts.getPublic(checkout.slug);
+    expect(view?.product.thumbnailKey).toBe(target.key);
+    expect(await app.services.products.thumbnailUrl(target.key)).toContain(encodeURIComponent(target.key));
+    expect(await app.services.products.thumbnailUrl(null)).toBeNull();
   });
 });

@@ -5,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { Metadata } from "next";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { fill, plural } from "@/lib/i18n/locale";
 import { formatAmount, formatDate } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { hasPermission } from "@/modules/organizations/permissions";
@@ -12,7 +16,10 @@ import { getServices } from "@/server/container";
 import { deleteCoupon, setCouponActive } from "./actions";
 import { CouponDialog, type CouponValues } from "./coupon-dialog";
 
-export const metadata = { title: "Cupons" };
+export async function generateMetadata(): Promise<Metadata> {
+  const dict = await getAppDictionary(await appLocale());
+  return { title: dict.coupons.title };
+}
 
 /** Minor units back to the decimal string the form expects ("5000" → "50,00"). */
 function toDecimal(value: bigint | null): string {
@@ -30,20 +37,26 @@ export default async function CouponsPage() {
   const canEdit = hasPermission(membership.role, "products:write");
   const productOptions = products.map((product) => ({ id: product.id, name: product.name }));
   const now = new Date();
+  const dict = await getAppDictionary(await appLocale());
+  const t = dict.coupons;
+
+  /** O selo do cupom: inativo, vencido, esgotado ou ativo — nessa ordem de prioridade. */
+  const statusLabel = (active: boolean, expired: boolean, exhausted: boolean) =>
+    !active ? t.statuses.inactive : expired ? t.statuses.expired : exhausted ? t.statuses.exhausted : t.statuses.active;
 
   return (
     <>
       <PageHeader
-        title="Cupons"
-        description="Descontos que o cliente digita no checkout."
+        title={t.title}
+        description={t.description}
         actions={canEdit && <CouponDialog products={productOptions} currency={organization.defaultCurrency} />}
       />
 
       {coupons.length === 0 ? (
         <EmptyState
           icon={TicketIcon}
-          title="Nenhum cupom criado"
-          description="Crie um cupom para lançamentos, campanhas ou para recuperar quem desistiu da compra."
+          title={t.emptyTitle}
+          description={t.emptyBody}
           action={canEdit ? <CouponDialog products={productOptions} currency={organization.defaultCurrency} /> : undefined}
         />
       ) : (
@@ -52,12 +65,12 @@ export default async function CouponsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Desconto</TableHead>
-                  <TableHead className="hidden lg:table-cell">Aplica em</TableHead>
-                  <TableHead className="hidden md:table-cell">Usos</TableHead>
-                  <TableHead className="hidden lg:table-cell">Validade</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
+                  <TableHead>{t.code}</TableHead>
+                  <TableHead>{t.discount}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t.appliesTo}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t.uses}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t.validity}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{dict.common.status}</TableHead>
                   {canEdit && <TableHead className="w-px" />}
                 </TableRow>
               </TableHeader>
@@ -83,21 +96,16 @@ export default async function CouponsPage() {
                     <TableRow key={coupon.id}>
                       <TableCell className="max-w-[38vw] sm:max-w-none">
                         <span className="block truncate font-mono text-sm font-semibold">{coupon.code}</span>
-                        {coupon.oncePerCustomer && <span className="block text-xs text-muted-foreground">Uma vez por cliente</span>}
+                        {coupon.oncePerCustomer && <span className="block text-xs text-muted-foreground">{t.oncePerCustomer}</span>}
                         <span className="block text-xs text-muted-foreground md:hidden">
-                          {coupon.redemptions}
-                          {coupon.maxRedemptions !== null ? ` / ${coupon.maxRedemptions}` : ""} uso(s)
+                          {coupon.maxRedemptions !== null
+                            ? `${coupon.redemptions} / ${coupon.maxRedemptions}`
+                            : plural(dict.locale, coupon.redemptions, t.useCount)}
                         </span>
                         <span className="mt-1 block sm:hidden">
-                          {!coupon.active ? (
-                            <Badge variant="outline">Inativo</Badge>
-                          ) : expired ? (
-                            <Badge variant="outline">Expirado</Badge>
-                          ) : exhausted ? (
-                            <Badge variant="outline">Esgotado</Badge>
-                          ) : (
-                            <Badge variant="success">Ativo</Badge>
-                          )}
+                          <Badge variant={coupon.active && !expired && !exhausted ? "success" : "outline"}>
+                            {statusLabel(coupon.active, expired, exhausted)}
+                          </Badge>
                         </span>
                       </TableCell>
                       <TableCell className="font-medium">
@@ -106,28 +114,22 @@ export default async function CouponsPage() {
                           : formatAmount(coupon.amount ?? 0n, coupon.currency ?? organization.defaultCurrency)}
                         {coupon.minAmount !== null && (
                           <span className="block text-xs font-normal text-muted-foreground">
-                            acima de {formatAmount(coupon.minAmount, coupon.currency ?? organization.defaultCurrency)}
+                            {fill(t.above, { amount: formatAmount(coupon.minAmount, coupon.currency ?? organization.defaultCurrency) })}
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="hidden text-muted-foreground lg:table-cell">{coupon.product?.name ?? "Todos os produtos"}</TableCell>
+                      <TableCell className="hidden text-muted-foreground lg:table-cell">{coupon.product?.name ?? t.allProducts}</TableCell>
                       <TableCell className="tabular hidden text-muted-foreground md:table-cell">
                         {coupon.redemptions}
                         {coupon.maxRedemptions !== null ? ` / ${coupon.maxRedemptions}` : ""}
                       </TableCell>
                       <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">
-                        {coupon.expiresAt ? formatDate(coupon.expiresAt) : "Sem validade"}
+                        {coupon.expiresAt ? formatDate(coupon.expiresAt, dict.localeTag) : t.noExpiry}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        {!coupon.active ? (
-                          <Badge variant="outline">Inativo</Badge>
-                        ) : expired ? (
-                          <Badge variant="outline">Expirado</Badge>
-                        ) : exhausted ? (
-                          <Badge variant="outline">Esgotado</Badge>
-                        ) : (
-                          <Badge variant="success">Ativo</Badge>
-                        )}
+                        <Badge variant={coupon.active && !expired && !exhausted ? "success" : "outline"}>
+                          {statusLabel(coupon.active, expired, exhausted)}
+                        </Badge>
                       </TableCell>
                       {canEdit && (
                         <TableCell>
@@ -140,7 +142,7 @@ export default async function CouponsPage() {
                                 type="submit"
                                 variant="ghost"
                                 size="icon-sm"
-                                aria-label={coupon.active ? `Desativar ${coupon.code}` : `Ativar ${coupon.code}`}
+                                aria-label={fill(coupon.active ? t.deactivate : t.activate, { code: coupon.code })}
                               >
                                 <PowerIcon />
                               </Button>
@@ -152,7 +154,7 @@ export default async function CouponsPage() {
                                   type="submit"
                                   variant="ghost"
                                   size="icon-sm"
-                                  aria-label={`Excluir ${coupon.code}`}
+                                  aria-label={fill(t.delete, { code: coupon.code })}
                                   className="text-muted-foreground hover:text-destructive"
                                 >
                                   <Trash2Icon />

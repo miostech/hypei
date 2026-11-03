@@ -5,10 +5,29 @@ import type { Repositories } from "@/server/repositories";
 import type { UnitOfWork } from "@/server/unit-of-work";
 import { normalizeCouponCode, type CouponInput } from "./coupon.schemas";
 
-/** Why a coupon cannot be used, in the words the buyer sees. */
+/**
+ * Por que o cupom não serve. O `reason` é o que o comprador lê, não a mensagem: ele é a chave
+ * em `errors.coupon` do dicionário do checkout, então a frase sai no idioma de quem está
+ * comprando. A mensagem em português fica para o log e para o app do produtor.
+ */
+export type CouponRejection =
+  | "notFound"
+  | "inactive"
+  | "expired"
+  | "maxRedemptions"
+  | "wrongProduct"
+  | "wrongCurrency"
+  | "belowMinimum"
+  | "alreadyUsed"
+  | "noDiscount"
+  | "zeroesTotal";
+
 export class CouponNotUsableError extends ValidationError {
-  constructor(message: string) {
-    super(message, { field: "couponCode" });
+  constructor(
+    public readonly reason: CouponRejection,
+    message: string,
+  ) {
+    super(message, { field: "couponCode", reason });
   }
 }
 
@@ -119,29 +138,29 @@ export class CouponService {
     now = new Date(),
   ): Promise<CouponCheck> {
     const coupon = await this.uow.repos.coupons.findByCode(organizationId, normalizeCouponCode(code));
-    if (!coupon) throw new CouponNotUsableError("Cupom não encontrado");
-    if (!coupon.active) throw new CouponNotUsableError("Este cupom não está mais ativo");
-    if (coupon.expiresAt && coupon.expiresAt <= now) throw new CouponNotUsableError("Este cupom expirou");
+    if (!coupon) throw new CouponNotUsableError("notFound", "Cupom não encontrado");
+    if (!coupon.active) throw new CouponNotUsableError("inactive", "Este cupom não está mais ativo");
+    if (coupon.expiresAt && coupon.expiresAt <= now) throw new CouponNotUsableError("expired", "Este cupom expirou");
     if (coupon.maxRedemptions !== null && coupon.redemptions >= coupon.maxRedemptions) {
-      throw new CouponNotUsableError("Este cupom atingiu o limite de usos");
+      throw new CouponNotUsableError("maxRedemptions", "Este cupom atingiu o limite de usos");
     }
     if (coupon.productId && coupon.productId !== order.productId) {
-      throw new CouponNotUsableError("Este cupom não vale para este produto");
+      throw new CouponNotUsableError("wrongProduct", "Este cupom não vale para este produto");
     }
     if (coupon.currency && coupon.currency !== order.currency) {
-      throw new CouponNotUsableError("Este cupom não vale para esta moeda");
+      throw new CouponNotUsableError("wrongCurrency", "Este cupom não vale para esta moeda");
     }
     if (coupon.minAmount !== null && order.amount < coupon.minAmount) {
-      throw new CouponNotUsableError("O valor da compra é menor que o mínimo do cupom");
+      throw new CouponNotUsableError("belowMinimum", "O valor da compra é menor que o mínimo do cupom");
     }
     if (coupon.oncePerCustomer && order.customerId) {
       const used = await this.uow.repos.coupons.countCustomerRedemptions(coupon.id, order.customerId);
-      if (used > 0) throw new CouponNotUsableError("Você já usou este cupom");
+      if (used > 0) throw new CouponNotUsableError("alreadyUsed", "Você já usou este cupom");
     }
 
     const discount = this.discountFor(coupon, order.amount);
-    if (discount <= 0n) throw new CouponNotUsableError("Este cupom não gera desconto nesta compra");
-    if (discount >= order.amount) throw new CouponNotUsableError("O desconto não pode zerar o valor da compra");
+    if (discount <= 0n) throw new CouponNotUsableError("noDiscount", "Este cupom não gera desconto nesta compra");
+    if (discount >= order.amount) throw new CouponNotUsableError("zeroesTotal", "O desconto não pode zerar o valor da compra");
 
     return { coupon, discount, total: order.amount - discount };
   }

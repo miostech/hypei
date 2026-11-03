@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getEnv } from "@/lib/env";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { requirePermission } from "@/modules/organizations/current-organization";
 import { runAction, type ActionState } from "@/server/actions/action-state";
 import { getServices } from "@/server/container";
@@ -28,6 +30,6 @@ export async function syncMerchantAccount(): Promise<ActionState> {
     await getServices().merchantAccounts.sync(organization.id);
     revalidatePath("/integrations");
     revalidatePath("/payouts");
-    return { status: "success", message: "Status atualizado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.statusUpdated };
   });
 }

@@ -137,4 +137,38 @@ describe("Transactional e-mail", () => {
     expect(refundEmail[0].subject).toContain("Reembolso");
     expect(refundEmail[0].html).toContain(BRL_100);
   });
+
+  it("writes the receipt in the language the buyer was reading", async () => {
+    const seller = await createSeller(app);
+    const { payment } = await startPurchase(app, seller.checkout.slug, "kaeuferin@example.com", { locale: "de" });
+    await confirmPayment(app, payment);
+
+    const receipt = app.email.to("kaeuferin@example.com")[0];
+    expect(receipt.subject).toContain("Kauf bestätigt");
+    expect(receipt.text).toContain("Zahlung bestätigt");
+    // O rodapé também: é lá que mora "Pagamento processado pela Kabrun".
+    expect(receipt.html).toContain("Zahlung abgewickelt von Kabrun.");
+    expect(receipt.html).toContain('<html lang="de">');
+    expect(receipt.html).not.toContain("Pagamento confirmado");
+  });
+
+  it("keeps the producer's e-mail in Portuguese, whatever language the buyer bought in", async () => {
+    const seller = await createSeller(app);
+    const { payment } = await startPurchase(app, seller.checkout.slug, "acheteuse@example.com", { locale: "fr" });
+    await confirmPayment(app, payment);
+
+    const sale = app.email.withTemplate("sale.completed")[0];
+    expect(sale.subject).toContain("Nova venda");
+    expect(sale.html).toContain("Você fez uma venda");
+  });
+
+  it("falls back to Portuguese for a buyer with no stored language", async () => {
+    const seller = await createSeller(app);
+    const { payment } = await startPurchase(app, seller.checkout.slug, "sem-idioma@example.com");
+    await confirmPayment(app, payment);
+
+    const receipt = app.email.to("sem-idioma@example.com")[0];
+    expect(receipt.text).toContain("Pagamento confirmado");
+    expect(receipt.html).toContain('<html lang="pt-BR">');
+  });
 });

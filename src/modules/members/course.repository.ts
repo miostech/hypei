@@ -31,6 +31,8 @@ export interface CourseRepository {
   slugTaken(organizationId: string, slug: string, exceptId?: string): Promise<boolean>;
   create(organizationId: string, productId: string, record: CourseWriteRecord): Promise<Course>;
   update(organizationId: string, courseId: string, record: Partial<CourseWriteRecord & { published: boolean }>): Promise<Course | null>;
+  /** Cascades to modules, lessons, enrollments and progress. Guarded in the service. */
+  delete(organizationId: string, courseId: string): Promise<boolean>;
 
   createModule(organizationId: string, courseId: string, title: string): Promise<Module | null>;
   updateModule(organizationId: string, moduleId: string, title: string): Promise<boolean>;
@@ -45,6 +47,8 @@ export interface CourseRepository {
 
   /** Module scoped to the organization that owns its course. */
   findModule(organizationId: string, moduleId: string): Promise<{ id: string; courseId: string } | null>;
+  /** Whether the organization has any video lesson at all, across every course. */
+  hasVideoLessons(organizationId: string): Promise<boolean>;
   countEnrollments(courseId: string): Promise<number>;
   /** Used when a subscription stops being paid; the row is kept for the history. */
   revokeEnrollment(courseId: string, customerId: string): Promise<void>;
@@ -63,7 +67,12 @@ export class PrismaCourseRepository implements CourseRepository {
   list(organizationId: string) {
     return this.db.course.findMany({
       where: { organizationId },
-      include: { product: { select: { id: true, name: true, status: true } }, _count: { select: { modules: true, enrollments: true } } },
+      include: {
+        product: { select: { id: true, name: true, status: true } },
+        // Só matrícula ativa conta como aluno: a linha revogada fica para o histórico, e
+        // contá-la mostrava reembolsado como aluno — e divergia da tela do conteúdo.
+        _count: { select: { modules: true, enrollments: { where: { status: "ACTIVE" } } } },
+      },
       orderBy: { createdAt: "desc" },
     });
   }
@@ -99,6 +108,11 @@ export class PrismaCourseRepository implements CourseRepository {
     const result = await this.db.course.updateMany({ where: { id: courseId, organizationId }, data: record });
     if (result.count === 0) return null;
     return this.db.course.findFirst({ where: { id: courseId, organizationId } });
+  }
+
+  async delete(organizationId: string, courseId: string) {
+    const result = await this.db.course.deleteMany({ where: { id: courseId, organizationId } });
+    return result.count > 0;
   }
 
   // ── Modules ──────────────────────────────────────────────────────────────
@@ -205,6 +219,14 @@ export class PrismaCourseRepository implements CourseRepository {
       where: { id: moduleId, course: { organizationId } },
       select: { id: true, courseId: true },
     });
+  }
+
+  async hasVideoLessons(organizationId: string) {
+    const count = await this.db.lesson.count({
+      where: { type: "VIDEO", module: { course: { organizationId } } },
+      take: 1,
+    });
+    return count > 0;
   }
 
   async revokeEnrollment(courseId: string, customerId: string) {

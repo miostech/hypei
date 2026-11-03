@@ -4,18 +4,6 @@ import type { JournalTypeTotals } from "@/modules/ledger/ledger.repository";
 
 const PRODUCER_ACCOUNTS: LedgerAccount[] = ["PRODUCER_PENDING", "PRODUCER_AVAILABLE", "RESERVES"];
 
-export const JOURNAL_TYPE_LABELS: Record<string, string> = {
-  "payment.captured": "Venda",
-  "settlement.released": "Liberação",
-  "refund.completed": "Reembolso",
-  "dispute.hold": "Disputa (reserva)",
-  "dispute.won": "Disputa ganha",
-  "dispute.lost": "Chargeback",
-  "payout.initiated": "Saque",
-  "payout.paid": "Saque pago",
-  "payout.reversed": "Saque estornado",
-};
-
 export interface FinanceSummary {
   currency: string;
   available: bigint;
@@ -32,8 +20,8 @@ export interface MovementRow {
   id: string;
   date: Date;
   description: string;
+  /** O código cru do lançamento; quem mostra escolhe o nome, no idioma de quem lê. */
   type: string;
-  typeLabel: string;
   /** Net effect on the producer's total (pending + available + reserved). */
   amount: bigint;
   /** Producer total right after this movement. */
@@ -91,7 +79,6 @@ export class FinanceOverviewService {
         date: journal.createdAt,
         description: journal.description,
         type: journal.type,
-        typeLabel: JOURNAL_TYPE_LABELS[journal.type] ?? journal.type,
         amount: net,
         balanceAfter: running,
       });

@@ -2,7 +2,6 @@ import type { BusinessType, MerchantAccount, PaymentProviderType, VerificationSt
 import { NotFoundError } from "@/lib/errors";
 import type { MerchantAccountService } from "@/modules/merchant-accounts/merchant-account.service";
 import type { UnitOfWork } from "@/server/unit-of-work";
-import { describeRequirements, type Requirement } from "./verification.requirements";
 
 export interface VerificationOverview {
   status: VerificationStatus;
@@ -15,7 +14,8 @@ export interface VerificationOverview {
   canWithdraw: boolean;
   detailsSubmitted: boolean;
   hasAccount: boolean;
-  requirements: Requirement[];
+  /** Os códigos que o provedor ainda espera; quem mostra os traduz. */
+  requirementCodes: string[];
   taxIdentities: { type: string; maskedValue: string; country: string }[];
   submittedAt: Date | null;
   verifiedAt: Date | null;
@@ -54,7 +54,7 @@ export class VerificationService {
       canWithdraw: account?.payoutsEnabled ?? false,
       detailsSubmitted: account?.detailsSubmitted ?? false,
       hasAccount: account !== null,
-      requirements: describeRequirements(account?.requirementsDue ?? []),
+      requirementCodes: [...(account?.requirementsDue ?? [])],
       taxIdentities,
       submittedAt: verification?.submittedAt ?? null,
       verifiedAt: verification?.verifiedAt ?? null,

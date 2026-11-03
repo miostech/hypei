@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { CouponType } from "@/generated/prisma/enums";
 import { idleState } from "@/lib/actions/action-state";
-import { COUPON_TYPE_LABELS } from "@/modules/coupons/coupon.schemas";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 import { createCoupon, updateCoupon } from "./actions";
 
 export interface CouponValues {
@@ -37,6 +38,8 @@ export function CouponDialog({
   products: { id: string; name: string }[];
   currency: string;
 }) {
+  const dict = useAppDictionary();
+  const t = dict.couponDialog;
   const [opened, setOpened] = useState(false);
   const [state, formAction] = useActionState(coupon ? updateCoupon : createCoupon, idleState);
   const [type, setType] = useState<CouponType>(coupon?.type ?? "PERCENTAGE");
@@ -45,29 +48,29 @@ export function CouponDialog({
   const error = (field: string) => (state.status === "error" ? state.fieldErrors?.[field] : undefined);
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Salvo");
-  }, [state]);
+    if (state.status === "success") toast.success(state.message ?? dict.actions.saved);
+  }, [state, dict.actions.saved]);
 
   return (
     <Dialog open={open} onOpenChange={setOpened}>
       <DialogTrigger
         render={
           coupon ? (
-            <Button variant="ghost" size="icon-sm" aria-label={`Editar cupom ${coupon.code}`}>
+            <Button variant="ghost" size="icon-sm" aria-label={fill(dict.coupons.edit, { code: coupon.code })}>
               <PencilIcon />
             </Button>
           ) : (
             <Button>
               <PlusIcon />
-              Novo cupom
+              {t.new}
             </Button>
           )
         }
       />
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{coupon ? "Editar cupom" : "Novo cupom"}</DialogTitle>
-          <DialogDescription>O desconto é aplicado no checkout, antes do pagamento.</DialogDescription>
+          <DialogTitle>{coupon ? t.editTitle : t.new}</DialogTitle>
+          <DialogDescription>{t.description}</DialogDescription>
         </DialogHeader>
 
         <form action={formAction} className="space-y-4">
@@ -76,24 +79,24 @@ export function CouponDialog({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
-              label="Código"
+              label={t.code}
               name="code"
               defaultValue={coupon?.code}
-              placeholder="BEMVINDO10"
+              placeholder={t.codePlaceholder}
               required
               autoFocus
               style={{ textTransform: "uppercase" }}
-              hint="O cliente digita no checkout."
+              hint={t.codeHint}
               error={error("code")}
             />
             <SelectField
-              label="Tipo de desconto"
+              label={t.type}
               name="type"
               value={type}
               onChange={(event) => setType(event.target.value as CouponType)}
               error={error("type")}
             >
-              {Object.entries(COUPON_TYPE_LABELS).map(([value, label]) => (
+              {Object.entries(t.types).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -104,38 +107,38 @@ export function CouponDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             {type === "PERCENTAGE" ? (
               <TextField
-                label="Percentual (%)"
+                label={t.percentage}
                 name="percentage"
                 inputMode="decimal"
-                placeholder="10"
+                placeholder={t.percentagePlaceholder}
                 defaultValue={coupon?.percentage}
                 required
                 error={error("percentage")}
               />
             ) : (
               <TextField
-                label="Valor do desconto"
+                label={t.amount}
                 name="amount"
                 inputMode="decimal"
-                placeholder="50,00"
+                placeholder={t.amountPlaceholder}
                 defaultValue={coupon?.amount}
                 required
                 error={error("amount")}
               />
             )}
             <TextField
-              label="Compra mínima"
+              label={t.minAmount}
               name="minAmount"
               inputMode="decimal"
-              placeholder="Sem mínimo"
+              placeholder={t.minAmountPlaceholder}
               defaultValue={coupon?.minAmount}
               error={error("minAmount")}
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <SelectField label="Produto" name="productId" defaultValue={coupon?.productId ?? ""} error={error("productId")}>
-              <option value="">Todos os produtos</option>
+            <SelectField label={dict.common.product} name="productId" defaultValue={coupon?.productId ?? ""} error={error("productId")}>
+              <option value="">{dict.coupons.allProducts}</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name}
@@ -143,29 +146,29 @@ export function CouponDialog({
               ))}
             </SelectField>
             <TextField
-              label="Limite de usos"
+              label={t.maxRedemptions}
               name="maxRedemptions"
               type="number"
               min={1}
-              placeholder="Sem limite"
+              placeholder={t.maxRedemptionsPlaceholder}
               defaultValue={coupon?.maxRedemptions}
               error={error("maxRedemptions")}
             />
           </div>
 
           <TextField
-            label="Expira em"
+            label={t.expiresAt}
             name="expiresAt"
             type="date"
             defaultValue={coupon?.expiresAt}
-            hint="Deixe vazio para não expirar."
+            hint={t.expiresAtHint}
             error={error("expiresAt")}
           />
 
           <div className="flex items-center justify-between rounded-xl border p-3">
             <Label htmlFor={`once-${fieldId}`} className="cursor-pointer">
-              Uma vez por cliente
-              <span className="block text-xs font-normal text-muted-foreground">Cada cliente só consegue usar o cupom uma vez.</span>
+              {dict.coupons.oncePerCustomer}
+              <span className="block text-xs font-normal text-muted-foreground">{t.oncePerCustomerHint}</span>
             </Label>
             <Switch id={`once-${fieldId}`} name="oncePerCustomer" defaultChecked={coupon?.oncePerCustomer ?? false} />
           </div>
@@ -174,9 +177,9 @@ export function CouponDialog({
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpened(false)}>
-              Cancelar
+              {dict.common.cancel}
             </Button>
-            <SubmitButton>{coupon ? "Salvar" : "Criar cupom"}</SubmitButton>
+            <SubmitButton>{coupon ? dict.common.save : t.create}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

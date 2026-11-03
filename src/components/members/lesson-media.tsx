@@ -1,6 +1,7 @@
 import { DownloadIcon, ExternalLinkIcon, RadioIcon } from "lucide-react";
 import type { LessonType } from "@/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
+import type { MembersDictionary } from "@/lib/i18n/members";
 
 /**
  * Producer-provided links are untrusted input: only http(s) survives, and only a short
@@ -42,17 +43,19 @@ export function LessonMedia({
   externalUrl,
   content,
   mediaType,
+  dict,
 }: {
   type: LessonType;
   externalUrl: string | null;
   content: string | null;
   /** MIME type of an uploaded file, when the lesson has one. */
   mediaType?: string | null;
+  dict: MembersDictionary;
 }) {
   if (type === "TEXT") {
     return (
       <article className="rounded-2xl border bg-card p-6 text-sm leading-relaxed whitespace-pre-wrap shadow-soft sm:p-8">
-        {content || "Esta aula ainda não tem conteúdo."}
+        {content || dict.lesson.empty}
       </article>
     );
   }
@@ -61,7 +64,7 @@ export function LessonMedia({
   if (!url) {
     return (
       <div className="rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-        O material desta aula ainda não foi publicado.
+        {dict.lesson.unpublished}
       </div>
     );
   }
@@ -72,7 +75,7 @@ export function LessonMedia({
       <div className="aspect-video overflow-hidden rounded-2xl border bg-black shadow-soft">
         <iframe
           src={embed}
-          title="Player da aula"
+          title={dict.lesson.player}
           className="size-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
@@ -99,17 +102,24 @@ export function LessonMedia({
     );
   }
 
-  const label = type === "LIVE" ? "Entrar na transmissão" : type === "DOWNLOAD" ? "Baixar material" : "Abrir material";
-  const Icon = type === "LIVE" ? RadioIcon : type === "DOWNLOAD" ? DownloadIcon : ExternalLinkIcon;
+  // Mesma regra do serviço: PDF e Download viram anexo com o nome do arquivo original.
+  const download = type === "DOWNLOAD" || type === "PDF";
+  const label = type === "LIVE" ? dict.lesson.openLive : download ? dict.lesson.download : dict.lesson.openMaterial;
+  const Icon = type === "LIVE" ? RadioIcon : download ? DownloadIcon : ExternalLinkIcon;
+  // `mediaType` só existe em arquivo enviado pelo produtor; link de terceiro não tem.
+  const hint =
+    type === "LIVE"
+      ? dict.lesson.liveHint
+      : mediaType
+        ? dict.lesson.downloadHint
+        : dict.lesson.externalHint;
 
   return (
     <div className="flex flex-col items-center gap-4 rounded-2xl border bg-card p-10 text-center shadow-soft">
       <span className="bg-brand-gradient flex size-12 items-center justify-center rounded-2xl text-white">
         <Icon className="size-6" aria-hidden />
       </span>
-      <p className="text-sm text-muted-foreground">
-        {type === "LIVE" ? "O encontro acontece no link abaixo." : "O material desta aula está hospedado fora da plataforma."}
-      </p>
+      <p className="text-sm text-muted-foreground">{hint}</p>
       <Button render={<a href={url.toString()} target="_blank" rel="noopener noreferrer" />}>
         <Icon />
         {label}

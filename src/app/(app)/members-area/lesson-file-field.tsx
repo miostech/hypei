@@ -5,6 +5,9 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
+import { uploadToStorage } from "@/lib/ui/upload";
 import type { LessonType } from "@/generated/prisma/enums";
 import { requestLessonUpload } from "./actions";
 
@@ -28,28 +31,6 @@ function formatBytes(bytes: number): string {
   return `${Math.max(1, Math.round(bytes / 1000))} KB`;
 }
 
-/**
- * Sends the file straight to storage with the signed URL the server hands out,
- * so a 2 GB video never passes through the app. XMLHttpRequest instead of fetch
- * because it is the only one that reports upload progress.
- */
-function upload(url: string, headers: Record<string, string>, file: File, onProgress: (percent: number) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    request.open("PUT", url);
-    for (const [name, value] of Object.entries(headers)) request.setRequestHeader(name, value);
-    request.upload.addEventListener("progress", (event) => {
-      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
-    });
-    request.addEventListener("load", () =>
-      request.status >= 200 && request.status < 300 ? resolve() : reject(new Error(`Upload falhou (${request.status})`)),
-    );
-    request.addEventListener("error", () => reject(new Error("Falha de rede durante o envio")));
-    request.addEventListener("abort", () => reject(new Error("Envio cancelado")));
-    request.send(file);
-  });
-}
-
 export function LessonFileField({
   moduleId,
   type,
@@ -63,6 +44,8 @@ export function LessonFileField({
   onChange: (file: UploadedFile | null) => void;
   fieldId: string;
 }) {
+  const dict = useAppDictionary();
+  const t = dict.membersArea.file;
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,11 +67,11 @@ export function LessonFileField({
         return;
       }
 
-      await upload(authorized.url, authorized.headers, file, setProgress);
+      await uploadToStorage(authorized.url, authorized.headers, file, setProgress);
       onChange({ key: authorized.key, filename: file.name, contentType: file.type || "application/octet-stream", bytes: file.size });
-      toast.success("Arquivo enviado");
+      toast.success(t.sentToast);
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Falha no envio");
+      setError(uploadError instanceof Error ? uploadError.message : t.failed);
     } finally {
       setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
@@ -97,7 +80,7 @@ export function LessonFileField({
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={`file-${fieldId}`}>Arquivo da aula</Label>
+      <Label htmlFor={`file-${fieldId}`}>{t.label}</Label>
 
       <input
         ref={inputRef}
@@ -116,9 +99,11 @@ export function LessonFileField({
           <FileIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{value.filename}</p>
-            <p className="text-xs text-muted-foreground">{formatBytes(value.bytes)} · enviado</p>
+            <p className="text-xs text-muted-foreground">
+              {formatBytes(value.bytes)} · {t.sent}
+            </p>
           </div>
-          <Button type="button" variant="ghost" size="icon-sm" aria-label="Remover arquivo" onClick={() => onChange(null)}>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={t.remove} onClick={() => onChange(null)}>
             <XIcon />
           </Button>
         </div>
@@ -126,7 +111,7 @@ export function LessonFileField({
         <div className="space-y-2 rounded-xl border p-3">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2Icon className="size-4 animate-spin" aria-hidden />
-            Enviando… {progress}%
+            {fill(t.uploading, { percent: progress })}
           </p>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div className="bg-brand-gradient h-full rounded-full transition-all" style={{ width: `${Math.max(progress, 3)}%` }} />
@@ -140,9 +125,9 @@ export function LessonFileField({
         >
           <UploadCloudIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <span className="text-sm">
-            Escolher arquivo
+            {t.pick}
             <span className="block text-xs text-muted-foreground">
-              {type === "VIDEO" ? "Vídeo até 2 GB" : type === "AUDIO" ? "Áudio até 300 MB" : type === "PDF" ? "PDF até 100 MB" : "Até 300 MB"}
+              {type === "VIDEO" ? t.limits.VIDEO : type === "AUDIO" ? t.limits.AUDIO : type === "PDF" ? t.limits.PDF : t.limits.other}
             </span>
           </span>
         </button>

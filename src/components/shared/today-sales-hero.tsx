@@ -1,6 +1,8 @@
 import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "cn";
+import type { AppDictionary } from "@/lib/i18n/app";
+import { fill, plural } from "@/lib/i18n/locale";
 
 /**
  * What the producer opens the dashboard to see: how today is going. Balance lives
@@ -17,6 +19,7 @@ export function TodaySalesHero({
   averageTicket,
   yesterday,
   changePercent,
+  dict,
   actions,
   className,
 }: {
@@ -31,10 +34,12 @@ export function TodaySalesHero({
   yesterday: string;
   /** null when yesterday had nothing to compare against. */
   changePercent: number | null;
+  dict: AppDictionary;
   actions?: ReactNode;
   className?: string;
 }) {
   const positive = (changePercent ?? 0) >= 0;
+  const t = dict.dashboard.today;
 
   return (
     <section
@@ -52,19 +57,19 @@ export function TodaySalesHero({
       <div className="relative flex flex-col gap-6">
         <div>
           <p className="flex items-center gap-2 text-xs font-medium tracking-[0.14em] text-white/70 uppercase">
-            Vendas de hoje
+            {t.label}
             <span className="rounded-full bg-white/12 px-1.5 py-0.5 text-[0.65rem] tracking-normal text-white/80">{currency}</span>
           </p>
           <p className="tabular mt-2 font-heading text-4xl leading-none font-extrabold sm:text-5xl">{total}</p>
           <p className="mt-2.5 flex flex-wrap items-center gap-2 text-sm text-white/75">
             {count === 0 ? (
-              "Nenhum pagamento confirmado ainda hoje."
+              t.none
             ) : (
               <>
                 <span>
                   {newStudents > 0
-                    ? `${newStudents} ${newStudents === 1 ? "novo aluno" : "novos alunos"}`
-                    : `${count} ${count === 1 ? "pedido pago" : "pedidos pagos"}`}
+                    ? plural(dict.locale, newStudents, t.newStudents)
+                    : plural(dict.locale, count, t.paidOrders)}
                 </span>
                 {changePercent !== null && (
                   <span
@@ -74,8 +79,7 @@ export function TodaySalesHero({
                     )}
                   >
                     {positive ? <TrendingUpIcon className="size-3.5" aria-hidden /> : <TrendingDownIcon className="size-3.5" aria-hidden />}
-                    {positive ? "+" : ""}
-                    {changePercent}% vs. ontem
+                    {fill(t.versusYesterday, { percent: `${positive ? "+" : ""}${changePercent}` })}
                   </span>
                 )}
               </>
@@ -85,11 +89,11 @@ export function TodaySalesHero({
 
         <dl className="flex flex-wrap gap-x-10 gap-y-3">
           <div>
-            <dt className="text-xs text-white/60">Ontem até esta hora</dt>
+            <dt className="text-xs text-white/60">{t.yesterdayUntilNow}</dt>
             <dd className="tabular mt-0.5 font-heading text-lg font-semibold">{yesterday}</dd>
           </div>
           <div>
-            <dt className="text-xs text-white/60">Ticket médio hoje</dt>
+            <dt className="text-xs text-white/60">{t.averageTicket}</dt>
             <dd className="tabular mt-0.5 font-heading text-lg font-semibold">{averageTicket}</dd>
           </div>
         </dl>

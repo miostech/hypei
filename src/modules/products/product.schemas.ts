@@ -8,23 +8,8 @@ export const productInputSchema = z.object({
   description: z.string().trim().max(2000).optional().or(z.literal("")),
   type: z.enum(ProductType),
   status: z.enum(ProductStatus),
-  thumbnailUrl: z.string().trim().url("URL inválida").optional().or(z.literal("")),
+  thumbnailKey: z.string().trim().max(300).optional().or(z.literal("")),
 });
 
 export type ProductInput = z.infer<typeof productInputSchema>;
 
-export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
-  COURSE: "Curso",
-  DIGITAL_PRODUCT: "Produto digital",
-  COMMUNITY: "Comunidade",
-  MENTORSHIP: "Mentoria",
-  SUBSCRIPTION: "Assinatura",
-  EVENT: "Evento",
-  OTHER: "Outro",
-};
-
-export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
-  DRAFT: "Rascunho",
-  ACTIVE: "Ativo",
-  ARCHIVED: "Arquivado",
-};

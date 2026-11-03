@@ -1,25 +1,47 @@
-import type { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
+import type { DisputeStatus, OrderStatus, PaymentStatus, RefundStatus } from "@/generated/prisma/enums";
 
 type BadgeVariant = "default" | "secondary" | "outline" | "destructive" | "success" | "warning";
 
-export const ORDER_STATUS_BADGE: Record<OrderStatus, { label: string; variant: BadgeVariant }> = {
-  CREATED: { label: "Criado", variant: "outline" },
-  PENDING_PAYMENT: { label: "Aguardando", variant: "warning" },
-  PAID: { label: "Pago", variant: "success" },
-  CANCELED: { label: "Cancelado", variant: "secondary" },
-  REFUNDED: { label: "Reembolsado", variant: "destructive" },
-  PARTIALLY_REFUNDED: { label: "Reembolso parcial", variant: "warning" },
+/**
+ * A cor do selo de cada status. O texto mora no dicionário (`dict.status`) — aqui fica só o
+ * que não depende de idioma, para que traduzir uma tela não encoste na aparência dela.
+ */
+export const ORDER_STATUS_VARIANT: Record<OrderStatus, BadgeVariant> = {
+  CREATED: "outline",
+  PENDING_PAYMENT: "warning",
+  PAID: "success",
+  CANCELED: "secondary",
+  REFUNDED: "destructive",
+  PARTIALLY_REFUNDED: "warning",
 };
 
-export const PAYMENT_STATUS_BADGE: Record<PaymentStatus, { label: string; variant: BadgeVariant }> = {
-  CREATED: { label: "Criado", variant: "outline" },
-  PENDING: { label: "Pendente", variant: "warning" },
-  PROCESSING: { label: "Processando", variant: "warning" },
-  AUTHORIZED: { label: "Autorizado", variant: "secondary" },
-  PAID: { label: "Pago", variant: "success" },
-  FAILED: { label: "Falhou", variant: "destructive" },
-  CANCELED: { label: "Cancelado", variant: "secondary" },
-  REFUNDED: { label: "Reembolsado", variant: "destructive" },
-  PARTIALLY_REFUNDED: { label: "Reembolso parcial", variant: "warning" },
-  CHARGEBACK: { label: "Chargeback", variant: "destructive" },
+export const PAYMENT_STATUS_VARIANT: Record<PaymentStatus, BadgeVariant> = {
+  CREATED: "outline",
+  PENDING: "warning",
+  PROCESSING: "warning",
+  AUTHORIZED: "secondary",
+  PAID: "success",
+  FAILED: "destructive",
+  CANCELED: "secondary",
+  REFUNDED: "destructive",
+  PARTIALLY_REFUNDED: "warning",
+  CHARGEBACK: "destructive",
 };
+
+export const REFUND_STATUS_VARIANT: Record<RefundStatus, BadgeVariant> = {
+  REQUESTED: "outline",
+  PROCESSING: "outline",
+  PAID: "success",
+  FAILED: "destructive",
+};
+
+export const DISPUTE_STATUS_VARIANT: Record<DisputeStatus, BadgeVariant> = {
+  OPEN: "warning",
+  UNDER_REVIEW: "warning",
+  WON: "success",
+  LOST: "destructive",
+  CLOSED: "outline",
+};
+
+/** Uma contestação nestes dois estados ainda retém dinheiro; nos outros três, já não. */
+export const OPEN_DISPUTE_STATUS: readonly DisputeStatus[] = ["OPEN", "UNDER_REVIEW"];

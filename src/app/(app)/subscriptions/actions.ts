@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { requirePermission } from "@/modules/organizations/current-organization";
 import { runAction, type ActionState } from "@/server/actions/action-state";
 import { getServices } from "@/server/container";
@@ -15,9 +17,10 @@ export async function cancelSubscription(_prev: ActionState, formData: FormData)
     const mode = formData.get("mode") === "now" ? "now" : "at_period_end";
     await getServices().subscriptions.cancel(organization.id, userId, String(formData.get("subscriptionId")), mode);
     revalidatePath("/subscriptions");
+    const { toasts } = await getAppDictionary(await appLocale());
     return {
       status: "success",
-      message: mode === "now" ? "Assinatura cancelada" : "Cancelamento agendado para o fim do período",
+      message: mode === "now" ? toasts.subscriptionCanceled : toasts.cancelScheduled,
     };
   });
 }

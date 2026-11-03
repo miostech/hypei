@@ -4,7 +4,10 @@ import type { Customer, PaymentProviderType } from "@/generated/prisma/client";
 export type CustomerWithStats = Customer & { _count: { orders: number } };
 
 export interface CustomerRepository {
-  upsertByEmail(organizationId: string, input: { name: string; email: string; phone?: string | null; country?: string | null }): Promise<Customer>;
+  upsertByEmail(
+    organizationId: string,
+    input: { name: string; email: string; phone?: string | null; country?: string | null; locale?: string | null },
+  ): Promise<Customer>;
   list(organizationId: string, options: { search?: string; limit: number }): Promise<CustomerWithStats[]>;
   findById(organizationId: string, id: string): Promise<Customer | null>;
   findProviderCustomerId(customerId: string, provider: PaymentProviderType): Promise<string | null>;
@@ -14,12 +17,31 @@ export interface CustomerRepository {
 export class PrismaCustomerRepository implements CustomerRepository {
   constructor(private readonly db: DbClient) {}
 
-  upsertByEmail(organizationId: string, input: { name: string; email: string; phone?: string | null; country?: string | null }) {
+  /**
+   * Campo vazio na entrada não apaga o que já está gravado: a segunda compra pode vir de um
+   * checkout que não pede telefone nem país, e sobrescrever com null perderia o dado da primeira.
+   */
+  upsertByEmail(
+    organizationId: string,
+    input: { name: string; email: string; phone?: string | null; country?: string | null; locale?: string | null },
+  ) {
     const email = input.email.trim().toLowerCase();
     return this.db.customer.upsert({
       where: { organizationId_email: { organizationId, email } },
-      create: { organizationId, email, name: input.name, phone: input.phone ?? null, country: input.country ?? null },
-      update: { name: input.name, ...(input.phone ? { phone: input.phone } : {}), ...(input.country ? { country: input.country } : {}) },
+      create: {
+        organizationId,
+        email,
+        name: input.name,
+        phone: input.phone ?? null,
+        country: input.country ?? null,
+        locale: input.locale ?? null,
+      },
+      update: {
+        name: input.name,
+        ...(input.phone ? { phone: input.phone } : {}),
+        ...(input.country ? { country: input.country } : {}),
+        ...(input.locale ? { locale: input.locale } : {}),
+      },
     });
   }
 

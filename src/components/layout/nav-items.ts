@@ -19,63 +19,70 @@ import {
   UsersIcon,
   WalletIcon,
 } from "lucide-react";
+import type { AppDictionary } from "@/lib/i18n/app";
 import type { Permission } from "@/modules/organizations/permissions";
 
 import type { Route } from "next";
 
+/**
+ * O menu guarda a chave do rótulo, não o rótulo.
+ *
+ * Quem desenha a barra lateral é client component e lê o texto do dicionário; deixar a palavra
+ * aqui obrigaria este módulo a conhecer o idioma, e ele é só a lista de onde se pode ir.
+ */
 export interface NavItem {
   href: Route;
-  label: string;
+  key: keyof AppDictionary["nav"]["items"];
   icon: LucideIcon;
   permission: Permission;
 }
 
 export interface NavGroup {
-  label: string;
+  key: keyof AppDictionary["nav"]["groups"];
   items: NavItem[];
 }
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Visão geral",
+    key: "overview",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, permission: "organization:read" },
-      { href: "/sales", label: "Vendas", icon: ShoppingBagIcon, permission: "sales:read" },
-      { href: "/refunds", label: "Reembolsos", icon: RotateCcwIcon, permission: "sales:read" },
-      { href: "/analytics", label: "Analytics", icon: BarChart3Icon, permission: "analytics:read" },
+      { href: "/dashboard", key: "dashboard", icon: LayoutDashboardIcon, permission: "organization:read" },
+      { href: "/sales", key: "sales", icon: ShoppingBagIcon, permission: "sales:read" },
+      { href: "/refunds", key: "refunds", icon: RotateCcwIcon, permission: "sales:read" },
+      { href: "/analytics", key: "analytics", icon: BarChart3Icon, permission: "analytics:read" },
     ],
   },
   {
-    label: "Catálogo",
+    key: "catalog",
     items: [
-      { href: "/products", label: "Produtos", icon: PackageIcon, permission: "products:read" },
-      { href: "/offers", label: "Ofertas", icon: TagIcon, permission: "products:read" },
-      { href: "/checkouts", label: "Checkout", icon: CreditCardIcon, permission: "products:read" },
-      { href: "/coupons", label: "Cupons", icon: TicketIcon, permission: "products:read" },
+      { href: "/products", key: "products", icon: PackageIcon, permission: "products:read" },
+      { href: "/offers", key: "offers", icon: TagIcon, permission: "products:read" },
+      { href: "/checkouts", key: "checkouts", icon: CreditCardIcon, permission: "products:read" },
+      { href: "/coupons", key: "coupons", icon: TicketIcon, permission: "products:read" },
     ],
   },
   {
-    label: "Clientes",
+    key: "customers",
     items: [
-      { href: "/customers", label: "Clientes", icon: UsersIcon, permission: "customers:read" },
-      { href: "/subscriptions", label: "Assinaturas", icon: RepeatIcon, permission: "sales:read" },
-      { href: "/members-area", label: "Área de membros", icon: BookOpenIcon, permission: "products:read" },
-      { href: "/affiliates", label: "Afiliados", icon: LinkIcon, permission: "sales:read" },
+      { href: "/customers", key: "customers", icon: UsersIcon, permission: "customers:read" },
+      { href: "/subscriptions", key: "subscriptions", icon: RepeatIcon, permission: "sales:read" },
+      { href: "/members-area", key: "membersArea", icon: BookOpenIcon, permission: "products:read" },
+      { href: "/affiliates", key: "affiliates", icon: LinkIcon, permission: "sales:read" },
     ],
   },
   {
-    label: "Financeiro",
+    key: "finance",
     items: [
-      { href: "/finance", label: "Financeiro", icon: ReceiptIcon, permission: "finance:read" },
-      { href: "/payouts", label: "Saques", icon: BanknoteIcon, permission: "finance:read" },
+      { href: "/finance", key: "finance", icon: ReceiptIcon, permission: "finance:read" },
+      { href: "/payouts", key: "payouts", icon: BanknoteIcon, permission: "finance:read" },
     ],
   },
   {
-    label: "Conta",
+    key: "account",
     items: [
-      { href: "/verification", label: "Verificação", icon: ShieldCheckIcon, permission: "organization:read" },
-      { href: "/integrations", label: "Integrações", icon: PlugIcon, permission: "organization:read" },
-      { href: "/settings", label: "Configurações", icon: SettingsIcon, permission: "organization:read" },
+      { href: "/verification", key: "verification", icon: ShieldCheckIcon, permission: "organization:read" },
+      { href: "/integrations", key: "integrations", icon: PlugIcon, permission: "organization:read" },
+      { href: "/settings", key: "settings", icon: SettingsIcon, permission: "organization:read" },
     ],
   },
 ];

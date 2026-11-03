@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AwardMedal } from "./award-medal";
+import { AwardBolt } from "./award-bolt";
 
 export interface AwardRow {
   tier: string;
@@ -51,7 +51,7 @@ export function AwardsProgress({
         aria-label="Ver suas premiações"
         className="hidden items-center gap-2 rounded-full border bg-card py-1 pr-3 pl-1 transition-colors hover:bg-muted md:flex"
       >
-        <AwardMedal tier={nextTier} className="size-7" />
+        <AwardBolt tier={nextTier} className="size-7" />
         <span className="h-2 w-24 overflow-hidden rounded-full bg-muted lg:w-32">
           <span className="bg-brand-gradient block h-full rounded-full transition-all" style={{ width: `${Math.max(percentage, 3)}%` }} />
         </span>
@@ -93,7 +93,7 @@ export function AwardsProgress({
                     <TableCell className="whitespace-nowrap text-muted-foreground">{row.achievedAt ?? "—"}</TableCell>
                     <TableCell>
                       <span className="flex items-center gap-2 font-medium">
-                        <AwardMedal tier={row.tier} muted={!row.earned} className="size-6" />
+                        <AwardBolt tier={row.tier} muted={!row.earned} className="size-6" />
                         {row.shortLabel}
                         <span className="text-xs font-normal text-muted-foreground">{row.label}</span>
                       </span>

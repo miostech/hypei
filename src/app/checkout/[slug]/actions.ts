@@ -4,10 +4,12 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { getRedis } from "@/lib/database/redis/client";
 import { ValidationError } from "@/lib/errors";
+import { getCheckoutDictionary, type CheckoutDictionary } from "@/lib/i18n/checkout";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/lib/i18n/locale";
 import { logger } from "@/lib/logger";
-import { formatAmount } from "@/lib/ui/format";
 import { InMemoryRateLimiter, RedisRateLimiter, type RateLimiter } from "@/lib/security/rate-limit";
 import { startCheckoutSchema, trackingSchema } from "@/modules/checkout/checkout.schemas";
+import { CouponNotUsableError } from "@/modules/coupons/coupon.service";
 import { CHECKOUT_EVENT_TYPES } from "@/modules/analytics/analytics-event.repository";
 import { getServices } from "@/server/container";
 
@@ -17,6 +19,47 @@ export interface StartCheckoutActionResult {
   paymentId?: string;
   clientSecret?: string | null;
   provider?: string;
+}
+
+/**
+ * Idioma em que esta action responde.
+ *
+ * Vem no corpo, mandado pelo cliente, e não do Accept-Language da requisição: a página aceita
+ * ?lang= para o produtor conferir o checkout em outro idioma, e aí o navegador dele continuaria
+ * pedindo português. O que o comprador está lendo na tela é a resposta certa.
+ *
+ * Entrada inválida cai no padrão em vez de recusar: o idioma é moldura da mensagem, nunca
+ * motivo para derrubar um pagamento.
+ */
+const localeSchema = z.object({ locale: z.enum(SUPPORTED_LOCALES).catch(DEFAULT_LOCALE) });
+
+async function buyerDictionary(input: unknown): Promise<CheckoutDictionary> {
+  const parsed = localeSchema.safeParse(input);
+  return getCheckoutDictionary(parsed.success ? parsed.data.locale : DEFAULT_LOCALE);
+}
+
+/** Zod fala em caminho de campo; o comprador precisa da frase do campo dele. */
+function invalidInputMessage(error: z.ZodError, dict: CheckoutDictionary): string {
+  const field = error.issues[0]?.path[0];
+  if (field === "name") return dict.errors.invalidName;
+  if (field === "email") return dict.errors.invalidEmail;
+  return dict.errors.invalidData;
+}
+
+/**
+ * Traduz o erro de domínio pelo código que ele carrega, nunca pela mensagem — comparar texto
+ * quebraria na primeira vez que alguém reescrevesse a frase.
+ *
+ * Erro de domínio que chegue aqui sem código vira a frase genérica e um aviso no log: a frase
+ * em português não serve a quem compra de fora, e o log é como o código que falta aparece.
+ */
+function buyerMessage(error: unknown, dict: CheckoutDictionary, fallback: string): string {
+  if (error instanceof CouponNotUsableError) return dict.errors.coupon[error.reason];
+  if (error instanceof ValidationError) {
+    if (error.details?.reason === "checkoutNotLive") return dict.errors.checkoutNotLive;
+    logger.warn({ err: error }, "buyer-facing domain error without a reason code");
+  }
+  return fallback;
 }
 
 let limiter: RateLimiter | undefined;
@@ -34,22 +77,21 @@ function rateLimiter(): RateLimiter {
 
 /** Public endpoint: rate-limited per IP and idempotent per checkout attempt. */
 export async function startCheckoutAction(input: unknown): Promise<StartCheckoutActionResult> {
+  const dict = await buyerDictionary(input);
   try {
     const parsed = startCheckoutSchema.parse(input);
     const headerList = await headers();
     const ip = headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
     const { allowed } = await rateLimiter().consume(`checkout:${ip}`, 20, 60);
-    if (!allowed) return { ok: false, message: "Muitas tentativas. Aguarde um instante e tente novamente." };
+    if (!allowed) return { ok: false, message: dict.errors.rateLimited };
 
     const result = await getServices().checkouts.start(parsed);
     return { ok: true, paymentId: result.paymentId, clientSecret: result.clientSecret, provider: result.provider };
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return { ok: false, message: error.issues[0]?.message ?? "Dados inválidos" };
-    }
-    if (error instanceof ValidationError) return { ok: false, message: error.message };
+    if (error instanceof z.ZodError) return { ok: false, message: invalidInputMessage(error, dict) };
+    if (error instanceof ValidationError) return { ok: false, message: buyerMessage(error, dict, dict.errors.startFailed) };
     logger.error({ err: error }, "checkout start failed");
-    return { ok: false, message: "Não foi possível iniciar o pagamento. Tente novamente." };
+    return { ok: false, message: dict.errors.startFailed };
   }
 }
 
@@ -59,8 +101,14 @@ export interface ApplyCouponResult {
   ok: boolean;
   message?: string;
   code?: string;
-  discount?: string;
-  total?: string;
+  /**
+   * Desconto em unidades menores, não formatado.
+   *
+   * Vinha pronto para a tela, com o total junto. Não serve mais: o total agora depende também
+   * dos bumps marcados, que o servidor não sabe quais são na hora de validar um cupom. Quem
+   * compõe e formata é o cliente, onde as duas informações existem ao mesmo tempo.
+   */
+  discountAmount?: string;
 }
 
 /**
@@ -68,25 +116,21 @@ export interface ApplyCouponResult {
  * that, this is a free oracle for guessing discount codes.
  */
 export async function applyCouponAction(input: unknown): Promise<ApplyCouponResult> {
+  const dict = await buyerDictionary(input);
   try {
     const { slug, code } = couponSchema.parse(input);
     const headerList = await headers();
     const ip = headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
     const { allowed } = await rateLimiter().consume(`coupon:${ip}`, 10, 60);
-    if (!allowed) return { ok: false, message: "Muitas tentativas. Aguarde um instante." };
+    if (!allowed) return { ok: false, message: dict.errors.rateLimited };
 
     const result = await getServices().checkouts.previewCoupon(slug, code);
-    return {
-      ok: true,
-      code: result.code,
-      discount: formatAmount(result.discount, result.currency),
-      total: formatAmount(result.total, result.currency),
-    };
+    return { ok: true, code: result.code, discountAmount: String(result.discount) };
   } catch (error) {
-    if (error instanceof z.ZodError) return { ok: false, message: "Código inválido" };
-    if (error instanceof ValidationError) return { ok: false, message: error.message };
+    if (error instanceof z.ZodError) return { ok: false, message: dict.errors.invalidCode };
+    if (error instanceof ValidationError) return { ok: false, message: buyerMessage(error, dict, dict.errors.couponFailed) };
     logger.error({ err: error }, "coupon preview failed");
-    return { ok: false, message: "Não foi possível validar o cupom." };
+    return { ok: false, message: dict.errors.couponFailed };
   }
 }
 

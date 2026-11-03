@@ -24,6 +24,7 @@ const PRODUCTION_ENV: Record<string, string> = {
   STORAGE_REGION: "us-east-1",
   STORAGE_ACCESS_KEY_ID: "AKIAREAL",
   STORAGE_SECRET_ACCESS_KEY: "a-real-storage-secret",
+  CRON_SECRET: "a-real-cron-secret",
   LOG_LEVEL: "info",
 };
 
@@ -78,6 +79,10 @@ describe("getEnv", () => {
 
     it("refuses a plain http app url", async () => {
       await expect(loadEnv({ APP_URL: "http://app.kabrun.com.br" })).rejects.toThrow(/must use https/);
+    });
+
+    it("refuses to start without CRON_SECRET, because the worker would never run", async () => {
+      await expect(loadEnv({ CRON_SECRET: undefined })).rejects.toThrow(/CRON_SECRET is required/);
     });
 
     it("refuses the secrets from .env.example", async () => {

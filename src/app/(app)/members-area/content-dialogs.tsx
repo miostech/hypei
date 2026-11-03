@@ -1,6 +1,6 @@
 "use client";
 
-import { PencilIcon, PlusIcon } from "lucide-react";
+import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useActionState, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { TextField } from "@/components/shared/form-field";
@@ -11,24 +11,28 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LessonType } from "@/generated/prisma/enums";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
-import { LESSON_TYPE_LABELS } from "@/modules/members/course.schemas";
-import { addLesson, addModule, renameModule, updateLesson } from "./actions";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill, plural } from "@/lib/i18n/locale";
+import { addLesson, addModule, deleteCourse, renameModule, updateLesson } from "./actions";
 import { LessonFileField, type UploadedFile } from "./lesson-file-field";
 
 /** Dialog that closes itself once the action succeeds, without syncing state in an effect. */
 function useDialogAction(action: (prev: ActionState, formData: FormData) => Promise<ActionState>) {
+  const fallback = useAppDictionary().toasts.saved;
   const [opened, setOpened] = useState(false);
   const [state, formAction] = useActionState(action, idleState);
   const open = opened && state.status !== "success";
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Salvo");
-  }, [state]);
+    if (state.status === "success") toast.success(state.message ?? fallback);
+  }, [state, fallback]);
 
   return { open, setOpened, state, formAction };
 }
 
 export function ModuleDialog({ courseId, module }: { courseId: string; module?: { id: string; title: string } }) {
+  const dict = useAppDictionary();
+  const t = dict.membersArea.moduleDialog;
   const { open, setOpened, state, formAction } = useDialogAction(module ? renameModule : addModule);
   const error = state.status === "error" ? (state.fieldErrors?.title ?? state.message) : undefined;
 
@@ -37,31 +41,31 @@ export function ModuleDialog({ courseId, module }: { courseId: string; module?: 
       <DialogTrigger
         render={
           module ? (
-            <Button variant="ghost" size="icon-sm" aria-label="Renomear módulo">
+            <Button variant="ghost" size="icon-sm" aria-label={t.rename}>
               <PencilIcon />
             </Button>
           ) : (
             <Button variant="outline">
               <PlusIcon />
-              Adicionar módulo
+              {t.add}
             </Button>
           )
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{module ? "Renomear módulo" : "Novo módulo"}</DialogTitle>
-          <DialogDescription>Módulos agrupam as aulas na ordem em que o aluno deve assistir.</DialogDescription>
+          <DialogTitle>{module ? t.rename : t.new}</DialogTitle>
+          <DialogDescription>{t.description}</DialogDescription>
         </DialogHeader>
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="courseId" value={courseId} />
           {module && <input type="hidden" name="moduleId" value={module.id} />}
-          <TextField label="Título" name="title" defaultValue={module?.title} required autoFocus error={error} />
+          <TextField label={t.fieldTitle} name="title" defaultValue={module?.title} required autoFocus error={error} />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpened(false)}>
-              Cancelar
+              {dict.common.cancel}
             </Button>
-            <SubmitButton>{module ? "Salvar" : "Criar módulo"}</SubmitButton>
+            <SubmitButton>{module ? dict.common.save : t.create}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -83,13 +87,15 @@ export interface LessonValues {
 }
 
 export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string; moduleId: string; lesson?: LessonValues }) {
+  const dict = useAppDictionary();
+  const t = dict.membersArea.lessonDialog;
   const { open, setOpened, state, formAction } = useDialogAction(lesson ? updateLesson : addLesson);
   const [type, setType] = useState<keyof typeof LessonType>(lesson?.type ?? "VIDEO");
   const [file, setFile] = useState<UploadedFile | null>(
     lesson?.storageKey
       ? {
           key: lesson.storageKey,
-          filename: lesson.storageFilename ?? "arquivo",
+          filename: lesson.storageFilename ?? dict.membersArea.file.fallbackName,
           contentType: lesson.storageType ?? "application/octet-stream",
           bytes: lesson.storageBytes ?? 0,
         }
@@ -104,23 +110,21 @@ export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string;
       <DialogTrigger
         render={
           lesson ? (
-            <Button variant="ghost" size="icon-sm" aria-label="Editar aula">
+            <Button variant="ghost" size="icon-sm" aria-label={t.edit}>
               <PencilIcon />
             </Button>
           ) : (
             <Button variant="ghost" size="sm">
               <PlusIcon />
-              Adicionar aula
+              {t.add}
             </Button>
           )
         }
       />
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{lesson ? "Editar aula" : "Nova aula"}</DialogTitle>
-          <DialogDescription>
-            Envie o arquivo ou aponte para um link, se o vídeo já estiver hospedado em outro lugar.
-          </DialogDescription>
+          <DialogTitle>{lesson ? t.edit : t.new}</DialogTitle>
+          <DialogDescription>{t.description}</DialogDescription>
         </DialogHeader>
 
         <form action={formAction} className="space-y-4">
@@ -128,11 +132,11 @@ export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string;
           <input type="hidden" name="moduleId" value={moduleId} />
           {lesson && <input type="hidden" name="lessonId" value={lesson.id} />}
 
-          <TextField label="Título" name="title" defaultValue={lesson?.title} required autoFocus error={fieldError("title")} />
+          <TextField label={t.fieldTitle} name="title" defaultValue={lesson?.title} required autoFocus error={fieldError("title")} />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor={`type-${fieldId}`}>Tipo</Label>
+              <Label htmlFor={`type-${fieldId}`}>{dict.common.type}</Label>
               <select
                 id={`type-${fieldId}`}
                 name="type"
@@ -142,13 +146,13 @@ export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string;
               >
                 {Object.values(LessonType).map((value) => (
                   <option key={value} value={value}>
-                    {LESSON_TYPE_LABELS[value]}
+                    {dict.membersArea.lessonTypes[value]}
                   </option>
                 ))}
               </select>
             </div>
             <TextField
-              label="Duração (min)"
+              label={t.duration}
               name="durationMinutes"
               type="number"
               min={0}
@@ -160,7 +164,7 @@ export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string;
 
           {type === "TEXT" ? (
             <div className="space-y-1.5">
-              <Label htmlFor={`content-${fieldId}`}>Conteúdo</Label>
+              <Label htmlFor={`content-${fieldId}`}>{t.content}</Label>
               <Textarea id={`content-${fieldId}`} name="content" rows={7} defaultValue={lesson?.content ?? ""} maxLength={20_000} />
               {fieldError("content") && <p className="text-xs text-destructive">{fieldError("content")}</p>}
             </div>
@@ -172,16 +176,16 @@ export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string;
                 <>
                   <p className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="h-px flex-1 bg-border" />
-                    ou use um link
+                    {t.orLink}
                     <span className="h-px flex-1 bg-border" />
                   </p>
                   <TextField
-                    label="Link do arquivo ou vídeo"
+                    label={t.externalUrl}
                     name="externalUrl"
                     type="url"
                     placeholder="https://…"
                     defaultValue={lesson?.externalUrl ?? ""}
-                    hint="YouTube, Vimeo ou qualquer URL acessível ao aluno."
+                    hint={t.externalUrlHint}
                     error={fieldError("externalUrl")}
                   />
                 </>
@@ -193,9 +197,53 @@ export function LessonDialog({ courseId, moduleId, lesson }: { courseId: string;
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpened(false)}>
-              Cancelar
+              {dict.common.cancel}
             </Button>
-            <SubmitButton>{lesson ? "Salvar aula" : "Adicionar aula"}</SubmitButton>
+            <SubmitButton>{lesson ? t.save : t.add}</SubmitButton>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Apagar conteúdo é o único destrutivo que não tem volta nem histórico — módulos, aulas e
+ * arquivos enviados somem junto —, então é o único que pergunta antes.
+ */
+export function DeleteCourseDialog({ courseId, title, students }: { courseId: string; title: string; students: number }) {
+  const dict = useAppDictionary();
+  const t = dict.membersArea.deleteCourse;
+  const [opened, setOpened] = useState(false);
+
+  if (students > 0) {
+    return <p className="text-xs text-muted-foreground">{plural(dict.locale, students, t.blocked)}</p>;
+  }
+
+  return (
+    <Dialog open={opened} onOpenChange={setOpened}>
+      <DialogTrigger
+        render={
+          <Button variant="outline" className="w-full text-destructive hover:text-destructive">
+            <Trash2Icon />
+            {t.trigger}
+          </Button>
+        }
+      />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{fill(t.title, { title })}</DialogTitle>
+          <DialogDescription>{t.description}</DialogDescription>
+        </DialogHeader>
+        <form action={deleteCourse}>
+          <input type="hidden" name="courseId" value={courseId} />
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setOpened(false)}>
+              {dict.common.cancel}
+            </Button>
+            <SubmitButton variant="destructive" pendingLabel={t.pending}>
+              {t.confirm}
+            </SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

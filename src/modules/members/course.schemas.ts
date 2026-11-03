@@ -45,12 +45,3 @@ export const lessonInputSchema = z
   });
 
 export type LessonInput = z.infer<typeof lessonInputSchema>;
-
-export const LESSON_TYPE_LABELS: Record<LessonType, string> = {
-  VIDEO: "Vídeo",
-  TEXT: "Texto",
-  PDF: "PDF",
-  AUDIO: "Áudio",
-  LIVE: "Ao vivo",
-  DOWNLOAD: "Download",
-};

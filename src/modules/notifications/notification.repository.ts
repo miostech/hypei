@@ -13,19 +13,31 @@ export interface PartyContext {
 export interface PurchaseContext extends PartyContext {
   customerName: string;
   customerEmail: string;
-  productName: string;
+  /** Idioma em que esta pessoa comprou. Null para quem comprou antes de a coluna existir. */
+  customerLocale: string | null;
+  /** Null quando o pedido não tem item identificável; quem escreve o e-mail decide a palavra. */
+  productName: string | null;
   amount: bigint;
   netAmount: bigint;
   currency: string;
   orderReference: string;
   /** Slug of the published course bought, when the product has one. */
   courseSlug: string | null;
+  /**
+   * Os outros produtos do mesmo pedido, quando houver — é o que o order bump cria.
+   *
+   * O e-mail nomeava só o primeiro item. Com um bump na compra isso virou omissão: a pessoa
+   * pagou por dois produtos e o comprovante mencionava um. Estes entram como linhas extras; o
+   * assunto e o botão continuam sendo do produto principal, que é o que ela veio comprar.
+   */
+  extraProductNames: string[];
 }
 
 export interface RefundContext extends PartyContext {
   customerName: string;
   customerEmail: string;
-  productName: string;
+  customerLocale: string | null;
+  productName: string | null;
   amount: bigint;
   currency: string;
 }
@@ -92,23 +104,28 @@ export class PrismaNotificationRepository implements NotificationRepository {
       include: {
         customer: true,
         organization: { include: { members: OWNER_SELECT } },
-        order: { include: { items: { include: { offer: { include: { product: { include: { course: true } } } } }, take: 1 } } },
+        // Sem `take`: o pedido pode ter mais de um item desde o order bump, e o comprovante
+        // precisa citar todos. São no máximo quatro (oferta + três bumps).
+        order: { include: { items: { include: { offer: { include: { product: { include: { course: true } } } } }, orderBy: { unitAmount: "desc" } } } },
       },
     });
     if (!payment) return null;
 
     const product = payment.order.items[0]?.offer.product;
     const course = product?.course;
+    const extraProductNames = [...new Set(payment.order.items.slice(1).map((item) => item.productName))];
     return {
       ...this.party(payment.organization),
       customerName: payment.customer.name,
       customerEmail: payment.customer.email,
-      productName: product?.name ?? "seu pedido",
+      customerLocale: payment.customer.locale,
+      productName: product?.name ?? null,
       amount: payment.amount,
       netAmount: payment.producerNetAmount ?? payment.amount,
       currency: payment.currency,
       orderReference: payment.order.id.slice(-8).toUpperCase(),
       courseSlug: course?.published ? course.slug : null,
+      extraProductNames,
     };
   }
 
@@ -131,7 +148,8 @@ export class PrismaNotificationRepository implements NotificationRepository {
       ...this.party(refund.payment.organization),
       customerName: refund.payment.customer.name,
       customerEmail: refund.payment.customer.email,
-      productName: refund.payment.order.items[0]?.offer.product.name ?? "sua compra",
+      customerLocale: refund.payment.customer.locale,
+      productName: refund.payment.order.items[0]?.offer.product.name ?? null,
       amount: refund.amount,
       currency: refund.payment.currency,
     };

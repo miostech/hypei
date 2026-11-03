@@ -97,7 +97,7 @@ export function buildServices(deps: ServiceDependencies) {
   const taxSettings = new TaxSettingsService(uow);
   const subscriptions = new SubscriptionService(uow, deps.paymentProvider, payments, taxes);
   const organizations = new OrganizationService(uow, merchantAccounts, deps.config.dataHashSecret);
-  const products = new ProductService(uow);
+  const products = new ProductService(uow, deps.storageProvider);
   const courses = new CourseService(uow, deps.storageProvider);
   const memberArea = new MemberAreaService(uow);
 
@@ -115,7 +115,7 @@ export function buildServices(deps: ServiceDependencies) {
   const verification = new VerificationService(uow, merchantAccounts);
   // Cross-tenant reads for Kabrun staff; never reachable from the producer app.
   const platformAdmin = new PlatformAdminService(new PrismaPlatformAdminRepository(deps.prisma));
-  const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, subscriptions, deps.paymentProvider.type, taxes);
+  const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, subscriptions, deps.paymentProvider.type, taxes, deps.storageProvider);
   const finance = new FinanceOverviewService(uow);
   const outboxPublisher = new OutboxPublisher(uow.repos.outbox, deps.eventBus);
 

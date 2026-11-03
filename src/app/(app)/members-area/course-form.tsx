@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
 
 export interface CourseFormValues {
   courseId?: string;
@@ -42,6 +43,8 @@ export function CourseForm({
   title: string;
   description: string;
 }) {
+  const dict = useAppDictionary();
+  const t = dict.membersArea.courseForm;
   const [state, formAction] = useActionState(action, idleState);
   const [name, setName] = useState(defaultValues.title);
   const [slug, setSlug] = useState(defaultValues.slug);
@@ -50,9 +53,9 @@ export function CourseForm({
   const fieldError = (field: string) => (state.status === "error" ? state.fieldErrors?.[field] : undefined);
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Salvo");
+    if (state.status === "success") toast.success(state.message ?? dict.toasts.saved);
     if (state.status === "error" && !state.fieldErrors) toast.error(state.message);
-  }, [state]);
+  }, [state, dict]);
 
   return (
     <Card>
@@ -65,7 +68,7 @@ export function CourseForm({
           {defaultValues.courseId && <input type="hidden" name="courseId" value={defaultValues.courseId} />}
 
           {products && (
-            <SelectField label="Produto" name="productId" defaultValue={defaultValues.productId} required error={fieldError("productId")}>
+            <SelectField label={t.product} name="productId" defaultValue={defaultValues.productId} required error={fieldError("productId")}>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name}
@@ -75,7 +78,7 @@ export function CourseForm({
           )}
 
           <TextField
-            label="Título do curso"
+            label={t.title}
             name="title"
             value={name}
             onChange={(event) => {
@@ -87,7 +90,7 @@ export function CourseForm({
           />
 
           <TextField
-            label="Link do curso"
+            label={t.slug}
             name="slug"
             value={slug}
             onChange={(event) => {
@@ -95,12 +98,12 @@ export function CourseForm({
               setSlug(slugify(event.target.value));
             }}
             required
-            hint="Usado no endereço da área de membros."
+            hint={t.slugHint}
             error={fieldError("slug")}
           />
 
           <div className="space-y-1.5">
-            <Label htmlFor={descriptionId}>Descrição</Label>
+            <Label htmlFor={descriptionId}>{dict.common.description}</Label>
             <Textarea id={descriptionId} name="description" rows={4} defaultValue={defaultValues.description} maxLength={2000} />
           </div>
 

@@ -7,6 +7,8 @@ import { SubmitButton } from "@/components/shared/submit-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { idleState } from "@/lib/actions/action-state";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 import { payAffiliate } from "./actions";
 
 /**
@@ -14,14 +16,16 @@ import { payAffiliate } from "./actions";
  * so this button is a record, not a payment.
  */
 export function PayAffiliateButton({ affiliateId, name, amountLabel }: { affiliateId: string; name: string; amountLabel: string }) {
+  const dict = useAppDictionary();
+  const t = dict.affiliates.pay;
   const [opened, setOpened] = useState(false);
   const [state, formAction] = useActionState(payAffiliate, idleState);
   const open = opened && state.status !== "success";
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Comissões marcadas como pagas");
+    if (state.status === "success") toast.success(state.message ?? dict.toasts.saved);
     if (state.status === "error") toast.error(state.message);
-  }, [state]);
+  }, [state, dict]);
 
   return (
     <Dialog open={open} onOpenChange={setOpened}>
@@ -29,28 +33,24 @@ export function PayAffiliateButton({ affiliateId, name, amountLabel }: { affilia
         render={
           <Button variant="outline" size="sm">
             <BanknoteIcon />
-            Pagar
+            {t.trigger}
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Registrar pagamento a {name}</DialogTitle>
-          <DialogDescription>
-            Confirma que você transferiu {amountLabel} para {name}? O valor sai do que a Kabrun tem reservado para este afiliado.
-          </DialogDescription>
+          <DialogTitle>{fill(t.title, { name })}</DialogTitle>
+          <DialogDescription>{fill(t.description, { name, amount: amountLabel })}</DialogDescription>
         </DialogHeader>
 
         <form action={formAction}>
           <input type="hidden" name="affiliateId" value={affiliateId} />
-          <p className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">
-            A transferência é feita por fora da plataforma. Este registro apenas baixa a comissão e mantém o histórico.
-          </p>
+          <p className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">{t.note}</p>
           <DialogFooter className="mt-4">
             <Button type="button" variant="ghost" onClick={() => setOpened(false)}>
-              Cancelar
+              {dict.common.cancel}
             </Button>
-            <SubmitButton>Confirmar pagamento</SubmitButton>
+            <SubmitButton>{t.confirm}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { couponInputSchema } from "@/modules/coupons/coupon.schemas";
 import { requirePermission } from "@/modules/organizations/current-organization";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { runAction, type ActionState } from "@/server/actions/action-state";
 import { getServices } from "@/server/container";
 
@@ -29,7 +31,7 @@ export async function createCoupon(_prev: ActionState, formData: FormData): Prom
     const { organization, userId } = await requirePermission(EDIT);
     await getServices().coupons.create(organization.id, userId, parseInput(formData));
     revalidatePath("/coupons");
-    return { status: "success", message: "Cupom criado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.couponCreated };
   });
 }
 
@@ -38,7 +40,7 @@ export async function updateCoupon(_prev: ActionState, formData: FormData): Prom
     const { organization, userId } = await requirePermission(EDIT);
     await getServices().coupons.update(organization.id, userId, String(formData.get("couponId")), parseInput(formData));
     revalidatePath("/coupons");
-    return { status: "success", message: "Cupom atualizado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.couponUpdated };
   });
 }
 

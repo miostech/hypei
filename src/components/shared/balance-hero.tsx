@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { cn } from "cn";
+import type { AppDictionary } from "@/lib/i18n/app";
 
 /**
  * The producer's money, front and centre: deep purple gradient with the gold bolt
  * as a watermark. Amounts arrive already formatted (money never crosses as bigint).
  */
 export function BalanceHero({
+  dict,
   currency,
   available,
   pending,
@@ -14,6 +16,7 @@ export function BalanceHero({
   actions,
   className,
 }: {
+  dict: AppDictionary;
   currency: string;
   available: string;
   pending: string;
@@ -22,6 +25,8 @@ export function BalanceHero({
   actions?: ReactNode;
   className?: string;
 }) {
+  const t = dict.balance;
+
   return (
     <section
       className={cn(
@@ -41,7 +46,7 @@ export function BalanceHero({
       <div className="relative flex flex-col gap-6">
         <div>
           <p className="flex items-center gap-2 text-xs font-medium tracking-[0.14em] text-white/70 uppercase">
-            Saldo disponível
+            {t.available}
             <span className="rounded-full bg-white/12 px-1.5 py-0.5 text-[0.65rem] tracking-normal text-white/80">{currency}</span>
           </p>
           <p className="tabular mt-2 font-heading text-4xl leading-none font-extrabold sm:text-5xl">{available}</p>
@@ -50,12 +55,12 @@ export function BalanceHero({
 
         <dl className="flex flex-wrap gap-x-10 gap-y-3">
           <div>
-            <dt className="text-xs text-white/60">A liberar</dt>
+            <dt className="text-xs text-white/60">{t.pending}</dt>
             <dd className="tabular mt-0.5 font-heading text-lg font-semibold">{pending}</dd>
           </div>
           {reserved && (
             <div>
-              <dt className="text-xs text-white/60">Reservado</dt>
+              <dt className="text-xs text-white/60">{t.reserved}</dt>
               <dd className="tabular mt-0.5 font-heading text-lg font-semibold">{reserved}</dd>
             </div>
           )}

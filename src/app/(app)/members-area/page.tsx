@@ -1,41 +1,51 @@
 import { BookOpenIcon, ExternalLinkIcon, PlusIcon, UsersIcon } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { plural } from "@/lib/i18n/locale";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { hasPermission } from "@/modules/organizations/permissions";
 import { getServices } from "@/server/container";
+import { TranslationSoon } from "./translation-soon";
 
-export const metadata = { title: "Área de membros" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getAppDictionary(await appLocale())).membersArea.eyebrow };
+}
 
 export default async function MembersAreaPage() {
   const { organization, membership } = await requirePagePermission("products:read");
   const services = getServices();
-  const [courses, products] = await Promise.all([
+  const [courses, products, hasVideo] = await Promise.all([
     services.courses.list(organization.id),
     services.courses.availableProducts(organization.id),
+    services.courses.hasVideoLessons(organization.id),
   ]);
   const canEdit = hasPermission(membership.role, "products:write");
+  const dict = await getAppDictionary(await appLocale());
+  const t = dict.membersArea;
 
   return (
     <>
       <PageHeader
-        eyebrow="Área de membros"
-        title="Conteúdo dos seus alunos"
-        description="O acesso é liberado automaticamente quando o pagamento do produto é confirmado."
+        eyebrow={t.eyebrow}
+        title={t.title}
+        description={t.description}
         actions={
           <>
             <Button variant="outline" render={<Link href={`/members/${organization.slug}`} target="_blank" />}>
               <ExternalLinkIcon />
-              Ver área de membros
+              {t.view}
             </Button>
             {canEdit && products.length > 0 && (
               <Button render={<Link href="/members-area/new" />}>
                 <PlusIcon />
-                Novo curso
+                {t.newCourse}
               </Button>
             )}
           </>
@@ -45,21 +55,17 @@ export default async function MembersAreaPage() {
       {courses.length === 0 ? (
         <EmptyState
           icon={BookOpenIcon}
-          title="Nenhum curso criado"
-          description={
-            products.length > 0
-              ? "Crie um curso, organize os módulos e publique. Quem comprar o produto entra automaticamente."
-              : "Todos os seus produtos já têm curso. Crie um novo produto para começar outro conteúdo."
-          }
+          title={t.emptyTitle}
+          description={products.length > 0 ? t.emptyBody : t.allProductsTaken}
           action={
             canEdit && products.length > 0 ? (
               <Button render={<Link href="/members-area/new" />}>
                 <PlusIcon />
-                Criar curso
+                {t.createCourse}
               </Button>
             ) : (
               <Button variant="outline" render={<Link href="/products/new" />}>
-                Criar produto
+                {t.createProduct}
               </Button>
             )
           }
@@ -74,7 +80,7 @@ export default async function MembersAreaPage() {
                     <span className="bg-brand-gradient flex size-10 items-center justify-center rounded-xl text-white">
                       <BookOpenIcon className="size-5" aria-hidden />
                     </span>
-                    <Badge variant={course.published ? "success" : "outline"}>{course.published ? "Publicado" : "Rascunho"}</Badge>
+                    <Badge variant={course.published ? "success" : "outline"}>{course.published ? t.published : t.draft}</Badge>
                   </div>
                   <div className="flex-1">
                     <h2 className="font-heading font-semibold">{course.title}</h2>
@@ -82,16 +88,23 @@ export default async function MembersAreaPage() {
                     {course.description && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{course.description}</p>}
                   </div>
                   <div className="flex items-center gap-4 border-t pt-3 text-xs text-muted-foreground">
-                    <span>{course._count.modules} módulo(s)</span>
+                    <span>{plural(dict.locale, course._count.modules, t.moduleCount)}</span>
                     <span className="flex items-center gap-1">
                       <UsersIcon className="size-3.5" aria-hidden />
-                      {course._count.enrollments} aluno(s)
+                      {plural(dict.locale, course._count.enrollments, t.studentCount)}
                     </span>
                   </div>
                 </CardContent>
               </Card>
             </Link>
           ))}
+        </div>
+      )}
+
+      {/* Mesma grade dos conteúdos só para alinhar a largura: o card é um aviso, não um item da lista. */}
+      {hasVideo && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <TranslationSoon dict={dict} />
         </div>
       )}
     </>

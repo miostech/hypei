@@ -1,4 +1,5 @@
 import { LinkIcon, PowerIcon, UsersIcon } from "lucide-react";
+import type { Metadata } from "next";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -7,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getEnv } from "@/lib/env";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { fill } from "@/lib/i18n/locale";
 import { formatAmount, formatDateTime } from "@/lib/ui/format";
-import { AFFILIATE_COMMISSION_STATUS_LABELS } from "@/modules/affiliates/affiliate.schemas";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { hasPermission } from "@/modules/organizations/permissions";
 import { getServices } from "@/server/container";
@@ -17,7 +20,9 @@ import { AffiliateDialog, type AffiliateValues } from "./affiliate-dialog";
 import { CopyLink } from "./copy-link";
 import { PayAffiliateButton } from "./pay-affiliate-button";
 
-export const metadata = { title: "Afiliados" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getAppDictionary(await appLocale())).affiliates.title };
+}
 
 export default async function AffiliatesPage() {
   const { organization, membership } = await requirePagePermission("sales:read");
@@ -28,6 +33,8 @@ export default async function AffiliatesPage() {
     services.affiliates.listCommissions(organization.id, 50),
     services.checkouts.list(organization.id),
   ]);
+  const dict = await getAppDictionary(await appLocale());
+  const t = dict.affiliates;
 
   const canEdit = hasPermission(membership.role, "products:write");
   const canPay = hasPermission(membership.role, "finance:read");
@@ -41,22 +48,22 @@ export default async function AffiliatesPage() {
   return (
     <>
       <PageHeader
-        title="Afiliados"
-        description="Parceiros que vendem para você e ganham comissão por venda indicada."
+        title={t.title}
+        description={t.description}
         actions={canEdit && <AffiliateDialog checkouts={checkoutOptions} />}
       />
 
       <section className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Comissão a liberar" value={formatAmount(sum("pending"), currency)} hint="Vendas ainda no prazo de liberação" />
-        <StatCard label="A pagar" value={formatAmount(sum("available"), currency)} tone={sum("available") > 0n ? "warning" : "muted"} />
-        <StatCard label="Já pago" value={formatAmount(sum("paid"), currency)} tone="positive" />
+        <StatCard label={t.pendingCommission} value={formatAmount(sum("pending"), currency)} hint={t.pendingHint} />
+        <StatCard label={t.payable} value={formatAmount(sum("available"), currency)} tone={sum("available") > 0n ? "warning" : "muted"} />
+        <StatCard label={t.paid} value={formatAmount(sum("paid"), currency)} tone="positive" />
       </section>
 
       {affiliates.length === 0 ? (
         <EmptyState
           icon={UsersIcon}
-          title="Nenhum afiliado cadastrado"
-          description="Cadastre um parceiro, envie o link dele e a comissão é calculada automaticamente em cada venda indicada."
+          title={t.emptyTitle}
+          description={t.emptyBody}
           action={canEdit ? <AffiliateDialog checkouts={checkoutOptions} /> : undefined}
         />
       ) : (
@@ -65,12 +72,12 @@ export default async function AffiliatesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Afiliado</TableHead>
-                  <TableHead className="hidden sm:table-cell">Comissão</TableHead>
-                  <TableHead className="hidden lg:table-cell">Link</TableHead>
-                  <TableHead className="hidden text-right xl:table-cell">Vendas</TableHead>
-                  <TableHead className="text-right">A pagar</TableHead>
-                  <TableHead className="hidden md:table-cell">Status</TableHead>
+                  <TableHead>{t.affiliate}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{t.commission}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t.link}</TableHead>
+                  <TableHead className="hidden text-right xl:table-cell">{t.sales}</TableHead>
+                  <TableHead className="text-right">{t.payable}</TableHead>
+                  <TableHead className="hidden md:table-cell">{dict.common.status}</TableHead>
                   <TableHead className="w-px" />
                 </TableRow>
               </TableHeader>
@@ -94,10 +101,10 @@ export default async function AffiliatesPage() {
                         <span className="block truncate font-medium">{affiliate.name}</span>
                         <span className="block truncate text-xs text-muted-foreground">{affiliate.email}</span>
                         <span className="block text-xs text-muted-foreground sm:hidden">
-                          {affiliate.commissionBps / 100}% de comissão
+                          {fill(t.commissionOf, { percent: affiliate.commissionBps / 100 })}
                         </span>
                         <span className="mt-1 block md:hidden">
-                          {affiliate.active ? <Badge variant="success">Ativo</Badge> : <Badge variant="outline">Inativo</Badge>}
+                          {affiliate.active ? <Badge variant="success">{t.active}</Badge> : <Badge variant="outline">{t.inactive}</Badge>}
                         </span>
                       </TableCell>
                       <TableCell className="hidden font-medium sm:table-cell">{affiliate.commissionBps / 100}%</TableCell>
@@ -107,14 +114,14 @@ export default async function AffiliatesPage() {
                         ) : (
                           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <LinkIcon className="size-3.5" aria-hidden />
-                            código {link?.code ?? "—"}
+                            {fill(t.code, { code: link?.code ?? "—" })}
                           </span>
                         )}
                       </TableCell>
                       <TableCell className="tabular hidden text-right text-muted-foreground xl:table-cell">{entry?.sales ?? 0}</TableCell>
                       <TableCell className="tabular text-right font-medium">{formatAmount(entry?.available ?? 0n, currency)}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {affiliate.active ? <Badge variant="success">Ativo</Badge> : <Badge variant="outline">Inativo</Badge>}
+                        {affiliate.active ? <Badge variant="success">{t.active}</Badge> : <Badge variant="outline">{t.inactive}</Badge>}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-0.5">
@@ -135,7 +142,7 @@ export default async function AffiliatesPage() {
                                   type="submit"
                                   variant="ghost"
                                   size="icon-sm"
-                                  aria-label={affiliate.active ? `Desativar ${affiliate.name}` : `Ativar ${affiliate.name}`}
+                                  aria-label={fill(affiliate.active ? t.deactivate : t.activate, { name: affiliate.name })}
                                 >
                                   <PowerIcon />
                                 </Button>
@@ -156,21 +163,19 @@ export default async function AffiliatesPage() {
       {commissions.length > 0 && (
         <Card className="py-0">
           <CardHeader className="border-b p-5 pb-4">
-            <CardTitle>Comissões</CardTitle>
-            <CardDescription>
-              Cada venda indicada gera uma comissão, que fica reservada e é liberada junto com o seu saldo.
-            </CardDescription>
+            <CardTitle>{t.commissionsTitle}</CardTitle>
+            <CardDescription>{t.commissionsDescription}</CardDescription>
           </CardHeader>
           <CardContent className="px-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="hidden md:table-cell">Data</TableHead>
-                  <TableHead>Afiliado</TableHead>
-                  <TableHead className="hidden lg:table-cell">Cliente</TableHead>
-                  <TableHead className="hidden lg:table-cell">Produto</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead className="text-right">Comissão</TableHead>
+                  <TableHead className="hidden md:table-cell">{dict.common.date}</TableHead>
+                  <TableHead>{t.affiliate}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{dict.common.customer}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{dict.common.product}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{dict.common.status}</TableHead>
+                  <TableHead className="text-right">{t.commission}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -179,14 +184,16 @@ export default async function AffiliatesPage() {
                   return (
                     <TableRow key={commission.id}>
                       <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
-                        {formatDateTime(commission.createdAt)}
+                        {formatDateTime(commission.createdAt, dict.localeTag)}
                       </TableCell>
                       <TableCell className="max-w-[46vw] sm:max-w-none">
                         <span className="block truncate font-medium">{commission.affiliate.name}</span>
                         <span className="block truncate text-xs text-muted-foreground lg:hidden">
                           {commission.order.customer.name} · {commission.order.items[0]?.productName ?? "—"}
                         </span>
-                        <span className="block text-xs text-muted-foreground md:hidden">{formatDateTime(commission.createdAt)}</span>
+                        <span className="block text-xs text-muted-foreground md:hidden">
+                          {formatDateTime(commission.createdAt, dict.localeTag)}
+                        </span>
                       </TableCell>
                       <TableCell className="hidden text-muted-foreground lg:table-cell">{commission.order.customer.name}</TableCell>
                       <TableCell className="hidden text-muted-foreground lg:table-cell">{commission.order.items[0]?.productName ?? "—"}</TableCell>
@@ -195,21 +202,19 @@ export default async function AffiliatesPage() {
                           variant={
                             commission.status === "PAID"
                               ? "success"
-                              : commission.status === "CANCELED"
-                                ? "outline"
-                                : commission.status === "AVAILABLE"
-                                  ? "warning"
-                                  : "outline"
+                              : commission.status === "AVAILABLE"
+                                ? "warning"
+                                : "outline"
                           }
                         >
-                          {AFFILIATE_COMMISSION_STATUS_LABELS[commission.status]}
+                          {t.statuses[commission.status]}
                         </Badge>
                       </TableCell>
                       <TableCell className="tabular text-right font-medium">
                         {formatAmount(net, commission.currency)}
                         {commission.reversedAmount > 0n && commission.status !== "CANCELED" && (
                           <span className="block text-xs font-normal text-muted-foreground">
-                            estornado {formatAmount(commission.reversedAmount, commission.currency)}
+                            {fill(t.reversed, { amount: formatAmount(commission.reversedAmount, commission.currency) })}
                           </span>
                         )}
                       </TableCell>

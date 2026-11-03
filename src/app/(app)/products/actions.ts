@@ -2,6 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { ImageUploadRequest, ImageUploadResult } from "@/components/shared/image-upload-field";
+import { isDomainError } from "@/lib/errors";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
+import { logger } from "@/lib/logger";
 import { productInputSchema } from "@/modules/products/product.schemas";
 import { requirePermission } from "@/modules/organizations/current-organization";
 import { runAction, type ActionState } from "@/server/actions/action-state";
@@ -14,8 +19,28 @@ function parse(formData: FormData) {
     description: formData.get("description") ?? "",
     type: formData.get("type"),
     status: formData.get("status"),
-    thumbnailUrl: formData.get("thumbnailUrl") ?? "",
+    thumbnailKey: formData.get("thumbnailKey") ?? "",
   });
+}
+
+/**
+ * Entrega ao navegador uma URL de envio de vida curta. O arquivo não passa pelo servidor:
+ * isto só diz "você pode colocar este objeto ali, pelos próximos minutos".
+ */
+export async function requestThumbnailUpload(input: ImageUploadRequest): Promise<ImageUploadResult> {
+  try {
+    const { organization } = await requirePermission("products:write");
+    const target = await getServices().products.createThumbnailUpload(organization.id, input.ownerId, {
+      filename: input.filename,
+      contentType: input.contentType,
+      sizeBytes: input.sizeBytes,
+    });
+    return { ok: true, url: target.url, key: target.key, headers: target.headers };
+  } catch (error) {
+    if (isDomainError(error)) return { ok: false, message: error.message };
+    logger.error({ err: error }, "product thumbnail upload authorization failed");
+    return { ok: false, message: (await getAppDictionary(await appLocale())).toasts.imageUploadFailed };
+  }
 }
 
 export async function createProduct(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -25,7 +50,7 @@ export async function createProduct(_prev: ActionState, formData: FormData): Pro
     const product = await getServices().products.create(organization.id, userId, parse(formData));
     productId = product.id;
     revalidatePath("/products");
-    return { status: "success", message: "Produto criado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.productCreated };
   });
   if (productId) redirect(`/products/${productId}?created=1`);
   return result;
@@ -38,7 +63,7 @@ export async function updateProduct(_prev: ActionState, formData: FormData): Pro
     await getServices().products.update(organization.id, userId, id, parse(formData));
     revalidatePath("/products");
     revalidatePath(`/products/${id}`);
-    return { status: "success", message: "Produto atualizado" };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.productUpdated };
   });
 }
 

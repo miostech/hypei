@@ -58,6 +58,10 @@ body#keycloak-bg::before {
   display: block;
   grid-template-columns: none;
   gap: 0;
+  /* A partir de 1200px o PatternFly vira grid de duas colunas e põe padding lateral aqui,
+     para o layout com imagem ao lado que este tema não usa. Sem zerar, o padding sobra e
+     o card encolhe para 220px — só em tela larga, que é o pior jeito de descobrir. */
+  padding: 0;
 }
 
 /* ── Brand header ───────────────────────────────────────────────────────── */
@@ -116,6 +120,7 @@ body#keycloak-bg::before {
 
 .pf-v5-c-login__main-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -130,6 +135,9 @@ body#keycloak-bg::before {
   letter-spacing: -0.015em;
   color: var(--kabrun-foreground);
   margin: 0;
+  /* O seletor de idioma não encolhe, então todo aperto cai no título. Sem este piso ele
+     é espremido a uma letra por linha em vez de empurrar o seletor para baixo. */
+  min-width: fit-content;
 }
 
 /* ── Language picker ────────────────────────────────────────────────────── */

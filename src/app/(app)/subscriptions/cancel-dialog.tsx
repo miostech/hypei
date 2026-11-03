@@ -7,6 +7,8 @@ import { SubmitButton } from "@/components/shared/submit-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { idleState } from "@/lib/actions/action-state";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 import { cancelSubscription } from "./actions";
 
 export function CancelSubscriptionDialog({
@@ -18,29 +20,31 @@ export function CancelSubscriptionDialog({
   customerName: string;
   periodEndLabel: string | null;
 }) {
+  const dict = useAppDictionary();
+  const t = dict.subscriptions.cancel;
   const [opened, setOpened] = useState(false);
   const [mode, setMode] = useState<"at_period_end" | "now">("at_period_end");
   const [state, formAction] = useActionState(cancelSubscription, idleState);
   const open = opened && state.status !== "success";
 
   useEffect(() => {
-    if (state.status === "success") toast.success(state.message ?? "Assinatura cancelada");
+    if (state.status === "success") toast.success(state.message ?? dict.toasts.subscriptionCanceled);
     if (state.status === "error") toast.error(state.message);
-  }, [state]);
+  }, [state, dict]);
 
   return (
     <Dialog open={open} onOpenChange={setOpened}>
       <DialogTrigger
         render={
-          <Button variant="ghost" size="icon-sm" aria-label={`Cancelar assinatura de ${customerName}`}>
+          <Button variant="ghost" size="icon-sm" aria-label={fill(t.trigger, { name: customerName })}>
             <XCircleIcon />
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Cancelar assinatura de {customerName}</DialogTitle>
-          <DialogDescription>Não haverá novas cobranças. Escolha o que acontece com o acesso.</DialogDescription>
+          <DialogTitle>{fill(t.title, { name: customerName })}</DialogTitle>
+          <DialogDescription>{t.description}</DialogDescription>
         </DialogHeader>
 
         <form action={formAction} className="space-y-4">
@@ -52,15 +56,13 @@ export function CancelSubscriptionDialog({
               [
                 {
                   value: "at_period_end" as const,
-                  title: "No fim do período",
-                  detail: periodEndLabel
-                    ? `Mantém o acesso até ${periodEndLabel}, que o cliente já pagou.`
-                    : "Mantém o acesso até o fim do período já pago.",
+                  title: t.atPeriodEnd,
+                  detail: periodEndLabel ? fill(t.atPeriodEndDetail, { date: periodEndLabel }) : t.atPeriodEndDetailNoDate,
                 },
                 {
                   value: "now" as const,
-                  title: "Agora",
-                  detail: "Corta o acesso imediatamente, mesmo com período pago em aberto.",
+                  title: t.now,
+                  detail: t.nowDetail,
                 },
               ]
             ).map((option) => (
@@ -81,9 +83,9 @@ export function CancelSubscriptionDialog({
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpened(false)}>
-              Voltar
+              {t.back}
             </Button>
-            <SubmitButton variant="destructive">Cancelar assinatura</SubmitButton>
+            <SubmitButton variant="destructive">{t.confirm}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

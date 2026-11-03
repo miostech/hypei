@@ -3,16 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { getEnv } from "@/lib/env";
 import { isDomainError } from "@/lib/errors";
+import { getAppDictionary } from "@/lib/i18n/app";
+import { appLocale } from "@/lib/i18n/app/server";
 import { logger } from "@/lib/logger";
 import { requirePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
 
 export type VerificationActionResult = { ok: true; url?: string; message?: string } | { ok: false; message: string };
 
-function toFailure(error: unknown, fallback: string): VerificationActionResult {
+async function toFailure(error: unknown, fallback: string): Promise<VerificationActionResult> {
   if (isDomainError(error)) return { ok: false, message: error.message };
   logger.error({ err: error }, fallback);
-  return { ok: false, message: "Não foi possível falar com o provedor de pagamento. Tente de novo em instantes." };
+  return { ok: false, message: (await getAppDictionary(await appLocale())).toasts.providerUnreachable };
 }
 
 /** Opens the provider's hosted verification and says where to send the producer. */
@@ -34,7 +36,7 @@ export async function refreshVerification(): Promise<VerificationActionResult> {
     await getServices().verification.refresh(organization.id);
     revalidatePath("/verification");
     revalidatePath("/dashboard");
-    return { ok: true, message: "Status atualizado" };
+    return { ok: true, message: (await getAppDictionary(await appLocale())).toasts.statusUpdated };
   } catch (error) {
     return toFailure(error, "verification refresh failed");
   }

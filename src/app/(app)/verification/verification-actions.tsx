@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useAppDictionary } from "@/lib/i18n/app/provider";
 import { refreshVerification, startVerification } from "./actions";
 
 export function VerificationActions({ label, canStart }: { label: string; canStart: boolean }) {
+  const dict = useAppDictionary();
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -43,13 +45,13 @@ export function VerificationActions({ label, canStart }: { label: string; canSta
               toast.error(result.message);
               return;
             }
-            toast.success(result.message ?? "Status atualizado");
+            toast.success(result.message ?? dict.toasts.statusUpdated);
             router.refresh();
           })
         }
       >
         <RefreshCwIcon />
-        Atualizar status
+        {dict.verification.refresh}
       </Button>
     </div>
   );
