@@ -16,7 +16,18 @@ export interface CouponRepository {
    * cannot both win.
    */
   claimRedemption(couponId: string): Promise<boolean>;
-  releaseRedemption(couponId: string): Promise<void>;
+  /**
+   * Devolve o uso de um pagamento que não vai acontecer: o contador volta e a marca do
+   * cliente sai. As duas coisas andam juntas de propósito — devolver só o contador deixaria
+   * o comprador do cartão recusado trancado fora do próprio cupom na segunda tentativa.
+   */
+  releaseRedemption(couponId: string, orderId: string): Promise<void>;
+  /**
+   * Retoma o uso quando um pagamento dado por falho é confirmado depois. Sem olhar o teto,
+   * de propósito: o dinheiro já entrou, e o limite não pode recusar uma venda que aconteceu.
+   * O contador registra o que foi vendido, mesmo que isso passe um do limite.
+   */
+  reclaimRedemption(input: { couponId: string; orderId: string; customerId: string; amount: bigint }): Promise<void>;
   countCustomerRedemptions(couponId: string, customerId: string): Promise<number>;
   recordRedemption(input: { couponId: string; orderId: string; customerId: string; amount: bigint }): Promise<void>;
 }
@@ -67,9 +78,16 @@ export class PrismaCouponRepository implements CouponRepository {
     return claimed > 0;
   }
 
-  async releaseRedemption(couponId: string) {
+  async releaseRedemption(couponId: string, orderId: string) {
     await this.db.$executeRaw`
-      UPDATE "Coupon" SET redemptions = GREATEST(redemptions - 1, 0) WHERE id = ${couponId}`;
+      UPDATE "Coupon" SET redemptions = GREATEST(redemptions - 1, 0), "updatedAt" = now() WHERE id = ${couponId}`;
+    await this.db.couponRedemption.deleteMany({ where: { orderId } });
+  }
+
+  async reclaimRedemption(input: { couponId: string; orderId: string; customerId: string; amount: bigint }) {
+    await this.db.$executeRaw`
+      UPDATE "Coupon" SET redemptions = redemptions + 1, "updatedAt" = now() WHERE id = ${input.couponId}`;
+    await this.recordRedemption(input);
   }
 
   countCustomerRedemptions(couponId: string, customerId: string) {

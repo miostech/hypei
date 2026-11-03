@@ -126,6 +126,9 @@ export class PaymentService {
       if (!found) throw new NotFoundError("Payment", event.providerPaymentId);
       const payment = await repos.payments.lock(found.id);
       if (isCaptured(payment.status)) return "duplicate";
+      // Sucesso que chega depois de uma falha: o uso do cupom foi devolvido quando ela
+      // chegou, e esta venda com desconto precisa dele de volta.
+      const couponWasReleased = payment.status === "FAILED" || payment.status === "CANCELED";
 
       if (event.currency !== payment.currency || event.amount !== payment.amount) {
         throw new ProviderError(provider, "Captured amount does not match the Kabrun payment", {
@@ -168,6 +171,15 @@ export class PaymentService {
         settleAt: addDays(paidAt, delayDays),
       });
       await repos.orders.setStatus(payment.orderId, "PAID");
+
+      if (couponWasReleased && order?.couponId) {
+        await repos.coupons.reclaimRedemption({
+          couponId: order.couponId,
+          orderId: order.id,
+          customerId: payment.customerId,
+          amount: order.discountAmount,
+        });
+      }
 
       const providerTxId = event.providerChargeId ?? event.providerPaymentId;
       await repos.transactions.record({
@@ -267,6 +279,14 @@ export class PaymentService {
         await repos.outbox.add(createDomainEvent("payment.failed", payment.id, payment.organizationId, { reason: reason ?? null }));
       }
       if (status === "CANCELED") await repos.orders.setStatus(payment.orderId, "CANCELED");
+
+      // Pagamento que não vai acontecer devolve o uso do cupom. Sem isto, PIX abandonado e
+      // cartão recusado comiam a cota: o produtor anuncia 100 usos e entrega menos, e quem
+      // teve o cartão recusado ouvia "você já usou este cupom" na segunda tentativa.
+      if (status === "FAILED" || status === "CANCELED") {
+        const order = await repos.orders.findById(payment.organizationId, payment.orderId);
+        if (order?.couponId) await repos.coupons.releaseRedemption(order.couponId, order.id);
+      }
       return "applied";
     });
   }
