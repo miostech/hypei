@@ -3,6 +3,8 @@ import type { Route } from "next";
 import Link from "next/link";
 import { cn } from "cn";
 import type { LessonType } from "@/generated/prisma/enums";
+import { fill } from "@/lib/i18n/locale";
+import type { MembersDictionary } from "@/lib/i18n/members";
 import type { CourseOutline } from "@/modules/members/member-area.service";
 
 export const LESSON_ICON: Record<LessonType, LucideIcon> = {
@@ -17,11 +19,13 @@ export const LESSON_ICON: Record<LessonType, LucideIcon> = {
 export function CourseOutlineList({
   outline,
   lessonHref,
+  dict,
   currentLessonId,
   compact = false,
 }: {
   outline: CourseOutline;
   lessonHref: (lessonId: string) => Route;
+  dict: MembersDictionary;
   currentLessonId?: string;
   compact?: boolean;
 }) {
@@ -63,7 +67,9 @@ export function CourseOutlineList({
                     </span>
                     <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
                     {lesson.durationSeconds ? (
-                      <span className="tabular shrink-0 text-xs text-muted-foreground">{Math.round(lesson.durationSeconds / 60)} min</span>
+                      <span className="tabular shrink-0 text-xs text-muted-foreground">
+                        {Math.round(lesson.durationSeconds / 60)} {dict.course.minutesShort}
+                      </span>
                     ) : null}
                   </Link>
                 </li>
@@ -76,13 +82,21 @@ export function CourseOutlineList({
   );
 }
 
-export function CourseProgressBar({ percentage, completed, total }: { percentage: number; completed: number; total: number }) {
+export function CourseProgressBar({
+  percentage,
+  completed,
+  total,
+  dict,
+}: {
+  percentage: number;
+  completed: number;
+  total: number;
+  dict: MembersDictionary;
+}) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">
-          {completed} de {total} aulas concluídas
-        </span>
+        <span className="text-muted-foreground">{fill(dict.course.progress, { completed, total })}</span>
         <span className="tabular font-medium">{percentage}%</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-muted">

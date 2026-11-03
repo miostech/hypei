@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
+import type { MembersDictionary } from "@/lib/i18n/members";
 import { MemberUserMenu } from "./member-user-menu";
 
 /** Shared chrome for every student page: context on the left, identity on the right. */
@@ -13,6 +14,7 @@ export function MembersHeader({
   backHref,
   meta,
   user,
+  dict,
   sticky = false,
   className,
 }: {
@@ -22,6 +24,7 @@ export function MembersHeader({
   /** Badge or counter shown before the account menu. */
   meta?: ReactNode;
   user: { name: string | null; email: string };
+  dict: MembersDictionary;
   sticky?: boolean;
   className?: string;
 }) {
@@ -29,7 +32,7 @@ export function MembersHeader({
     <header className={cn("border-b bg-card", sticky && "sticky top-0 z-20 bg-card/95 backdrop-blur", className)}>
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4">
         {backHref && (
-          <Button variant="ghost" size="icon-sm" aria-label="Voltar" render={<Link href={backHref} />}>
+          <Button variant="ghost" size="icon-sm" aria-label={dict.nav.back} render={<Link href={backHref} />}>
             <ArrowLeftIcon />
           </Button>
         )}
@@ -38,7 +41,7 @@ export function MembersHeader({
           {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
         </div>
         {meta}
-        <MemberUserMenu name={user.name ?? ""} email={user.email} />
+        <MemberUserMenu name={user.name ?? ""} email={user.email} dict={dict} />
       </div>
     </header>
   );

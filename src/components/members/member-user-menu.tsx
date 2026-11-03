@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOutIcon } from "lucide-react";
+import type { MembersDictionary } from "@/lib/i18n/members";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /** Identity + sign-out for students, who never see the producer topbar. */
-export function MemberUserMenu({ name, email }: { name: string; email: string }) {
+export function MemberUserMenu({ name, email, dict }: { name: string; email: string; dict: MembersDictionary }) {
   const initials = (name || email).slice(0, 2).toUpperCase();
 
   return (
@@ -21,7 +22,7 @@ export function MemberUserMenu({ name, email }: { name: string; email: string })
         render={
           <button
             type="button"
-            aria-label="Sua conta"
+            aria-label={dict.nav.account}
             className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted font-heading text-xs font-semibold text-foreground/80 transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             {initials}
@@ -31,7 +32,7 @@ export function MemberUserMenu({ name, email }: { name: string; email: string })
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="flex flex-col gap-0.5">
-            <span className="truncate font-medium">{name || "Minha conta"}</span>
+            <span className="truncate font-medium">{name || dict.nav.myAccount}</span>
             <span className="truncate text-xs font-normal text-muted-foreground">{email}</span>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
@@ -41,7 +42,7 @@ export function MemberUserMenu({ name, email }: { name: string; email: string })
             <form action="/api/auth/logout" method="post">
               <button type="submit" className="flex w-full items-center gap-2">
                 <LogOutIcon className="size-4" />
-                Sair
+                {dict.nav.signOut}
               </button>
             </form>
           }

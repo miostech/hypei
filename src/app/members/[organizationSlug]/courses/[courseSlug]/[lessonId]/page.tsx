@@ -8,19 +8,32 @@ import { MembersHeader } from "@/components/members/members-header";
 import { LessonMedia } from "@/components/members/lesson-media";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
 import { NotFoundError } from "@/lib/errors";
+import { getMembersDictionary } from "@/lib/i18n/members";
+import { fill } from "@/lib/i18n/locale";
+import { langParam, requestLocale } from "@/lib/i18n/server";
 import { memberCourseHref, memberLessonHref } from "@/lib/ui/routes";
 import { requireUser } from "@/modules/auth/current-user";
-import { LESSON_TYPE_LABELS } from "@/modules/members/course.schemas";
 import { getServices } from "@/server/container";
 import { setLessonCompleted } from "../../../actions";
 
-export const metadata = { title: "Aula" };
+export async function generateMetadata({
+  searchParams,
+}: PageProps<"/members/[organizationSlug]/courses/[courseSlug]/[lessonId]">): Promise<Metadata> {
+  const dict = await getMembersDictionary(await requestLocale(langParam(await searchParams)));
+  return { title: dict.lesson.title };
+}
 
-export default async function LessonPage({ params }: PageProps<"/members/[organizationSlug]/courses/[courseSlug]/[lessonId]">) {
+export default async function LessonPage({
+  params,
+  searchParams,
+}: PageProps<"/members/[organizationSlug]/courses/[courseSlug]/[lessonId]">) {
   const { organizationSlug, courseSlug, lessonId } = await params;
   const user = await requireUser(`/members/${organizationSlug}/courses/${courseSlug}/${lessonId}`);
   const services = getServices();
+
+  const dict = await getMembersDictionary(await requestLocale(langParam(await searchParams)));
 
   const organization = await services.uow.repos.organizations.findBySlug(organizationSlug);
   if (!organization) notFound();
@@ -54,33 +67,34 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
   const mediaUrl = (await services.courses.lessonMediaUrl(lesson)) ?? lesson.externalUrl;
 
   return (
-    <div className="flex min-h-svh flex-col bg-muted/40">
+    <div lang={dict.localeTag} className="flex min-h-svh flex-col bg-muted/40">
       <MembersHeader
         sticky
         title={course.title}
         subtitle={view.moduleTitle}
         backHref={memberCourseHref(organizationSlug, courseSlug)}
         user={user}
+        dict={dict}
         meta={
           access.kind === "enrolled" ? (
             <span className="tabular hidden text-xs text-muted-foreground sm:block">
-              {outline.completedLessons}/{outline.totalLessons} concluídas
+              {fill(dict.course.progressShort, { completed: outline.completedLessons, total: outline.totalLessons })}
             </span>
           ) : (
-            <Badge variant="outline">Prévia da equipe</Badge>
+            <Badge variant="outline">{dict.course.teamPreview}</Badge>
           )
         }
       />
 
       <main className="mx-auto grid w-full max-w-6xl flex-1 gap-6 p-4 sm:p-6 lg:grid-cols-[1fr_340px]">
         <section className="space-y-5">
-          <LessonMedia type={lesson.type} externalUrl={mediaUrl} content={lesson.content} mediaType={lesson.storageType} />
+          <LessonMedia type={lesson.type} externalUrl={mediaUrl} content={lesson.content} mediaType={lesson.storageType} dict={dict} />
 
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
               <Icon className="size-4" aria-hidden />
-              {LESSON_TYPE_LABELS[lesson.type]}
-              {lesson.durationSeconds ? ` · ${Math.round(lesson.durationSeconds / 60)} min` : ""}
+              {dict.lessonTypes[lesson.type]}
+              {lesson.durationSeconds ? ` · ${Math.round(lesson.durationSeconds / 60)} ${dict.course.minutesShort}` : ""}
             </p>
             <h1 className="font-heading text-2xl font-bold tracking-tight text-balance">{lesson.title}</h1>
           </div>
@@ -91,7 +105,7 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
               href={view.previousLessonId ? memberLessonHref(organizationSlug, courseSlug, view.previousLessonId) : null}
             >
               <ArrowLeftIcon />
-              Anterior
+              {dict.lesson.previous}
             </LessonNavButton>
 
             {access.kind === "enrolled" && (
@@ -107,7 +121,7 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
                   className={view.completed ? "" : "bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90"}
                 >
                   {view.completed ? <RotateCcwIcon /> : <CheckIcon />}
-                  {view.completed ? "Marcar como não concluída" : "Concluir e avançar"}
+                  {view.completed ? dict.lesson.uncomplete : dict.lesson.complete}
                 </Button>
               </form>
             )}
@@ -117,7 +131,7 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
               className="ml-auto"
               href={view.nextLessonId ? memberLessonHref(organizationSlug, courseSlug, view.nextLessonId) : null}
             >
-              Próxima
+              {dict.lesson.next}
               <ArrowRightIcon />
             </LessonNavButton>
           </div>
@@ -126,12 +140,13 @@ export default async function LessonPage({ params }: PageProps<"/members/[organi
         <aside className="space-y-3 lg:sticky lg:top-24 lg:h-fit">
           <p className="flex items-center gap-2 px-1 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
             <ListIcon className="size-3.5" aria-hidden />
-            Conteúdo do curso
+            {dict.course.outline}
           </p>
           <div className="lg:max-h-[calc(100svh-12rem)] lg:overflow-y-auto lg:pr-1 scrollbar-slim">
             <CourseOutlineList
               outline={outline}
               lessonHref={(id) => memberLessonHref(organizationSlug, courseSlug, id)}
+              dict={dict}
               currentLessonId={lesson.id}
               compact
             />

@@ -7,24 +7,19 @@ import { getCheckoutDictionary } from "@/lib/i18n/checkout";
 import { localizedCountries } from "@/lib/i18n/countries";
 import { fill } from "@/lib/i18n/locale";
 import { fillNode } from "@/lib/i18n/fill-node";
-import { requestLocale } from "@/lib/i18n/server";
+import { langParam, requestLocale } from "@/lib/i18n/server";
 import { formatAmount } from "@/lib/ui/format";
 import { KabrunLogo } from "@/components/brand/logo";
 import { CheckoutClient } from "./checkout-client";
 import { CouponProvider, OrderTotals } from "./coupon-context";
 import { SafeImage } from "./safe-image";
 
-/** O ?lang= da URL, quando houver: o resto vem do Accept-Language do navegador. */
-function langOverride(query: Record<string, string | string[] | undefined>): string | null {
-  return typeof query.lang === "string" ? query.lang : null;
-}
-
 export async function generateMetadata({
   params,
   searchParams,
 }: PageProps<"/checkout/[slug]">): Promise<Metadata> {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const dict = await getCheckoutDictionary(await requestLocale(langOverride(query)));
+  const dict = await getCheckoutDictionary(await requestLocale(langParam(query)));
   const checkout = await getServices().checkouts.getPublic(slug);
   return {
     title: checkout

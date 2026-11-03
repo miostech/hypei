@@ -1,9 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { getCheckoutDictionary } from "@/lib/i18n/checkout";
 import { localizedCountries } from "@/lib/i18n/countries";
+import { getEmailDictionary, storedLocale } from "@/lib/i18n/email";
 import { DEFAULT_LOCALE, fill, resolveLocale, SUPPORTED_LOCALES } from "@/lib/i18n/locale";
+import { getMembersDictionary } from "@/lib/i18n/members";
 import { SUPPORTED_COUNTRIES } from "@/modules/organizations/countries";
-import { PaymentMethodType } from "@/generated/prisma/enums";
+import { LessonType, PaymentMethodType } from "@/generated/prisma/enums";
+
+/** Cada família de dicionário, pelo seu carregador. */
+const FAMILIES = {
+  checkout: getCheckoutDictionary,
+  members: getMembersDictionary,
+  email: getEmailDictionary,
+} as const;
+
+const OTHER_LOCALES = SUPPORTED_LOCALES.filter((locale) => locale !== "pt");
+
+const placeholders = (value: unknown): string[] =>
+  typeof value === "string" ? [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort() : [];
 
 describe("resolveLocale", () => {
   it("picks the highest q, not the first tag", () => {
@@ -44,9 +58,11 @@ describe("fill", () => {
 });
 
 describe("checkout dictionaries", () => {
-  it("has one for every supported locale", async () => {
-    for (const locale of SUPPORTED_LOCALES) {
-      await expect(getCheckoutDictionary(locale)).resolves.toBeTruthy();
+  it("has one for every supported locale, in every family", async () => {
+    for (const [family, load] of Object.entries(FAMILIES)) {
+      for (const locale of SUPPORTED_LOCALES) {
+        await expect(load(locale), `${family}/${locale}`).resolves.toBeTruthy();
+      }
     }
   });
 
@@ -62,9 +78,6 @@ describe("checkout dictionaries", () => {
 
   it("keeps every placeholder that the Portuguese source declares", async () => {
     // Tradução que perde o {amount} manda o comprador pagar sem ver quanto.
-    const placeholders = (value: unknown): string[] =>
-      typeof value === "string" ? [...value.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort() : [];
-
     const walk = (source: unknown, target: unknown, path: string) => {
       if (typeof source === "string") {
         expect(placeholders(target), path).toEqual(placeholders(source));
@@ -72,31 +85,63 @@ describe("checkout dictionaries", () => {
       }
       if (source && typeof source === "object") {
         for (const key of Object.keys(source)) {
-          walk(
-            (source as Record<string, unknown>)[key],
-            (target as Record<string, unknown>)[key],
-            `${path}.${key}`,
-          );
+          walk((source as Record<string, unknown>)[key], (target as Record<string, unknown>)[key], `${path}.${key}`);
         }
       }
     };
 
-    const pt = await getCheckoutDictionary("pt");
-    for (const locale of SUPPORTED_LOCALES.filter((l) => l !== "pt")) {
-      walk(pt, await getCheckoutDictionary(locale), locale);
+    for (const [family, load] of Object.entries(FAMILIES)) {
+      const pt = await load("pt");
+      for (const locale of OTHER_LOCALES) walk(pt, await load(locale), `${family}/${locale}`);
+    }
+  });
+
+  it("names every lesson type the member area can render", async () => {
+    for (const locale of SUPPORTED_LOCALES) {
+      const dict = await getMembersDictionary(locale);
+      for (const type of Object.values(LessonType)) {
+        expect(dict.lessonTypes[type], `${locale}/${type}`).toBeTruthy();
+      }
     }
   });
 
   it("does not leave a translation copied from the Portuguese", async () => {
-    const pt = await getCheckoutDictionary("pt");
-    for (const locale of SUPPORTED_LOCALES.filter((l) => l !== "pt")) {
-      const dict = await getCheckoutDictionary(locale);
-      // "Pix", "Boleto", "Total" e companhia são iguais de propósito; frase inteira não é.
-      expect(dict.form.title, locale).not.toBe(pt.form.title);
-      expect(dict.summary.title, locale).not.toBe(pt.summary.title);
-      expect(dict.result.paid.body, locale).not.toBe(pt.result.paid.body);
-      expect(dict.errors.coupon.expired, locale).not.toBe(pt.errors.coupon.expired);
+    // "Pix", "Boleto", "Total" e companhia são iguais de propósito; frase inteira não é.
+    const checkoutPt = await getCheckoutDictionary("pt");
+    const membersPt = await getMembersDictionary("pt");
+    const emailPt = await getEmailDictionary("pt");
+
+    for (const locale of OTHER_LOCALES) {
+      const checkout = await getCheckoutDictionary(locale);
+      expect(checkout.form.title, locale).not.toBe(checkoutPt.form.title);
+      expect(checkout.summary.title, locale).not.toBe(checkoutPt.summary.title);
+      expect(checkout.result.paid.body, locale).not.toBe(checkoutPt.result.paid.body);
+      expect(checkout.errors.coupon.expired, locale).not.toBe(checkoutPt.errors.coupon.expired);
+
+      const members = await getMembersDictionary(locale);
+      expect(members.home.subtitle, locale).not.toBe(membersPt.home.subtitle);
+      expect(members.lesson.downloadHint, locale).not.toBe(membersPt.lesson.downloadHint);
+
+      const email = await getEmailDictionary(locale);
+      expect(email.purchaseConfirmed.heading, locale).not.toBe(emailPt.purchaseConfirmed.heading);
+      expect(email.footer.processedBy, locale).not.toBe(emailPt.footer.processedBy);
     }
+  });
+});
+
+describe("storedLocale", () => {
+  it("falls back to Portuguese for what the column does not carry", () => {
+    // Quem comprou antes da coluna existir tem null, e o e-mail dele já era em português.
+    expect(storedLocale(null)).toBe(DEFAULT_LOCALE);
+    expect(storedLocale(undefined)).toBe(DEFAULT_LOCALE);
+    expect(storedLocale("")).toBe(DEFAULT_LOCALE);
+    expect(storedLocale("klingon")).toBe(DEFAULT_LOCALE);
+  });
+
+  it("accepts the language, and a full tag if one ever gets stored", () => {
+    expect(storedLocale("de")).toBe("de");
+    expect(storedLocale("es-ES")).toBe("es");
+    expect(storedLocale("PT-BR")).toBe("pt");
   });
 });
 

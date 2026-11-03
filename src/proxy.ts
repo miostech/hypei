@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isLocale, LANG_COOKIE } from "@/lib/i18n/locale";
 import { SESSION_COOKIE, verifyToken, type SessionClaims } from "@/modules/auth/session-token";
 
 /**
@@ -44,6 +45,15 @@ export async function proxy(request: NextRequest) {
 
   const response = NextResponse.next({ request: { headers } });
   response.headers.set("x-request-id", requestId);
+
+  // O ?lang= vale para a navegação inteira, não só para a página que o recebeu: sem isto, quem
+  // abre o checkout em espanhol e clica para a próxima tela cai de volta no Accept-Language.
+  // Só grava idioma que existe — a URL é entrada de fora como qualquer outra.
+  const requested = request.nextUrl.searchParams.get("lang");
+  if (isLocale(requested)) {
+    response.cookies.set(LANG_COOKIE, requested, { path: "/", sameSite: "lax", httpOnly: true });
+  }
+
   return response;
 }
 

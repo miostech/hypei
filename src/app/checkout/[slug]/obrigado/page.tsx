@@ -6,14 +6,14 @@ import { KabrunLogo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { getCheckoutDictionary } from "@/lib/i18n/checkout";
 import { fill } from "@/lib/i18n/locale";
-import { requestLocale } from "@/lib/i18n/server";
+import { langParam, requestLocale } from "@/lib/i18n/server";
 import { memberCourseHref } from "@/lib/ui/routes";
 import { getServices } from "@/server/container";
 import { PaymentStatusWatcher } from "./status-watcher";
 
 export async function generateMetadata({ searchParams }: PageProps<"/checkout/[slug]/obrigado">): Promise<Metadata> {
   const query = await searchParams;
-  const dict = await getCheckoutDictionary(await requestLocale(typeof query.lang === "string" ? query.lang : null));
+  const dict = await getCheckoutDictionary(await requestLocale(langParam(query)));
   return { title: dict.result.title };
 }
 
@@ -28,7 +28,7 @@ export default async function CheckoutResultPage({ params, searchParams }: PageP
   if (!paymentId) notFound();
 
   // O ?lang= chega aqui posto pelo checkout, para a volta do provedor não trocar de idioma.
-  const dict = await getCheckoutDictionary(await requestLocale(typeof query.lang === "string" ? query.lang : null));
+  const dict = await getCheckoutDictionary(await requestLocale(langParam(query)));
 
   const services = getServices();
   const [payment, checkout] = await Promise.all([

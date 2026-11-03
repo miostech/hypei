@@ -13,7 +13,10 @@ export interface PartyContext {
 export interface PurchaseContext extends PartyContext {
   customerName: string;
   customerEmail: string;
-  productName: string;
+  /** Idioma em que esta pessoa comprou. Null para quem comprou antes de a coluna existir. */
+  customerLocale: string | null;
+  /** Null quando o pedido não tem item identificável; quem escreve o e-mail decide a palavra. */
+  productName: string | null;
   amount: bigint;
   netAmount: bigint;
   currency: string;
@@ -25,7 +28,8 @@ export interface PurchaseContext extends PartyContext {
 export interface RefundContext extends PartyContext {
   customerName: string;
   customerEmail: string;
-  productName: string;
+  customerLocale: string | null;
+  productName: string | null;
   amount: bigint;
   currency: string;
 }
@@ -103,7 +107,8 @@ export class PrismaNotificationRepository implements NotificationRepository {
       ...this.party(payment.organization),
       customerName: payment.customer.name,
       customerEmail: payment.customer.email,
-      productName: product?.name ?? "seu pedido",
+      customerLocale: payment.customer.locale,
+      productName: product?.name ?? null,
       amount: payment.amount,
       netAmount: payment.producerNetAmount ?? payment.amount,
       currency: payment.currency,
@@ -131,7 +136,8 @@ export class PrismaNotificationRepository implements NotificationRepository {
       ...this.party(refund.payment.organization),
       customerName: refund.payment.customer.name,
       customerEmail: refund.payment.customer.email,
-      productName: refund.payment.order.items[0]?.offer.product.name ?? "sua compra",
+      customerLocale: refund.payment.customer.locale,
+      productName: refund.payment.order.items[0]?.offer.product.name ?? null,
       amount: refund.amount,
       currency: refund.payment.currency,
     };

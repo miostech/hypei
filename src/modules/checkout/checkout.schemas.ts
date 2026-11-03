@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PaymentMethodType } from "@/generated/prisma/enums";
+import { SUPPORTED_LOCALES } from "@/lib/i18n/locale";
 import { slugSchema } from "@/modules/organizations/organization.schemas";
 
 /**
@@ -50,6 +51,14 @@ export const startCheckoutSchema = z.object({
   couponCode: z.string().trim().max(32).optional().or(z.literal("")),
   referralCode: z.string().trim().max(24).optional().or(z.literal("")),
   tracking: trackingSchema,
+  /**
+   * Idioma em que o comprador estava lendo a página.
+   *
+   * Vai para o Customer porque o e-mail de confirmação sai do outbox, horas depois e sem
+   * requisição nenhuma: na hora de mandar não existe mais Accept-Language para consultar. O
+   * único momento em que dá para saber a língua dele é agora.
+   */
+  locale: z.enum(SUPPORTED_LOCALES).optional(),
 });
 
 export type StartCheckoutInput = z.infer<typeof startCheckoutSchema>;

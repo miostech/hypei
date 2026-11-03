@@ -200,6 +200,7 @@ export class CheckoutService {
         email: input.email,
         phone: input.phone || null,
         country: input.country ?? null,
+        locale: input.locale ?? null,
       });
 
       // The discount is recomputed here from the offer price: whatever the browser

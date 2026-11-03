@@ -520,6 +520,8 @@ model Customer {
   email          String
   phone          String?
   country        String?    @db.Char(2)
+  /// Idioma em que esta pessoa comprou, para o e-mail sair na língua dela. Null = não sabemos.
+  locale         String?    @db.VarChar(8)
   taxIdType      TaxIdType?
   taxId          String?
   createdAt      DateTime   @default(now())

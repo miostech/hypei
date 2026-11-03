@@ -25,6 +25,14 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
  */
 export type LocaleTag = "pt-BR" | "en" | "es" | "fr" | "de" | "it";
 
+/**
+ * Onde o ?lang= fica guardado depois de usado.
+ *
+ * É cookie de sessão de propósito: escolher o idioma pela URL é coisa de agora — conferir um
+ * checkout, mandar o link no idioma do mercado. Fechar o navegador volta a valer o que ele pede.
+ */
+export const LANG_COOKIE = "kabrun_lang";
+
 /** Português, porque é a língua de quem vende e o destino de quem não pedir nada. */
 export const DEFAULT_LOCALE: Locale = "pt";
 

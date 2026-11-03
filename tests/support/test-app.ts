@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Locale } from "@/lib/i18n/locale";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createPrismaClient } from "@/lib/database/postgres/client";
 import { InProcessEventBus } from "@/lib/events/event-bus";
@@ -138,7 +139,7 @@ export async function startPurchase(
   app: TestApp,
   checkoutSlug: string,
   email = `buyer-${randomUUID().slice(0, 6)}@example.com`,
-  options: { couponCode?: string; referralCode?: string } = {},
+  options: { couponCode?: string; referralCode?: string; locale?: Locale } = {},
 ) {
   const result = await app.services.checkouts.start({
     slug: checkoutSlug,
@@ -148,6 +149,7 @@ export async function startPurchase(
     email,
     couponCode: options.couponCode,
     referralCode: options.referralCode,
+    locale: options.locale,
     tracking: { utm_source: "test" },
   });
   const payment = await app.prisma.payment.findUniqueOrThrow({ where: { id: result.paymentId } });
