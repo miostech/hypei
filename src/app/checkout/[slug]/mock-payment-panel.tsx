@@ -10,6 +10,9 @@ import { simulateMockPayment } from "./actions";
  * Development-only payment step. Clicking here asks the mock provider to emit a SIGNED
  * webhook — the payment is confirmed through the same pipeline a real provider uses,
  * never by this button directly.
+ *
+ * Fica em português de propósito: quem lê isto é quem está desenvolvendo, nunca um comprador.
+ * Em produção o provedor é a Stripe e este painel não existe.
  */
 export function MockPaymentPanel({ paymentId, amountLabel, onSettled }: { paymentId: string; amountLabel: string; onSettled: () => void }) {
   const [pending, setPending] = useState<"succeeded" | "failed" | null>(null);

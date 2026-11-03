@@ -186,7 +186,11 @@ export class CheckoutService {
     // A trava de verdade é esta, não a da tela: sem ela o produtor vendia, o dinheiro entrava
     // e o saque ficava bloqueado — com o comprador já cobrado e sem caminho de volta barato.
     if (!checkout.acceptsPayments) {
-      throw new ValidationError("Este checkout ainda não está liberado para receber pagamentos. Fale com quem está vendendo.");
+      // `reason` é a chave da frase no dicionário do comprador: quem compra de fora lê isto
+      // no idioma dele, e não em português.
+      throw new ValidationError("Este checkout ainda não está liberado para receber pagamentos. Fale com quem está vendendo.", {
+        reason: "checkoutNotLive",
+      });
     }
     const { organization, offer } = checkout;
 
@@ -211,7 +215,7 @@ export class CheckoutService {
 
       if (applied) {
         const claimed = await repos.coupons.claimRedemption(applied.coupon.id);
-        if (!claimed) throw new CouponNotUsableError("Este cupom atingiu o limite de usos");
+        if (!claimed) throw new CouponNotUsableError("maxRedemptions", "Este cupom atingiu o limite de usos");
       }
 
       const discount = applied?.discount ?? 0n;

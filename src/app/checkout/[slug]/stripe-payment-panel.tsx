@@ -5,6 +5,8 @@ import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Loader2Icon, LockIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { CheckoutDictionary } from "@/lib/i18n/checkout";
+import { fill } from "@/lib/i18n/locale";
 
 /**
  * Stripe Payment Element. Card data goes straight to Stripe — it never touches Kabrun's
@@ -16,12 +18,14 @@ export function StripePaymentPanel({
   accentColor,
   returnUrl,
   amountLabel,
+  dict,
 }: {
   publishableKey: string;
   clientSecret: string;
   accentColor: string;
   returnUrl: string;
   amountLabel: string;
+  dict: CheckoutDictionary;
 }) {
   const stripePromise = useMemo<Promise<Stripe | null>>(() => loadStripe(publishableKey), [publishableKey]);
 
@@ -31,15 +35,27 @@ export function StripePaymentPanel({
       options={{
         clientSecret,
         appearance: { theme: "stripe", variables: { colorPrimary: accentColor, borderRadius: "10px" } },
-        locale: "pt-BR",
+        // Os campos de cartão são da Stripe, não nossos: sem isto, um comprador alemão lia a
+        // página em alemão e "Kartennummer" em português.
+        locale: dict.localeTag,
       }}
     >
-      <PaymentForm returnUrl={returnUrl} amountLabel={amountLabel} accentColor={accentColor} />
+      <PaymentForm returnUrl={returnUrl} amountLabel={amountLabel} accentColor={accentColor} dict={dict} />
     </Elements>
   );
 }
 
-function PaymentForm({ returnUrl, amountLabel, accentColor }: { returnUrl: string; amountLabel: string; accentColor: string }) {
+function PaymentForm({
+  returnUrl,
+  amountLabel,
+  accentColor,
+  dict,
+}: {
+  returnUrl: string;
+  amountLabel: string;
+  accentColor: string;
+  dict: CheckoutDictionary;
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -55,7 +71,9 @@ function PaymentForm({ returnUrl, amountLabel, accentColor }: { returnUrl: strin
         setError(null);
         const result = await stripe.confirmPayment({ elements, confirmParams: { return_url: returnUrl } });
         if (result.error) {
-          setError(result.error.message ?? "Não foi possível concluir o pagamento.");
+          // A mensagem da Stripe já vem no locale que passamos ao Elements; a nossa só entra
+          // quando ela não manda nenhuma.
+          setError(result.error.message ?? dict.payment.failed);
           setSubmitting(false);
         }
       }}
@@ -64,7 +82,7 @@ function PaymentForm({ returnUrl, amountLabel, accentColor }: { returnUrl: strin
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" size="lg" className="w-full" disabled={!stripe || submitting} style={{ background: accentColor }}>
         {submitting ? <Loader2Icon className="animate-spin" /> : <LockIcon />}
-        Pagar {amountLabel}
+        {fill(dict.payment.pay, { amount: amountLabel })}
       </Button>
     </form>
   );

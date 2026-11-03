@@ -3,19 +3,33 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { trackingSchema } from "@/modules/checkout/checkout.schemas";
 import { getServices } from "@/server/container";
+import { getCheckoutDictionary } from "@/lib/i18n/checkout";
+import { localizedCountries } from "@/lib/i18n/countries";
+import { fill } from "@/lib/i18n/locale";
+import { fillNode } from "@/lib/i18n/fill-node";
+import { requestLocale } from "@/lib/i18n/server";
 import { formatAmount } from "@/lib/ui/format";
 import { KabrunLogo } from "@/components/brand/logo";
 import { CheckoutClient } from "./checkout-client";
 import { CouponProvider, OrderTotals } from "./coupon-context";
 import { SafeImage } from "./safe-image";
 
+/** O ?lang= da URL, quando houver: o resto vem do Accept-Language do navegador. */
+function langOverride(query: Record<string, string | string[] | undefined>): string | null {
+  return typeof query.lang === "string" ? query.lang : null;
+}
+
 export async function generateMetadata({
   params,
+  searchParams,
 }: PageProps<"/checkout/[slug]">): Promise<Metadata> {
-  const { slug } = await params;
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
+  const dict = await getCheckoutDictionary(await requestLocale(langOverride(query)));
   const checkout = await getServices().checkouts.getPublic(slug);
   return {
-    title: checkout ? `${checkout.product.name} — Checkout` : "Checkout",
+    title: checkout
+      ? fill(dict.page.title, { product: checkout.product.name })
+      : dict.page.titleFallback,
   };
 }
 
@@ -39,6 +53,10 @@ export default async function PublicCheckoutPage({
     affiliateId: pick("aff") ?? pick("affiliateId"),
   });
 
+  // Quem compra escolhe o idioma, não quem vende: é o navegador do comprador que diz qual é.
+  const locale = await requestLocale(pick("lang"));
+  const dict = await getCheckoutDictionary(locale);
+
   const accent = checkout.config.theme.accentColor;
   const price = formatAmount(checkout.offer.amount, checkout.offer.currency);
   // Assinadas a cada renderização: a página é dinâmica, então a URL nunca chega vencida ao
@@ -50,7 +68,9 @@ export default async function PublicCheckoutPage({
   ]);
 
   return (
-    <div className="flex min-h-svh flex-col bg-muted/40">
+    // O <html lang> do layout raiz é pt-BR e vale para o app todo; aqui o lang do idioma do
+    // comprador desce na subárvore, que é o que leitor de tela e tradutor automático olham.
+    <div lang={dict.localeTag} className="flex min-h-svh flex-col bg-muted/40">
       <div
         aria-hidden
         className="h-1.5 w-full"
@@ -84,7 +104,9 @@ export default async function PublicCheckoutPage({
                 organizationId={checkout.organization.id}
                 checkoutId={checkout.checkoutId}
                 collectPhone={checkout.config.fields.phone}
-                collectCountry={checkout.config.fields.country}
+                countries={
+                  checkout.config.fields.country ? localizedCountries(dict.localeTag) : null
+                }
                 paymentMethods={checkout.paymentMethods}
                 provider={checkout.provider}
                 publishableKey={
@@ -93,6 +115,8 @@ export default async function PublicCheckoutPage({
                 accentColor={accent}
                 tracking={tracking}
                 amountLabel={price}
+                locale={locale}
+                dict={dict}
               />
             ) : (
               /* O serviço recusa esta venda de qualquer jeito. Esconder o formulário é o que
@@ -102,13 +126,11 @@ export default async function PublicCheckoutPage({
                   className="mx-auto size-8 text-muted-foreground"
                   aria-hidden
                 />
-                <p className="font-medium">Checkout ainda não liberado</p>
+                <p className="font-medium">{dict.notLive.title}</p>
                 <p className="text-pretty text-sm text-muted-foreground">
-                  {checkout.organization.name} ainda está concluindo a
-                  verificação da conta de recebimento. Nenhuma cobrança é feita
-                  até lá.
+                  {fill(dict.notLive.body, { seller: checkout.organization.name })}
                   {checkout.organization.supportEmail
-                    ? ` Dúvidas: ${checkout.organization.supportEmail}.`
+                    ? ` ${fill(dict.notLive.support, { email: checkout.organization.supportEmail })}`
                     : ""}
                 </p>
               </div>
@@ -118,7 +140,7 @@ export default async function PublicCheckoutPage({
           <aside className="space-y-4 lg:sticky lg:top-8 lg:h-fit">
             <div className="overflow-hidden rounded-2xl border bg-card shadow-soft">
               <p className="border-b px-5 py-3 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                Resumo do pedido
+                {dict.summary.title}
               </p>
               <div className="space-y-4 p-5">
                 <div className="flex items-start gap-3">
@@ -144,14 +166,14 @@ export default async function PublicCheckoutPage({
                   </div>
                 </div>
 
-                <OrderTotals subtotalLabel={price} />
+                <OrderTotals subtotalLabel={price} dict={dict} />
               </div>
             </div>
 
             <div className="space-y-2.5 rounded-2xl border bg-card p-5 text-sm text-muted-foreground shadow-soft">
               <p className="flex items-center gap-2">
                 <LockIcon className="size-4 text-success" aria-hidden />{" "}
-                Pagamento processado com segurança
+                {dict.trust.secure}
               </p>
               {checkout.config.guaranteeDays > 0 && (
                 <p className="flex items-center gap-2">
@@ -159,20 +181,23 @@ export default async function PublicCheckoutPage({
                     className="size-4 text-success"
                     aria-hidden
                   />{" "}
-                  Garantia de {checkout.config.guaranteeDays} dias
+                  {fill(dict.trust.guarantee, { days: checkout.config.guaranteeDays })}
                 </p>
               )}
               <p className="flex items-center gap-2">
-                <MailIcon className="size-4 text-success" aria-hidden /> Acesso
-                enviado por e-mail
+                <MailIcon className="size-4 text-success" aria-hidden />{" "}
+                {dict.trust.emailAccess}
               </p>
             </div>
 
             <p className="px-1 text-xs text-muted-foreground">
-              Vendido por{" "}
-              <strong className="font-medium text-foreground">
-                {checkout.organization.name}
-              </strong>
+              {fillNode(
+                dict.soldBy,
+                "seller",
+                <strong className="font-medium text-foreground">
+                  {checkout.organization.name}
+                </strong>,
+              )}
               {checkout.organization.supportEmail
                 ? ` · ${checkout.organization.supportEmail}`
                 : ""}
@@ -183,8 +208,7 @@ export default async function PublicCheckoutPage({
 
       <footer className="border-t bg-card/60 py-5">
         <p className="mx-auto flex w-full max-w-5xl items-center justify-center gap-1.5 px-4 text-xs text-muted-foreground">
-          Pagamento processado por
-          <KabrunLogo className="h-4" />
+          {fillNode(dict.processedBy, "brand", <KabrunLogo className="h-4" />)}
         </p>
       </footer>
     </div>

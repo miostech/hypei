@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { PaymentMethodType } from "@/generated/prisma/enums";
-import { SUPPORTED_COUNTRIES, COUNTRY_INFO } from "@/modules/organizations/countries";
-import { PAYMENT_METHOD_LABELS } from "@/modules/payments/payment-method-resolver";
+import type { CheckoutDictionary } from "@/lib/i18n/checkout";
+import { fill, type Locale } from "@/lib/i18n/locale";
+import type { CountryCode } from "@/modules/organizations/countries";
 import type { TrackingInput } from "@/modules/checkout/checkout.schemas";
 import { applyCouponAction, registerAffiliateClick, startCheckoutAction, trackCheckoutEvent } from "./actions";
 import { useCoupon } from "./coupon-context";
@@ -35,25 +36,30 @@ export function CheckoutClient({
   organizationId,
   checkoutId,
   collectPhone,
-  collectCountry,
+  countries,
   paymentMethods,
   provider,
   publishableKey,
   accentColor,
   tracking,
   amountLabel,
+  locale,
+  dict,
 }: {
   slug: string;
   organizationId: string;
   checkoutId: string;
   collectPhone: boolean;
-  collectCountry: boolean;
+  /** Nomes já no idioma do comprador; `null` quando este checkout não pede país. */
+  countries: { code: CountryCode; name: string }[] | null;
   paymentMethods: PaymentMethodType[];
   provider: string;
   publishableKey: string | null;
   accentColor: string;
   tracking: TrackingInput;
   amountLabel: string;
+  locale: Locale;
+  dict: CheckoutDictionary;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -80,15 +86,15 @@ export function CheckoutClient({
     if (!couponInput.trim()) return;
     setCheckingCoupon(true);
     setCouponError(null);
-    const result = await applyCouponAction({ slug, code: couponInput });
+    const result = await applyCouponAction({ slug, code: couponInput, locale });
     setCheckingCoupon(false);
     if (!result.ok || !result.code) {
       setCoupon(null);
-      setCouponError(result.message ?? "Cupom inválido");
+      setCouponError(result.message ?? dict.errors.invalidCode);
       return;
     }
     setCoupon({ code: result.code, discount: result.discount!, total: result.total! });
-    toast.success(`Cupom ${result.code} aplicado`);
+    toast.success(fill(dict.coupon.applied, { code: result.code }));
   }
 
   useEffect(() => {
@@ -121,38 +127,42 @@ export function CheckoutClient({
       name: String(formData.get("name") ?? ""),
       email: String(formData.get("email") ?? ""),
       phone: String(formData.get("phone") ?? ""),
-      country: collectCountry ? String(formData.get("country") ?? "") : undefined,
+      country: countries ? String(formData.get("country") ?? "") : undefined,
       couponCode: coupon?.code,
       referralCode: currentReferral(),
       tracking: { ...tracking, referrer },
+      locale,
     });
     setSubmitting(false);
 
     if (!result.ok || !result.paymentId) {
-      setError(result.message ?? "Não foi possível iniciar o pagamento.");
-      toast.error(result.message ?? "Não foi possível iniciar o pagamento.");
+      setError(result.message ?? dict.errors.startFailed);
+      toast.error(result.message ?? dict.errors.startFailed);
       return;
     }
     setPayment({ paymentId: result.paymentId, clientSecret: result.clientSecret ?? null });
   }
 
   if (payment) {
+    // O &lang= vai na URL de retorno porque a página de obrigado é outra requisição: sem ele,
+    // um comprador que chegou por ?lang= voltaria do provedor para uma tela em português.
     return (
       <div className="space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
-        <h2 className="font-heading text-lg font-semibold">Pagamento</h2>
+        <h2 className="font-heading text-lg font-semibold">{dict.payment.title}</h2>
         {provider === "STRIPE" && publishableKey && payment.clientSecret ? (
           <StripePaymentPanel
             publishableKey={publishableKey}
             clientSecret={payment.clientSecret}
             accentColor={accentColor}
-            returnUrl={`${window.location.origin}/checkout/${slug}/obrigado?payment=${payment.paymentId}`}
+            returnUrl={`${window.location.origin}/checkout/${slug}/obrigado?payment=${payment.paymentId}&lang=${locale}`}
             amountLabel={payLabel}
+            dict={dict}
           />
         ) : (
           <MockPaymentPanel
             paymentId={payment.paymentId}
             amountLabel={payLabel}
-            onSettled={() => router.push(`/checkout/${slug}/obrigado?payment=${payment.paymentId}`)}
+            onSettled={() => router.push(`/checkout/${slug}/obrigado?payment=${payment.paymentId}&lang=${locale}`)}
           />
         )}
       </div>
@@ -161,38 +171,38 @@ export function CheckoutClient({
 
   return (
     <form action={handleSubmit} className="space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
-      <h2 className="font-heading text-lg font-semibold">Seus dados</h2>
+      <h2 className="font-heading text-lg font-semibold">{dict.form.title}</h2>
 
       <div className="space-y-1.5">
-        <Label htmlFor="name">Nome completo</Label>
-        <Input id="name" name="name" required autoComplete="name" className="h-11 rounded-xl" placeholder="Como no documento" />
+        <Label htmlFor="name">{dict.form.name}</Label>
+        <Input id="name" name="name" required autoComplete="name" className="h-11 rounded-xl" placeholder={dict.form.namePlaceholder} />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="email">E-mail</Label>
-        <Input id="email" name="email" type="email" required autoComplete="email" className="h-11 rounded-xl" placeholder="voce@email.com" />
-        <p className="text-xs text-muted-foreground">É para este e-mail que enviaremos o acesso.</p>
+        <Label htmlFor="email">{dict.form.email}</Label>
+        <Input id="email" name="email" type="email" required autoComplete="email" className="h-11 rounded-xl" placeholder={dict.form.emailPlaceholder} />
+        <p className="text-xs text-muted-foreground">{dict.form.emailHint}</p>
       </div>
 
       {collectPhone && (
         <div className="space-y-1.5">
-          <Label htmlFor="phone">Telefone</Label>
+          <Label htmlFor="phone">{dict.form.phone}</Label>
           <Input id="phone" name="phone" type="tel" autoComplete="tel" className="h-11 rounded-xl" />
         </div>
       )}
 
-      {collectCountry && (
+      {countries && (
         <div className="space-y-1.5">
-          <Label htmlFor="country">País</Label>
+          <Label htmlFor="country">{dict.form.country}</Label>
           <select
             id="country"
             name="country"
             defaultValue="BR"
             className="flex h-11 w-full rounded-xl border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
           >
-            {SUPPORTED_COUNTRIES.map((code) => (
-              <option key={code} value={code}>
-                {COUNTRY_INFO[code].name}
+            {countries.map((country) => (
+              <option key={country.code} value={country.code}>
+                {country.name}
               </option>
             ))}
           </select>
@@ -200,7 +210,7 @@ export function CheckoutClient({
       )}
 
       <div className="space-y-1.5 border-t pt-4">
-        <Label htmlFor="coupon">Cupom de desconto</Label>
+        <Label htmlFor="coupon">{dict.coupon.label}</Label>
         <div className="flex gap-2">
           <Input
             id="coupon"
@@ -218,7 +228,7 @@ export function CheckoutClient({
               }
             }}
             disabled={Boolean(coupon)}
-            placeholder="Tem um cupom?"
+            placeholder={dict.coupon.placeholder}
             autoComplete="off"
             className="h-11 rounded-xl uppercase"
           />
@@ -229,27 +239,29 @@ export function CheckoutClient({
             disabled={checkingCoupon || !couponInput.trim()}
             onClick={() => (coupon ? (setCoupon(null), setCouponInput("")) : void applyCoupon())}
           >
-            {checkingCoupon ? <Loader2Icon className="animate-spin" /> : coupon ? "Remover" : "Aplicar"}
+            {checkingCoupon ? <Loader2Icon className="animate-spin" /> : coupon ? dict.coupon.remove : dict.coupon.apply}
           </Button>
         </div>
         {couponError && <p className="text-xs text-destructive">{couponError}</p>}
         {coupon && (
           <p className="flex items-center justify-between rounded-xl bg-success/10 px-3 py-2 text-sm text-success">
-            <span>Cupom {coupon.code}</span>
+            <span>{fill(dict.coupon.line, { code: coupon.code })}</span>
             <span className="font-semibold">− {coupon.discount}</span>
           </p>
         )}
       </div>
 
       {paymentMethods.length > 0 && (
-        <p className="text-xs text-muted-foreground">Formas de pagamento disponíveis: {paymentMethods.map((m) => PAYMENT_METHOD_LABELS[m]).join(", ")}.</p>
+        <p className="text-xs text-muted-foreground">
+          {fill(dict.payment.methods, { methods: paymentMethods.map((m) => dict.methodNames[m]).join(", ") })}
+        </p>
       )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <Button type="submit" size="lg" className="h-12 w-full rounded-xl text-base" disabled={submitting} style={{ background: accentColor }}>
         {submitting ? <Loader2Icon className="animate-spin" /> : <LockIcon />}
-        Ir para o pagamento · {payLabel}
+        {fill(dict.form.submit, { amount: payLabel })}
       </Button>
     </form>
   );

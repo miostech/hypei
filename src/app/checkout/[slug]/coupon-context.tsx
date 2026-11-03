@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import type { CheckoutDictionary } from "@/lib/i18n/checkout";
+import { fill } from "@/lib/i18n/locale";
 
 export interface AppliedCoupon {
   code: string;
@@ -31,23 +33,23 @@ export function useCoupon(): CouponContextValue {
   return context;
 }
 
-export function OrderTotals({ subtotalLabel }: { subtotalLabel: string }) {
+export function OrderTotals({ subtotalLabel, dict }: { subtotalLabel: string; dict: CheckoutDictionary }) {
   const { coupon } = useCoupon();
 
   return (
     <>
       <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">Subtotal</span>
+        <span className="text-muted-foreground">{dict.summary.subtotal}</span>
         <span className="tabular">{subtotalLabel}</span>
       </div>
       {coupon && (
         <div className="flex items-center justify-between text-sm text-success">
-          <span>Cupom {coupon.code}</span>
+          <span>{fill(dict.coupon.line, { code: coupon.code })}</span>
           <span className="tabular">− {coupon.discount}</span>
         </div>
       )}
       <div className="flex items-center justify-between border-t pt-4">
-        <span className="font-medium">Total</span>
+        <span className="font-medium">{dict.summary.total}</span>
         <span className="tabular font-heading text-xl font-bold">{coupon?.total ?? subtotalLabel}</span>
       </div>
     </>
