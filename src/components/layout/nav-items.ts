@@ -3,6 +3,7 @@ import {
   BanknoteIcon,
   BookOpenIcon,
   CreditCardIcon,
+  HandshakeIcon,
   type LucideIcon,
   LayoutDashboardIcon,
   LinkIcon,
@@ -68,6 +69,9 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/subscriptions", key: "subscriptions", icon: RepeatIcon, permission: "sales:read" },
       { href: "/members-area", key: "membersArea", icon: BookOpenIcon, permission: "products:read" },
       { href: "/affiliates", key: "affiliates", icon: LinkIcon, permission: "sales:read" },
+      // Esta é a única entrada do menu que não é sobre a operação da organização, e sim sobre a
+      // pessoa: o que ela divulga de outros produtores. Por isso a permissão mais frouxa.
+      { href: "/affiliations", key: "affiliations", icon: HandshakeIcon, permission: "organization:read" },
     ],
   },
   {

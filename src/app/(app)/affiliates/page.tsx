@@ -27,11 +27,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AffiliatesPage() {
   const { organization, membership } = await requirePagePermission("sales:read");
   const services = getServices();
-  const [affiliates, totals, commissions, checkouts] = await Promise.all([
+  const [affiliates, totals, commissions, products] = await Promise.all([
     services.affiliates.list(organization.id),
     services.affiliates.totals(organization.id),
     services.affiliates.listCommissions(organization.id, 50),
-    services.checkouts.list(organization.id),
+    services.products.list(organization.id),
   ]);
   const dict = await getAppDictionary(await appLocale());
   const t = dict.affiliates;
@@ -43,14 +43,14 @@ export default async function AffiliatesPage() {
   const byAffiliate = new Map(totals.map((entry) => [entry.affiliateId, entry]));
 
   const sum = (key: "pending" | "available" | "paid") => totals.reduce((total, entry) => total + entry[key], 0n);
-  const checkoutOptions = checkouts.map((checkout) => ({ id: checkout.id, name: checkout.name }));
+  const productOptions = products.map((product) => ({ id: product.id, name: product.name }));
 
   return (
     <>
       <PageHeader
         title={t.title}
         description={t.description}
-        actions={canEdit && <AffiliateDialog checkouts={checkoutOptions} />}
+        actions={canEdit && <AffiliateDialog products={productOptions} />}
       />
 
       <section className="grid gap-4 sm:grid-cols-3">
@@ -64,7 +64,7 @@ export default async function AffiliatesPage() {
           icon={UsersIcon}
           title={t.emptyTitle}
           description={t.emptyBody}
-          action={canEdit ? <AffiliateDialog checkouts={checkoutOptions} /> : undefined}
+          action={canEdit ? <AffiliateDialog products={productOptions} /> : undefined}
         />
       ) : (
         <Card className="py-0">
@@ -134,7 +134,7 @@ export default async function AffiliatesPage() {
                           )}
                           {canEdit && (
                             <>
-                              <AffiliateDialog affiliate={values} checkouts={checkoutOptions} />
+                              <AffiliateDialog affiliate={values} products={productOptions} />
                               <form action={setAffiliateActive}>
                                 <input type="hidden" name="affiliateId" value={affiliate.id} />
                                 <input type="hidden" name="active" value={affiliate.active ? "false" : "true"} />

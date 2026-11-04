@@ -86,7 +86,7 @@ export function buildServices(deps: ServiceDependencies) {
   });
   const refunds = new RefundService(uow, deps.paymentProvider, ledger, affiliates);
   const disputes = new DisputeService(uow, ledger, affiliates);
-  const settlements = new SettlementService(uow, ledger, deps.clock);
+  const settlements = new SettlementService(uow, ledger, affiliates, deps.clock);
   const risk = new RiskService(deps.mongo.riskEvents);
   const payouts = new PayoutService(uow, deps.paymentProvider, ledger, balances, risk, deps.clock, {
     minimumPayout: deps.config.minimumPayout,

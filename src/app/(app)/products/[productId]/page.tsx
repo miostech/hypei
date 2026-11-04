@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Metadata } from "next";
+import { getEnv } from "@/lib/env";
 import { NotFoundError } from "@/lib/errors";
 import { getAppDictionary } from "@/lib/i18n/app";
 import { appLocale } from "@/lib/i18n/app/server";
@@ -15,6 +16,7 @@ import { requirePagePermission } from "@/modules/organizations/current-organizat
 import { getServices } from "@/server/container";
 import { archiveProduct, updateProduct } from "../actions";
 import { ProductForm } from "../product-form";
+import { AffiliationCard } from "./affiliation-card";
 
 export async function generateMetadata(): Promise<Metadata> {
   const dict = await getAppDictionary(await appLocale());
@@ -30,10 +32,11 @@ export default async function ProductPage({ params }: PageProps<"/products/[prod
     if (error instanceof NotFoundError) notFound();
     throw error;
   });
-  const [allOffers, delivery, thumbnailUrl] = await Promise.all([
+  const [allOffers, delivery, thumbnailUrl, affiliates] = await Promise.all([
     services.offers.list(organization.id),
     services.products.delivery(organization.id, product.id),
     services.products.thumbnailUrl(product.thumbnailKey),
+    services.affiliates.list(organization.id),
   ]);
   const offers = allOffers.filter((offer) => offer.productId === product.id);
   const dict = await getAppDictionary(await appLocale());
@@ -70,6 +73,14 @@ export default async function ProductPage({ params }: PageProps<"/products/[prod
           thumbnailKey: product.thumbnailKey ?? "",
           thumbnailUrl,
         }}
+      />
+
+      <AffiliationCard
+        productId={product.id}
+        enabled={product.affiliationEnabled}
+        commission={((product.affiliateCommissionBps ?? 3000) / 100).toString().replace(".", ",")}
+        inviteUrl={product.affiliateInviteCode ? `${getEnv().APP_URL}/afiliados/${product.affiliateInviteCode}` : null}
+        affiliateCount={affiliates.filter((affiliate) => affiliate.affiliations.some((a) => a.productId === product.id)).length}
       />
 
       <Card>

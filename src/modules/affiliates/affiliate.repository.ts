@@ -51,6 +51,11 @@ export type InviteTarget = {
   organization: { name: string; slug: string };
 };
 
+/** Uma comissão vista do lado do pagamento: quanto, e para qual conta vai. */
+export type TransferableCommission = AffiliateCommission & {
+  affiliate: { id: string; name: string; payeeOrganizationId: string | null };
+};
+
 export interface AffiliateRepository {
   create(input: Prisma.AffiliateUncheckedCreateInput): Promise<Affiliate>;
   update(organizationId: string, id: string, data: Prisma.AffiliateUncheckedUpdateInput): Promise<Affiliate>;
@@ -77,6 +82,9 @@ export interface AffiliateRepository {
   updateCommission(id: string, data: Prisma.AffiliateCommissionUncheckedUpdateInput): Promise<AffiliateCommission>;
   /** Commissions of payments whose settlement window has closed. */
   markSettledCommissions(paymentIds: string[]): Promise<number>;
+  /** Comissões liberadas de um pedido cujo afiliado tem conta na Kabrun para receber. */
+  listTransferableByOrder(orderId: string): Promise<TransferableCommission[]>;
+  findCommissionWithPayee(orderId: string): Promise<TransferableCommission | null>;
   listCommissions(organizationId: string, limit: number): Promise<CommissionListItem[]>;
   listPayable(organizationId: string, affiliateId: string): Promise<AffiliateCommission[]>;
   /** As comissões de uma pessoa, olhando pela conta que recebe — não pela que paga. */
@@ -230,6 +238,20 @@ export class PrismaAffiliateRepository implements AffiliateRepository {
       data: { status: "AVAILABLE" },
     });
     return result.count;
+  }
+
+  listTransferableByOrder(orderId: string) {
+    return this.db.affiliateCommission.findMany({
+      where: { orderId, status: { in: ["AVAILABLE", "APPROVED"] }, affiliate: { payeeOrganizationId: { not: null } } },
+      include: { affiliate: { select: { id: true, name: true, payeeOrganizationId: true } } },
+    });
+  }
+
+  findCommissionWithPayee(orderId: string) {
+    return this.db.affiliateCommission.findFirst({
+      where: { orderId },
+      include: { affiliate: { select: { id: true, name: true, payeeOrganizationId: true } } },
+    });
   }
 
   listCommissions(organizationId: string, limit: number) {

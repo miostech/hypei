@@ -7,6 +7,7 @@ import { isDomainError } from "@/lib/errors";
 import { getAppDictionary } from "@/lib/i18n/app";
 import { appLocale } from "@/lib/i18n/app/server";
 import { logger } from "@/lib/logger";
+import { affiliationOfferSchema } from "@/modules/affiliates/affiliate.schemas";
 import { productInputSchema } from "@/modules/products/product.schemas";
 import { requirePermission } from "@/modules/organizations/current-organization";
 import { runAction, type ActionState } from "@/server/actions/action-state";
@@ -72,4 +73,32 @@ export async function archiveProduct(formData: FormData): Promise<void> {
   await getServices().products.archive(organization.id, userId, String(formData.get("id")));
   revalidatePath("/products");
   redirect("/products");
+}
+
+/**
+ * Abre o produto para afiliados: gera o link de convite e publica a comissão oferecida.
+ *
+ * A comissão é a mesma para todo mundo que aceitar o convite. Negociar caso a caso continua
+ * possível pelo cadastro manual de afiliado, que define a comissão por pessoa.
+ */
+export async function openAffiliateProgram(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return runAction(async () => {
+    const { organization, userId } = await requirePermission("products:write");
+    const productId = String(formData.get("productId"));
+    const { commission } = affiliationOfferSchema.parse({ commission: formData.get("commission") });
+    await getServices().affiliates.enableAffiliation(organization.id, userId, productId, commission);
+    revalidatePath(`/products/${productId}`);
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.affiliationOpened };
+  });
+}
+
+/** Fecha o convite. Quem já se afiliou continua vendendo e ganhando. */
+export async function closeAffiliateProgram(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return runAction(async () => {
+    const { organization, userId } = await requirePermission("products:write");
+    const productId = String(formData.get("productId"));
+    await getServices().affiliates.disableAffiliation(organization.id, userId, productId);
+    revalidatePath(`/products/${productId}`);
+    return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.affiliationClosed };
+  });
 }

@@ -18,6 +18,7 @@ const PROTECTED_PREFIXES = [
   "/finance",
   "/payouts",
   "/affiliates",
+  "/affiliations",
   "/coupons",
   "/members-area",
   "/analytics",

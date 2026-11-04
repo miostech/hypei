@@ -185,6 +185,44 @@ export async function accountTotals(prisma: PrismaClient, organizationId?: strin
   return net; // debit-positive
 }
 
+/**
+ * Invariante da transferência entre contas: ela existe aos pares.
+ *
+ * O `post` garante que cada lançamento fecha em si, mas não que exista o outro lado — e é o
+ * outro lado que torna a transferência verdadeira: o valor que sai da conta de quem vendeu
+ * entra na de quem indicou, pela mesma comissão e pelo mesmo valor. Um lançamento órfão aqui
+ * significaria dinheiro que saiu de uma conta e não chegou em nenhuma.
+ */
+export async function expectAffiliateTransfersPaired(prisma: PrismaClient) {
+  const pairs = [
+    ["affiliate.commission.transferred", "affiliate.commission.received"],
+    ["affiliate.commission.returned", "affiliate.commission.reclaimed"],
+  ] as const;
+  const journals = await prisma.ledgerJournal.findMany({
+    where: { type: { in: pairs.flat() } },
+    include: { entries: true },
+  });
+  const total = (j: (typeof journals)[number]) => j.entries.reduce((sum, e) => (e.direction === "DEBIT" ? sum + e.amount : sum), 0n);
+
+  for (const [sentType, receivedType] of pairs) {
+    const sent = journals.filter((j) => j.type === sentType);
+    const received = journals.filter((j) => j.type === receivedType);
+    const matched = new Set<string>();
+    for (const journal of sent) {
+      const twin = received.find(
+        (candidate) =>
+          !matched.has(candidate.id) &&
+          candidate.referenceId === journal.referenceId &&
+          candidate.organizationId !== journal.organizationId &&
+          total(candidate) === total(journal),
+      );
+      if (!twin) throw new Error(`${sentType} ${journal.referenceId} (${total(journal)}) has no matching ${receivedType}`);
+      matched.add(twin.id);
+    }
+    if (matched.size !== received.length) throw new Error(`${receivedType}: ${received.length - matched.size} without a ${sentType}`);
+  }
+}
+
 /** Double-entry invariant: total debits == total credits (money is never created or lost). */
 export async function expectLedgerBalanced(prisma: PrismaClient) {
   const totals = await prisma.ledgerEntry.groupBy({ by: ["direction"], _sum: { amount: true } });

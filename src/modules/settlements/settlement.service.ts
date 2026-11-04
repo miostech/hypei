@@ -2,6 +2,7 @@ import type { Clock } from "@/lib/clock";
 import { createDomainEvent } from "@/lib/events/domain-event";
 import { logger } from "@/lib/logger";
 import { assertSupportedCurrency } from "@/lib/money";
+import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import { accountBalance } from "@/modules/ledger/ledger.accounts";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import type { UnitOfWork } from "@/server/unit-of-work";
@@ -20,6 +21,7 @@ export class SettlementService {
   constructor(
     private readonly uow: UnitOfWork,
     private readonly ledger: LedgerService,
+    private readonly affiliates: AffiliateService,
     private readonly clock: Clock,
   ) {}
 
@@ -62,6 +64,9 @@ export class SettlementService {
       }
       // The producer's money is out of the window, so the affiliate's is too.
       await repos.affiliates.markSettledCommissions([payment.id]);
+      // E, liberada, a comissão vai para a conta de quem a ganhou: ela não precisa de um
+      // clique do produtor para receber o que já é dela.
+      await this.affiliates.transferSettledCommissions(repos, payment.orderId, now);
       await repos.payments.update(payment.id, { settledAt: now });
       return pending > 0n ? pending : 0n;
     });

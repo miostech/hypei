@@ -1,12 +1,13 @@
 "use server";
 
+import type { Route } from "next";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getAppDictionary } from "@/lib/i18n/app";
 import { appLocale } from "@/lib/i18n/app/server";
 import { requireUser } from "@/modules/auth/current-user";
-import { cookieOptions, ORGANIZATION_COOKIE } from "@/modules/auth/session-token";
+import { cookieOptions, ORGANIZATION_COOKIE, safeReturnTo } from "@/modules/auth/session-token";
 import { onboardingSchema } from "@/modules/organizations/organization.schemas";
 import { runAction, type ActionState } from "@/server/actions/action-state";
 import { getServices } from "@/server/container";
@@ -38,7 +39,9 @@ export async function completeOnboarding(_prev: ActionState, formData: FormData)
     const store = await cookies();
     store.set(ORGANIZATION_COOKIE, organizationId, cookieOptions(60 * 60 * 24 * 30));
     revalidatePath("/", "layout");
-    redirect("/dashboard?welcome=1");
+    // `safeReturnTo` recusa destino absoluto: o valor vem da URL, e um convite de afiliação
+    // não pode virar um redirecionamento para fora da Kabrun.
+    redirect(safeReturnTo(formData.get("returnTo")?.toString(), "/dashboard?welcome=1") as Route);
   }
   return result;
 }
