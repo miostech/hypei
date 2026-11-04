@@ -28,6 +28,22 @@ export const FAST_SETTLEMENT_MIN_REVENUE: Record<CurrencyCode, bigint> = {
   USD: 100_000_000n, // $ 1,000,000.00
 };
 
+/** Os meios de pagamento que a tela mostra prazo, na ordem em que aparecem. */
+export type SettlementMethodKey = "card" | "pix" | "boleto";
+
+/**
+ * Quais meios existem em cada moeda.
+ *
+ * Pix e boleto são brasileiros: numa venda em dólar ou euro não há o que mostrar, e anunciar
+ * "Pix: 15 dias" para uma venda internacional seria um prazo de um meio que nem aparece no
+ * checkout dela.
+ */
+export const METHODS_BY_CURRENCY: Record<CurrencyCode, SettlementMethodKey[]> = {
+  BRL: ["card", "pix", "boleto"],
+  EUR: ["card"],
+  USD: ["card"],
+};
+
 /** Quanto de cada venda fica retido para cobrir estorno e chargeback, e por quantos dias. */
 export interface ReserveRule {
   percentageBps: number;

@@ -87,11 +87,14 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
     // Uma a mais do que cabe na tela: é assim que a página sabe se ainda há o que mostrar.
     tab === "movimentacoes" ? services.finance.movements(organization.id, currency, shown + 1) : [],
     tab === "saques" ? services.payouts.list(organization.id) : [],
-    tab === "taxas" ? services.finance.terms(organization.id, organization.country, currency) : null,
+    // Todas as moedas em que ela pode vender, não só a selecionada: a taxa da venda em dólar é
+    // outra, e é condição que ela precisa saber antes de montar a oferta.
+    tab === "taxas" ? services.finance.allTerms(organization.id, organization.country, organization.defaultCurrency) : [],
   ]);
 
   const hasMoreMovements = movements.length > shown;
   const payoutFee = services.payouts.feeFor(currency);
+  const payoutFees = Object.fromEntries(terms.map((block) => [block.currency, services.payouts.feeFor(block.currency)]));
   const ready = merchant ? isMerchantAccountReadyForPayouts(merchant) : false;
   const canRequest = hasPermission(membership.role, "payouts:request");
 
@@ -170,7 +173,15 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
 
       <FinanceTabs active={tab} currency={currency} labels={t.tabs} />
 
-      {tab === "taxas" && terms && <TermsTab dict={dict} terms={terms} payoutFee={payoutFee} canRequestFast={canRequest} />}
+      {tab === "taxas" && (
+        <TermsTab
+          dict={dict}
+          terms={terms}
+          payoutFees={payoutFees}
+          localCurrency={organization.defaultCurrency}
+          canRequestFast={canRequest}
+        />
+      )}
 
       {tab === "saques" && (
         <PayoutsTab dict={dict} payouts={payouts} currency={currency} ready={ready} hasMerchantAccount={merchant !== null} />

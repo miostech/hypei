@@ -3,7 +3,15 @@ import type { UnitOfWork } from "@/server/unit-of-work";
 import type { JournalTypeTotals } from "@/modules/ledger/ledger.repository";
 import { publishedPlatformFee, type PlatformFeeRule } from "@/modules/fees/fee.calculator";
 import { publishedReserve } from "@/modules/reserves/reserve.calculator";
-import { FAST_CARD_SETTLEMENT_DAYS, type ReserveRule } from "./settlement-terms";
+import { assertSupportedCurrency, SUPPORTED_CURRENCIES } from "@/lib/money";
+import { FAST_CARD_SETTLEMENT_DAYS, METHODS_BY_CURRENCY, type ReserveRule, type SettlementMethodKey } from "./settlement-terms";
+
+/** O meio de pagamento de cada prazo que a tela mostra. */
+const METHOD_TYPES: Record<SettlementMethodKey, PaymentMethodType> = {
+  card: "CREDIT_CARD",
+  pix: "PIX",
+  boleto: "BOLETO",
+};
 
 const PRODUCER_ACCOUNTS: LedgerAccount[] = ["PRODUCER_PENDING", "PRODUCER_AVAILABLE", "RESERVES"];
 
@@ -39,8 +47,8 @@ function sum(rows: JournalTypeTotals[], type: string, account: LedgerAccount, di
 export interface FinanceTerms {
   currency: string;
   platformFee: PlatformFeeRule;
-  /** Dias até o dinheiro ficar disponível, por meio de pagamento. */
-  settlementDays: Record<"card" | "pix" | "boleto", number>;
+  /** Dias até o dinheiro ficar disponível, só dos meios que existem nesta moeda. */
+  settlementDays: { method: SettlementMethodKey; days: number }[];
   /** O prazo de cartão já está no mínimo possível — não há recebimento rápido a pedir. */
   fastCardSettlement: boolean;
   /** Quanto de cada venda fica retido para cobrir estorno, e por quantos dias. */
@@ -121,20 +129,37 @@ export class FinanceOverviewService {
     const days = async (method: PaymentMethodType) =>
       (await this.uow.repos.policies.findSettlementDelayDays({ ...scope, method })) ?? this.config.defaultSettlementDelayDays;
 
-    const [fee, reserve, card, pix, boleto] = await Promise.all([
+    const [fee, reserve, settlementDays] = await Promise.all([
       this.uow.repos.policies.findPlatformFeeRule(scope),
       this.uow.repos.policies.findReserveRule(scope),
-      days("CREDIT_CARD"),
-      days("PIX"),
-      days("BOLETO"),
+      Promise.all(
+        METHODS_BY_CURRENCY[assertSupportedCurrency(currency)].map(async (method) => ({
+          method,
+          days: await days(METHOD_TYPES[method]),
+        })),
+      ),
     ]);
+    const card = settlementDays.find((row) => row.method === "card")?.days ?? this.config.defaultSettlementDelayDays;
 
     return {
       currency,
       platformFee: fee ?? publishedPlatformFee(currency),
-      settlementDays: { card, pix, boleto },
+      settlementDays,
       fastCardSettlement: card <= FAST_CARD_SETTLEMENT_DAYS,
       reserve: reserve ?? publishedReserve(currency),
     };
+  }
+
+  /**
+   * As condições de todas as moedas em que esta conta pode vender, a dela primeiro.
+   *
+   * A conta é de um país, mas a oferta pode ser cobrada em qualquer moeda suportada: quem é do
+   * Brasil e vende em dólar cai nas condições de venda internacional — outra taxa, outra
+   * reserva. Mostrar só a moeda da conta esconderia justamente a condição que ela não conhece.
+   */
+  async allTerms(organizationId: string, country: string, first: string): Promise<FinanceTerms[]> {
+    const own = assertSupportedCurrency(first);
+    const order = [own, ...SUPPORTED_CURRENCIES.filter((code) => code !== own)];
+    return Promise.all(order.map((code) => this.terms(organizationId, country, code)));
   }
 }

@@ -911,6 +911,10 @@ const pt = {
       card: "Cartão",
       pix: "Pix",
       boleto: "Boleto",
+      scope: { BRL: "Vendas em real (BRL)", EUR: "Vendas em euro (EUR)", USD: "Vendas em dólar (USD)" },
+      scopeLocal: "moeda da conta",
+      scopeHint:
+        "A oferta pode ser cobrada em qualquer uma destas moedas, e o que vale são as condições da moeda da venda: cobrar em dólar entra como venda internacional.",
       days: { one: "{count} dia", other: "{count} dias" },
       reserve: "Reserva de segurança",
       reserveValue: "{percentage} % por {days}",

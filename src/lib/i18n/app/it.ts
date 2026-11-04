@@ -899,6 +899,10 @@ const it: AppDictionary = {
       card: "Carta",
       pix: "Pix",
       boleto: "Boleto",
+      scope: { BRL: "Vendite in real (BRL)", EUR: "Vendite in euro (EUR)", USD: "Vendite in dollari (USD)" },
+      scopeLocal: "valuta dell’account",
+      scopeHint:
+        "L’offerta può essere incassata in una qualsiasi di queste valute, e valgono le condizioni della valuta della vendita: incassare in dollari conta come vendita internazionale.",
       days: { one: "{count} giorno", other: "{count} giorni" },
       reserve: "Riserva di sicurezza",
       reserveValue: "{percentage} % per {days}",

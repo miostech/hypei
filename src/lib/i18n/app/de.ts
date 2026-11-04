@@ -899,6 +899,10 @@ const de: AppDictionary = {
       card: "Karte",
       pix: "Pix",
       boleto: "Boleto",
+      scope: { BRL: "Verkäufe in Real (BRL)", EUR: "Verkäufe in Euro (EUR)", USD: "Verkäufe in Dollar (USD)" },
+      scopeLocal: "Kontowährung",
+      scopeHint:
+        "Ein Angebot kann in jeder dieser Währungen abgerechnet werden, und es gelten die Bedingungen der Verkaufswährung: in Dollar abzurechnen zählt als internationaler Verkauf.",
       days: { one: "{count} Tag", other: "{count} Tage" },
       reserve: "Sicherheitsreserve",
       reserveValue: "{percentage} % für {days}",
