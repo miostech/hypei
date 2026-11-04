@@ -146,6 +146,8 @@ const en: AppDictionary = {
       viewFinance: "View finance",
     },
     salesWindow: "Sales ({days} days)",
+    referredWindow: "Referrals ({days} days)",
+    referredSales: { one: "{count} referred sale", other: "{count} referred sales" },
     averageTicket: "Average order",
     samePeriod: "Same period",
     chart: {

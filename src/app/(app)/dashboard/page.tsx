@@ -1,4 +1,4 @@
-import { ArrowRightIcon, ArrowUpRightIcon, PackageIcon, ReceiptIcon, ShoppingBagIcon } from "lucide-react";
+import { ArrowRightIcon, ArrowUpRightIcon, HandshakeIcon, PackageIcon, ReceiptIcon, ShoppingBagIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { RevenueChart } from "@/components/charts/revenue-chart";
@@ -40,7 +40,8 @@ export default async function DashboardPage() {
   // "Hoje" segue o fuso do produtor, não o do servidor.
   const day = todayAgainstYesterday(timezoneForCountry(organization.country));
 
-  const [orders, products, paid, daily, verification, today, yesterday, newStudents] = await Promise.all([
+  const windowStart = new Date(day.now.getTime() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const [orders, products, paid, daily, verification, today, yesterday, newStudents, referred] = await Promise.all([
     services.uow.repos.orders.list(organization.id, { limit: 6 }),
     services.products.list(organization.id),
     services.uow.repos.orders.paidSummary(organization.id, WINDOW_DAYS),
@@ -49,6 +50,7 @@ export default async function DashboardPage() {
     services.uow.repos.orders.paidBetween(organization.id, day.todayStart, day.now),
     services.uow.repos.orders.paidBetween(organization.id, day.yesterdayStart, day.yesterdayEnd),
     services.uow.repos.orders.newCustomersBetween(organization.id, day.todayStart, day.now),
+    services.affiliates.referredSummary(organization.id, windowStart),
   ]);
 
   const todaySales = today.find((row) => row.currency === currency);
@@ -59,6 +61,11 @@ export default async function DashboardPage() {
   // With nothing to compare against, a percentage would be invented.
   const dayOverDay = yesterdayTotal > 0n ? Number(((todayTotal - yesterdayTotal) * 100n) / yesterdayTotal) : null;
   const todayAverageTicket = todayCount > 0 ? todayTotal / BigInt(todayCount) : 0n;
+
+  // A venda que ela indicou é venda dela: aparece aqui, e não só na área de afiliações. Em
+  // card próprio porque o valor é a comissão, não o preço — somar com o faturamento dos
+  // produtos dela seria misturar o que ela cobrou com o que ela ganhou.
+  const referredSales = referred.find((row) => row.currency === currency);
 
   const sales = paid.find((row) => row.currency === currency);
   const salesTotal = sales?.total ?? 0n;
@@ -128,6 +135,15 @@ export default async function DashboardPage() {
             tone="muted"
             hint={d.samePeriod}
           />
+          {referredSales && referredSales.count > 0 && (
+            <StatCard
+              label={fill(d.referredWindow, { days: WINDOW_DAYS })}
+              value={formatAmount(referredSales.total, currency)}
+              icon={HandshakeIcon}
+              tone="positive"
+              hint={plural(locale, referredSales.count, d.referredSales)}
+            />
+          )}
         </div>
       </section>
 

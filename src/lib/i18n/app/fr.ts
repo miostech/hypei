@@ -146,6 +146,8 @@ const fr: AppDictionary = {
       viewFinance: "Voir les finances",
     },
     salesWindow: "Ventes ({days} jours)",
+    referredWindow: "Ventes apportées ({days} jours)",
+    referredSales: { one: "{count} vente apportée", other: "{count} ventes apportées" },
     averageTicket: "Panier moyen",
     samePeriod: "Sur la même période",
     chart: {

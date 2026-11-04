@@ -155,6 +155,8 @@ const pt = {
       viewFinance: "Ver financeiro",
     },
     salesWindow: "Vendas ({days} dias)",
+    referredWindow: "Indicações ({days} dias)",
+    referredSales: { one: "{count} venda indicada", other: "{count} vendas indicadas" },
     averageTicket: "Ticket médio",
     samePeriod: "No mesmo período",
     chart: {

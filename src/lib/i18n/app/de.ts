@@ -146,6 +146,8 @@ const de: AppDictionary = {
       viewFinance: "Finanzen ansehen",
     },
     salesWindow: "Verkäufe ({days} Tage)",
+    referredWindow: "Vermittelt ({days} Tage)",
+    referredSales: { one: "{count} vermittelter Verkauf", other: "{count} vermittelte Verkäufe" },
     averageTicket: "Durchschnittsbon",
     samePeriod: "Im selben Zeitraum",
     chart: {

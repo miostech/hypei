@@ -56,6 +56,13 @@ export type TransferableCommission = AffiliateCommission & {
   affiliate: { id: string; name: string; payeeOrganizationId: string | null };
 };
 
+/** Quantas vendas indicadas, e quanto de comissão, numa moeda. */
+export interface ReferredSummary {
+  currency: string;
+  count: number;
+  total: bigint;
+}
+
 export interface AffiliateRepository {
   create(input: Prisma.AffiliateUncheckedCreateInput): Promise<Affiliate>;
   update(organizationId: string, id: string, data: Prisma.AffiliateUncheckedUpdateInput): Promise<Affiliate>;
@@ -89,6 +96,8 @@ export interface AffiliateRepository {
   listPayable(organizationId: string, affiliateId: string): Promise<AffiliateCommission[]>;
   /** As comissões de uma pessoa, olhando pela conta que recebe — não pela que paga. */
   listCommissionsForPayee(payeeOrganizationId: string, limit: number): Promise<CommissionListItem[]>;
+  /** As vendas que ela trouxe numa janela, e o que elas renderam. */
+  referredSummary(payeeOrganizationId: string, since: Date): Promise<ReferredSummary[]>;
 }
 
 const AFFILIATION_INCLUDE = { product: { select: { id: true, name: true, slug: true } } } as const;
@@ -272,6 +281,22 @@ export class PrismaAffiliateRepository implements AffiliateRepository {
     return this.db.affiliateCommission.findMany({
       where: { organizationId, affiliateId, status: { in: ["AVAILABLE", "APPROVED"] } },
     });
+  }
+
+  async referredSummary(payeeOrganizationId: string, since: Date): Promise<ReferredSummary[]> {
+    const rows = await this.db.affiliateCommission.groupBy({
+      by: ["currency"],
+      // Cancelada é venda desfeita: ela não entra na conta de quem indicou, como não entra
+      // na de quem vendeu.
+      where: { affiliate: { payeeOrganizationId }, createdAt: { gte: since }, status: { not: "CANCELED" } },
+      _sum: { amount: true, reversedAmount: true },
+      _count: true,
+    });
+    return rows.map((row) => ({
+      currency: row.currency,
+      count: row._count,
+      total: (row._sum.amount ?? 0n) - (row._sum.reversedAmount ?? 0n),
+    }));
   }
 
   listCommissionsForPayee(payeeOrganizationId: string, limit: number) {

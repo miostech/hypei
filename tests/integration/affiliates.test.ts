@@ -589,6 +589,84 @@ describe("Programa aberto de afiliados", () => {
     await expectLedgerBalanced(app.prisma);
   });
 
+  /**
+   * O caminho torto: o produtor cadastrou a pessoa à mão antes de existir convite, vendeu, e
+   * só depois ela abriu conta e aceitou. A comissão não pode ficar presa no meio.
+   */
+  it("leva para o saldo dela a comissão que o produtor ainda devia por fora", async () => {
+    const { producer, inviteCode } = await openProgram();
+
+    // Cadastro manual: sem conta na Kabrun, a comissão é dívida do produtor.
+    const manual = await app.services.affiliates.create(producer.organization.id, producer.user.id, {
+      name: "Ana",
+      email: "ana-manual@example.com",
+      commissionBps: 3000,
+      active: true,
+      productId: producer.product.id,
+    });
+    const detail = await app.services.affiliates.get(producer.organization.id, manual.id);
+    const { payment } = await startPurchase(app, producer.checkout.slug, "antes-da-conta@example.com", {
+      referralCode: detail.affiliations[0].code,
+    });
+    await confirmPayment(app, payment);
+    app.clock.advanceDays(10);
+    await app.services.settlements.releaseDue({ now: app.clock.now });
+
+    expect((await app.prisma.affiliateCommission.findFirstOrThrow()).status).toBe("AVAILABLE");
+    expect((await accountTotals(app.prisma, producer.organization.id)).AFFILIATE_PAYABLE).toBe(-3000n);
+
+    // Agora ela abre a conta e aceita o convite com o mesmo e-mail.
+    const ana = await createSeller(app, { slug: `ana-${randomUUID().slice(0, 6)}` });
+    await app.prisma.user.update({ where: { id: ana.user.id }, data: { email: "ana-manual@example.com" } });
+    await app.services.affiliates.acceptInvitation({
+      code: inviteCode,
+      user: { ...ana.user, email: "ana-manual@example.com" },
+      payeeOrganizationId: ana.organization.id,
+    });
+
+    expect((await accountTotals(app.prisma, producer.organization.id)).AFFILIATE_PAYABLE).toBe(0n);
+    expect(-(await accountTotals(app.prisma, ana.organization.id)).PRODUCER_AVAILABLE).toBe(3000n);
+    expect((await app.prisma.affiliateCommission.findFirstOrThrow()).status).toBe("PAID");
+    await expectAffiliateTransfersPaired(app.prisma);
+    await expectLedgerBalanced(app.prisma);
+  });
+
+  it("não deixa o saldo dela negativo quando a conta é ligada só depois da venda", async () => {
+    const { producer, inviteCode } = await openProgram();
+    const manual = await app.services.affiliates.create(producer.organization.id, producer.user.id, {
+      name: "Bia",
+      email: "bia@example.com",
+      commissionBps: 3000,
+      active: true,
+      productId: producer.product.id,
+    });
+    const detail = await app.services.affiliates.get(producer.organization.id, manual.id);
+    const { payment } = await startPurchase(app, producer.checkout.slug, "no-meio@example.com", {
+      referralCode: detail.affiliations[0].code,
+    });
+    await confirmPayment(app, payment);
+
+    // A conta é ligada com a venda ainda no prazo: nada foi transferido na captura.
+    const bia = await createSeller(app, { slug: `bia-${randomUUID().slice(0, 6)}` });
+    await app.prisma.user.update({ where: { id: bia.user.id }, data: { email: "bia@example.com" } });
+    await app.services.affiliates.acceptInvitation({
+      code: inviteCode,
+      user: { ...bia.user, email: "bia@example.com" },
+      payeeOrganizationId: bia.organization.id,
+    });
+
+    app.clock.advanceDays(10);
+    await app.services.settlements.releaseDue({ now: app.clock.now });
+
+    // A liberação não pode debitar um pendente que nunca existiu na conta dela.
+    // `?? 0n` porque conta sem lançamento nenhum naquele account não aparece no agrupamento —
+    // e é justamente isso que se espera aqui: nada entrou no pendente dela, nem para baixar.
+    const totals = await accountTotals(app.prisma, bia.organization.id);
+    expect(totals.PRODUCER_PENDING ?? 0n).toBe(0n);
+    expect(-totals.PRODUCER_AVAILABLE).toBe(3000n);
+    await expectLedgerBalanced(app.prisma);
+  });
+
   it("conta o clique no link, sem depender da venda", async () => {
     const { inviteCode } = await openProgram();
     const { affiliation } = await anaAffiliates(inviteCode);

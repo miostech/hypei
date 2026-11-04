@@ -206,6 +206,12 @@ export class AffiliateService {
           userId: existing.userId ?? input.user.id,
           payeeOrganizationId: existing.payeeOrganizationId ?? input.payeeOrganizationId,
         });
+        // O que o produtor já devia a ela por fora passa a cair no saldo, aqui. Sem isto a
+        // comissão ficaria presa: a transferência automática só acontece em venda nova, e o
+        // pagamento manual passa a ser recusado justamente porque ela agora recebe pelo saldo.
+        if (!existing.payeeOrganizationId && input.payeeOrganizationId) {
+          await this.transferPayableToBalance(repos, product.organizationId, existing.id);
+        }
       }
 
       const already = await repos.affiliates.findAffiliation(product.id, affiliate.id);
@@ -229,9 +235,26 @@ export class AffiliateService {
     });
   }
 
+  /** Leva para o saldo dela a comissão já liberada que ainda estava para ser paga por fora. */
+  private async transferPayableToBalance(repos: Repositories, organizationId: string, affiliateId: string): Promise<void> {
+    const payable = await repos.affiliates.listPayable(organizationId, affiliateId);
+    const now = new Date();
+    for (const row of payable) {
+      const commission = await repos.affiliates.findCommissionWithPayee(row.orderId);
+      if (!commission) continue;
+      const { net } = await this.transferToPayee(repos, commission, "PRODUCER_AVAILABLE");
+      if (net > 0n) await repos.affiliates.updateCommission(commission.id, { status: "PAID", paidAt: now });
+    }
+  }
+
   /** As afiliações de quem está logado, para a área dela. */
   listForUser(userId: string) {
     return this.uow.repos.affiliates.listAffiliationsForUser(userId);
+  }
+
+  /** O que as indicações dela renderam na janela — a venda do afiliado é venda dela também. */
+  referredSummary(payeeOrganizationId: string, since: Date) {
+    return this.uow.repos.affiliates.referredSummary(payeeOrganizationId, since);
   }
 
   earningsForUser(payeeOrganizationId: string, limit = 100) {
@@ -295,6 +318,7 @@ export class AffiliateService {
 
     const commission = await repos.affiliates.findCommissionWithPayee(input.orderId);
     if (commission) await this.transferToPayee(repos, commission, "PRODUCER_PENDING");
+
   }
 
   /**
@@ -311,10 +335,10 @@ export class AffiliateService {
     repos: Repositories,
     commission: TransferableCommission,
     account: "PRODUCER_PENDING" | "PRODUCER_AVAILABLE",
-  ): Promise<bigint> {
+  ): Promise<{ net: bigint; created: boolean }> {
     const payee = commission.affiliate.payeeOrganizationId;
     const net = commission.amount - commission.reversedAmount;
-    if (!payee || net <= 0n) return 0n;
+    if (!payee || net <= 0n) return { net: 0n, created: false };
 
     const currency = assertSupportedCurrency(commission.currency);
     await this.ledger.post(repos, {
@@ -330,7 +354,7 @@ export class AffiliateService {
         { account: "PLATFORM_CASH", direction: "CREDIT", amount: net, description: "Caixa transferido à conta do afiliado" },
       ],
     });
-    await this.ledger.post(repos, {
+    const { created } = await this.ledger.post(repos, {
       organizationId: payee,
       idempotencyKey: `affiliate-commission:${commission.id}:in`,
       type: "affiliate.commission.received",
@@ -343,7 +367,7 @@ export class AffiliateService {
         { account, direction: "CREDIT", amount: net, description: "Comissão de venda indicada" },
       ],
     });
-    return net;
+    return { net, created };
   }
 
   /**
@@ -362,19 +386,27 @@ export class AffiliateService {
       const net = commission.amount - commission.reversedAmount;
       if (!payee || net <= 0n) continue;
 
-      await this.ledger.post(repos, {
-        organizationId: payee,
-        idempotencyKey: `affiliate-commission:${commission.id}:released`,
-        type: "affiliate.commission.released",
-        referenceType: "AffiliateCommission",
-        referenceId: commission.id,
-        currency: assertSupportedCurrency(commission.currency),
-        description: "Comissão liberada para saque",
-        lines: [
-          { account: "PRODUCER_PENDING", direction: "DEBIT", amount: net },
-          { account: "PRODUCER_AVAILABLE", direction: "CREDIT", amount: net },
-        ],
-      });
+      // Quase sempre a transferência já aconteceu na venda, e isto é um no-op que só devolve
+      // `created: false` — o dinheiro está no pendente dela e só precisa passar para o
+      // disponível. Quando ela ligou a conta depois da venda, porém, a comissão nunca saiu da
+      // conta do produtor: aí é esta chamada que a move, direto para o disponível, e não há
+      // pendente nenhum para baixar.
+      const { created } = await this.transferToPayee(repos, commission, "PRODUCER_AVAILABLE");
+      if (!created) {
+        await this.ledger.post(repos, {
+          organizationId: payee,
+          idempotencyKey: `affiliate-commission:${commission.id}:released`,
+          type: "affiliate.commission.released",
+          referenceType: "AffiliateCommission",
+          referenceId: commission.id,
+          currency: assertSupportedCurrency(commission.currency),
+          description: "Comissão liberada para saque",
+          lines: [
+            { account: "PRODUCER_PENDING", direction: "DEBIT", amount: net },
+            { account: "PRODUCER_AVAILABLE", direction: "CREDIT", amount: net },
+          ],
+        });
+      }
 
       // PAID porque, para quem tem conta aqui, a Kabrun já entregou: o dinheiro está no saldo
       // dela, sacável. O que fica AVAILABLE é a comissão de quem o produtor ainda vai pagar.
