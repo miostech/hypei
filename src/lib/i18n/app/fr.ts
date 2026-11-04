@@ -948,6 +948,7 @@ const fr: AppDictionary = {
     pendingVerification: "Vérification en attente",
     notEnabled: "Votre compte de réception n'est pas encore activé pour les virements. Terminez la vérification dans Intégrations.",
     noAccount: "Aucun compte de réception configuré. Configurez-en un dans Intégrations pour pouvoir retirer.",
+    noPixKey: "Enregistrez votre clé Pix dans Réglages : c'est là que part le virement.",
     convertedFrom: "Converti de {amount} · 1 {currency} = {rate}",
     conversionTitle: "Solde en {balance}, compte en {account}",
     conversionNote:
@@ -1120,6 +1121,17 @@ const fr: AppDictionary = {
     taxDescription: "Nous ne gardons que les derniers chiffres du document ; la valeur complète n'est jamais stockée.",
     document: "Document",
     verificationLabel: "Vérification :",
+    bankTitle: "Coordonnées bancaires",
+    bankDescription: "Où va l'argent de vos virements.",
+    pixKey: "Clé Pix",
+    pixKeyPlaceholder: "CPF, CNPJ, e-mail, téléphone ou clé aléatoire",
+    pixKeyHint: "Tous les types de clé sont acceptés ; le format indique lequel.",
+    pixOwnership: "Évitez les virements en échec : la clé Pix doit appartenir au même titulaire que votre {document}.",
+    pixOwnershipUnknown: "Évitez les virements en échec : la clé Pix doit appartenir au même titulaire que le compte.",
+    pixCurrent: "Clé actuelle : {key} · enregistrée le {date}",
+    savePixKey: "Enregistrer la clé",
+    pixSaved: "Clé Pix enregistrée. C'est là qu'iront les prochains virements.",
+    providerDestination: "Hors du Brésil, c'est {provider} qui paie : l'argent arrive sur le compte bancaire que vous avez enregistré chez elle, et c'est là qu'on le change.",
   },
 
   onboarding: {

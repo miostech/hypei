@@ -13,6 +13,8 @@ export interface CreatePayoutInput {
   exchangeRate?: bigint;
   exchangeRateSource?: string;
   provider: PaymentProviderType;
+  /** Para onde o dinheiro vai, congelado no saque. Nulo quando quem escolhe é o provedor. */
+  destinationId?: string | null;
   idempotencyKey: string;
   requestedById?: string | null;
 }

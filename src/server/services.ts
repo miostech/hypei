@@ -35,6 +35,7 @@ import { OfferService } from "@/modules/offers/offer.service";
 import { OrganizationService } from "@/modules/organizations/organization.service";
 import { PaymentService } from "@/modules/payments/payment.service";
 import { PayoutService } from "@/modules/payouts/payout.service";
+import { PayoutDestinationService } from "@/modules/payouts/payout-destination.service";
 import { ProductService } from "@/modules/products/product.service";
 import { RefundService } from "@/modules/refunds/refund.service";
 import type { RiskEventRepository } from "@/modules/risk/risk-event.repository";
@@ -98,6 +99,7 @@ export function buildServices(deps: ServiceDependencies) {
     minimumPayout: deps.config.minimumPayout,
     payoutFee: deps.config.payoutFee,
   });
+  const payoutDestinations = new PayoutDestinationService(uow, deps.paymentProvider.type, deps.config.dataHashSecret);
   const merchantAccounts = new MerchantAccountService(uow, deps.paymentProvider, deps.mongo.providerSnapshots);
   // O imposto é do produtor: calculado e registrado aqui, recolhido por ele.
   const taxes = new PolicyTaxService(uow.repos.taxPolicies);
@@ -151,6 +153,7 @@ export function buildServices(deps: ServiceDependencies) {
     settlements,
     reserves,
     payouts,
+    payoutDestinations,
     merchantAccounts,
     verification,
     platformAdmin,

@@ -14,6 +14,10 @@ import { PrismaBalanceRepository, type BalanceRepository } from "@/modules/balan
 import { PrismaFinancialPolicyRepository, type FinancialPolicyRepository } from "@/modules/fees/financial-policy.repository";
 import { PrismaTaxPolicyRepository, type TaxPolicyRepository } from "@/modules/taxes/tax-policy.repository";
 import { PrismaPayoutRepository, type PayoutRepository } from "@/modules/payouts/payout.repository";
+import {
+  PrismaPayoutDestinationRepository,
+  type PayoutDestinationRepository,
+} from "@/modules/payouts/payout-destination.repository";
 import { PrismaReserveRepository, type ReserveRepository } from "@/modules/reserves/reserve.repository";
 import { PrismaRefundRepository, type RefundRepository } from "@/modules/refunds/refund.repository";
 import { PrismaDisputeRepository, type DisputeRepository } from "@/modules/disputes/dispute.repository";
@@ -45,6 +49,7 @@ export interface Repositories {
   policies: FinancialPolicyRepository;
   taxPolicies: TaxPolicyRepository;
   payouts: PayoutRepository;
+  payoutDestinations: PayoutDestinationRepository;
   reserves: ReserveRepository;
   refunds: RefundRepository;
   disputes: DisputeRepository;
@@ -77,6 +82,7 @@ export function createRepositories(db: DbClient): Repositories {
     policies: new PrismaFinancialPolicyRepository(db),
     taxPolicies: new PrismaTaxPolicyRepository(db),
     payouts: new PrismaPayoutRepository(db),
+    payoutDestinations: new PrismaPayoutDestinationRepository(db),
     reserves: new PrismaReserveRepository(db),
     refunds: new PrismaRefundRepository(db),
     disputes: new PrismaDisputeRepository(db),

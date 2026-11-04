@@ -948,6 +948,7 @@ const en: AppDictionary = {
     pendingVerification: "Verification pending",
     notEnabled: "Your payout account is not enabled for payouts yet. Finish the verification under Integrations.",
     noAccount: "No payout account set up. Set one up under Integrations to be able to withdraw.",
+    noPixKey: "Register your Pix key in Settings: that is where the payout goes.",
     convertedFrom: "Converted from {amount} · 1 {currency} = {rate}",
     conversionTitle: "Balance in {balance}, account in {account}",
     conversionNote:
@@ -1120,6 +1121,17 @@ const en: AppDictionary = {
     taxDescription: "We keep only the last digits of the document; the full value is never stored.",
     document: "Document",
     verificationLabel: "Verification:",
+    bankTitle: "Bank details",
+    bankDescription: "Where the money from your payouts goes.",
+    pixKey: "Pix key",
+    pixKeyPlaceholder: "Tax ID, email, phone number or random key",
+    pixKeyHint: "Any kind of key works; the format tells us which one it is.",
+    pixOwnership: "Avoid failed payouts: the Pix key must belong to the same holder as your {document}.",
+    pixOwnershipUnknown: "Avoid failed payouts: the Pix key must belong to the same holder as the account.",
+    pixCurrent: "Current key: {key} · saved on {date}",
+    savePixKey: "Save key",
+    pixSaved: "Pix key saved. That is where the next payouts go.",
+    providerDestination: "Outside Brazil {provider} is the one paying: the money lands in the bank account you registered with them, and that is where you change it.",
   },
 
   onboarding: {

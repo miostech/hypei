@@ -948,6 +948,7 @@ const de: AppDictionary = {
     pendingVerification: "Verifizierung offen",
     notEnabled: "Ihr Empfängerkonto ist noch nicht für Auszahlungen freigeschaltet. Schließen Sie die Verifizierung unter Integrationen ab.",
     noAccount: "Kein Empfängerkonto eingerichtet. Richten Sie eines unter Integrationen ein, um auszahlen zu können.",
+    noPixKey: "Hinterlegen Sie Ihren Pix-Schlüssel in den Einstellungen: dorthin geht die Auszahlung.",
     convertedFrom: "Umgerechnet aus {amount} · 1 {currency} = {rate}",
     conversionTitle: "Guthaben in {balance}, Konto in {account}",
     conversionNote:
@@ -1120,6 +1121,17 @@ const de: AppDictionary = {
     taxDescription: "Wir behalten nur die letzten Ziffern des Dokuments; der vollständige Wert wird nie gespeichert.",
     document: "Dokument",
     verificationLabel: "Verifizierung:",
+    bankTitle: "Bankdaten",
+    bankDescription: "Wohin das Geld Ihrer Auszahlungen geht.",
+    pixKey: "Pix-Schlüssel",
+    pixKeyPlaceholder: "CPF, CNPJ, E-Mail, Telefon oder Zufallsschlüssel",
+    pixKeyHint: "Jede Schlüsselart ist möglich; das Format sagt, welche es ist.",
+    pixOwnership: "Fehlgeschlagene Auszahlungen vermeiden: Der Pix-Schlüssel muss demselben Inhaber gehören wie Ihr {document}.",
+    pixOwnershipUnknown: "Fehlgeschlagene Auszahlungen vermeiden: Der Pix-Schlüssel muss demselben Inhaber gehören wie das Konto.",
+    pixCurrent: "Aktueller Schlüssel: {key} · gespeichert am {date}",
+    savePixKey: "Schlüssel speichern",
+    pixSaved: "Pix-Schlüssel gespeichert. Dorthin gehen die nächsten Auszahlungen.",
+    providerDestination: "Außerhalb Brasiliens zahlt {provider}: Das Geld landet auf dem Bankkonto, das Sie dort hinterlegt haben, und dort wird es auch geändert.",
   },
 
   onboarding: {

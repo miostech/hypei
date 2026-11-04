@@ -948,6 +948,7 @@ const es: AppDictionary = {
     pendingVerification: "Verificación pendiente",
     notEnabled: "Tu cuenta de cobro todavía no está habilitada para retiros. Termina la verificación en Integraciones.",
     noAccount: "Ninguna cuenta de cobro configurada. Configúrala en Integraciones para poder retirar.",
+    noPixKey: "Registra tu clave Pix en Configuración: ahí es adonde va el retiro.",
     convertedFrom: "Convertido de {amount} · 1 {currency} = {rate}",
     conversionTitle: "Saldo en {balance}, cuenta en {account}",
     conversionNote:
@@ -1120,6 +1121,17 @@ const es: AppDictionary = {
     taxDescription: "Guardamos solo los últimos dígitos del documento; el valor completo nunca se almacena.",
     document: "Documento",
     verificationLabel: "Verificación:",
+    bankTitle: "Datos bancarios",
+    bankDescription: "Adónde va el dinero de tus retiros.",
+    pixKey: "Clave Pix",
+    pixKeyPlaceholder: "CPF, CNPJ, correo, teléfono o clave aleatoria",
+    pixKeyHint: "Aceptamos cualquier tipo de clave; el formato dice cuál es.",
+    pixOwnership: "Evita fallos en el retiro: la clave Pix debe ser de la misma titularidad que tu {document}.",
+    pixOwnershipUnknown: "Evita fallos en el retiro: la clave Pix debe ser de la misma titularidad que la cuenta.",
+    pixCurrent: "Clave actual: {key} · guardada el {date}",
+    savePixKey: "Guardar clave",
+    pixSaved: "Clave Pix guardada. Ahí van los próximos retiros.",
+    providerDestination: "Fuera de Brasil quien paga es {provider}: el dinero cae en la cuenta bancaria que registraste con ella, y ahí es donde se cambia.",
   },
 
   onboarding: {

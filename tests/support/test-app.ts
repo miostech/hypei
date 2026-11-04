@@ -128,6 +128,14 @@ export async function createSeller(app: TestApp, options: { amount?: bigint; cur
     taxId: VALID_CPF,
     supportEmail: `${slug}@example.com`,
   });
+  // Produtora brasileira recebe por Pix, e sem chave cadastrada o saque não sai: a chave é o
+  // CPF da própria conta, que é o que a verificação de titularidade exige.
+  await app.services.payoutDestinations.savePix({
+    organizationId: organization.id,
+    country: "BR",
+    currency: options.currency ?? "BRL",
+    rawKey: VALID_CPF,
+  });
   const product = await app.services.products.create(organization.id, user.id, {
     name: "Curso Teste",
     slug: `curso-${slug}`,

@@ -46,6 +46,8 @@ export interface OrganizationRepository {
   /** Records that the producer opened the provider's verification flow. */
   markVerificationSubmitted(organizationId: string, provider: PaymentProviderType, providerVerificationId: string): Promise<void>;
   taxIdentities(organizationId: string): Promise<{ type: TaxIdType; maskedValue: string; country: string }[]>;
+  /** Os hashes dos documentos da organização, para conferir titularidade sem ler o documento. */
+  taxIdentityHashes(organizationId: string): Promise<{ type: TaxIdType; valueHash: string }[]>;
 }
 
 export class PrismaOrganizationRepository implements OrganizationRepository {
@@ -163,5 +165,9 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
       where: { organizationId },
       select: { type: true, maskedValue: true, country: true },
     });
+  }
+
+  taxIdentityHashes(organizationId: string) {
+    return this.db.taxIdentity.findMany({ where: { organizationId }, select: { type: true, valueHash: true } });
   }
 }

@@ -960,6 +960,7 @@ const pt = {
     pendingVerification: "Verificação pendente",
     notEnabled: "Sua conta de recebimento ainda não está habilitada para saques. Conclua a verificação em Integrações.",
     noAccount: "Nenhuma conta de recebimento configurada. Configure-a em Integrações para poder sacar.",
+    noPixKey: "Cadastre a sua chave Pix em Configurações: é para ela que o saque vai.",
     convertedFrom: "Convertido de {amount} · 1 {currency} = {rate}",
     conversionTitle: "Saldo em {balance}, conta em {account}",
     conversionNote:
@@ -1133,6 +1134,17 @@ const pt = {
     taxDescription: "Guardamos apenas os últimos dígitos do documento; o valor completo nunca é armazenado.",
     document: "Documento",
     verificationLabel: "Verificação:",
+    bankTitle: "Dados bancários",
+    bankDescription: "Para onde vai o dinheiro dos seus saques.",
+    pixKey: "Chave Pix",
+    pixKeyPlaceholder: "CPF, CNPJ, e-mail, telefone ou chave aleatória",
+    pixKeyHint: "Aceitamos qualquer tipo de chave; o formato diz qual é.",
+    pixOwnership: "Evite falhas no saque: a chave Pix precisa ser da mesma titularidade do seu {document}.",
+    pixOwnershipUnknown: "Evite falhas no saque: a chave Pix precisa ser da mesma titularidade da conta.",
+    pixCurrent: "Chave atual: {key} · salva em {date}",
+    savePixKey: "Salvar chave",
+    pixSaved: "Chave Pix salva. É para ela que vão os próximos saques.",
+    providerDestination: "Fora do Brasil quem paga é a {provider}: o dinheiro cai na conta bancária que você cadastrou com ela, e é lá que se troca.",
   },
 
   onboarding: {

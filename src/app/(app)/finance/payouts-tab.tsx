@@ -19,19 +19,22 @@ export function PayoutsTab({
   currency,
   ready,
   hasMerchantAccount,
+  missingPixKey,
 }: {
   dict: AppDictionary;
   payouts: Payout[];
   currency: string;
   ready: boolean;
   hasMerchantAccount: boolean;
+  /** Conta verificada, mas sem chave Pix: o saque sabe o valor e não sabe o destino. */
+  missingPixKey: boolean;
 }) {
   const t = dict.payouts;
   const totalPaid = payouts.filter((p) => p.status === "PAID").reduce((acc, p) => acc + p.amount, 0n);
 
   return (
     <>
-      {!ready && (
+      {!ready ? (
         <Alert>
           <AlertCircleIcon />
           <AlertTitle>{t.pendingVerification}</AlertTitle>
@@ -42,6 +45,19 @@ export function PayoutsTab({
             </Button>
           </AlertDescription>
         </Alert>
+      ) : (
+        missingPixKey && (
+          <Alert>
+            <AlertCircleIcon />
+            <AlertTitle>{dict.settings.bankTitle}</AlertTitle>
+            <AlertDescription>
+              {t.noPixKey}
+              <Button variant="link" className="h-auto p-0" render={<Link href="/settings" />}>
+                {dict.settings.title}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )
       )}
 
       <Card>

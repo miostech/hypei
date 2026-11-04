@@ -239,6 +239,15 @@ enum PayoutDestinationType {
   OTHER
 }
 
+/// Os cinco tipos que o DICT aceita. EVP é a chave aleatória, a que o banco gera.
+enum PixKeyType {
+  CPF
+  CNPJ
+  EMAIL
+  PHONE
+  EVP
+}
+
 enum PayoutDestinationStatus {
   PENDING
   ACTIVE
@@ -933,12 +942,21 @@ model PlatformFeePolicy {
 
 // ──────────────────────────── Payouts ────────────────────────────
 
+/// Para onde o dinheiro do saque vai. Fora do Brasil é a conta bancária que a produtora
+/// cadastrou dentro do onboarding da Stripe, e aí o destino é a própria conta conectada.
+/// No Brasil não: quem paga é a Kabrun, por Pix, e a chave precisa estar aqui.
 model PayoutDestination {
   id                    String                  @id @default(cuid())
   organizationId        String
   type                  PayoutDestinationType
   provider              PaymentProviderType
-  providerDestinationId String
+  /// Conta externa do provedor. Nulo numa chave Pix, que é endereço da produtora e não
+  /// objeto criado pela Stripe.
+  providerDestinationId String?
+  pixKeyType            PixKeyType?
+  /// Guardada inteira, ao contrário do documento em TaxIdentity: aquele só precisamos
+  /// conferir, este é para onde o dinheiro vai — sem ele não há como pagar.
+  pixKey                String?
   currency              String                  @db.Char(3)
   country               String                  @db.Char(2)
   label                 String?
@@ -949,6 +967,7 @@ model PayoutDestination {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   payouts      Payout[]
 
+  @@unique([organizationId, type])
   @@unique([provider, providerDestinationId])
 }
 

@@ -948,6 +948,7 @@ const it: AppDictionary = {
     pendingVerification: "Verifica in sospeso",
     notEnabled: "Il tuo conto di incasso non è ancora abilitato ai prelievi. Completa la verifica in Integrazioni.",
     noAccount: "Nessun conto di incasso configurato. Configuralo in Integrazioni per poter prelevare.",
+    noPixKey: "Registra la tua chiave Pix in Impostazioni: è lì che va il prelievo.",
     convertedFrom: "Convertito da {amount} · 1 {currency} = {rate}",
     conversionTitle: "Saldo in {balance}, conto in {account}",
     conversionNote:
@@ -1120,6 +1121,17 @@ const it: AppDictionary = {
     taxDescription: "Conserviamo solo le ultime cifre del documento; il valore completo non viene mai salvato.",
     document: "Documento",
     verificationLabel: "Verifica:",
+    bankTitle: "Dati bancari",
+    bankDescription: "Dove va il denaro dei tuoi prelievi.",
+    pixKey: "Chiave Pix",
+    pixKeyPlaceholder: "CPF, CNPJ, e-mail, telefono o chiave casuale",
+    pixKeyHint: "Accettiamo qualsiasi tipo di chiave; il formato dice quale.",
+    pixOwnership: "Evita prelievi falliti: la chiave Pix deve essere dello stesso titolare del tuo {document}.",
+    pixOwnershipUnknown: "Evita prelievi falliti: la chiave Pix deve essere dello stesso titolare del conto.",
+    pixCurrent: "Chiave attuale: {key} · salvata il {date}",
+    savePixKey: "Salva la chiave",
+    pixSaved: "Chiave Pix salvata. È lì che vanno i prossimi prelievi.",
+    providerDestination: "Fuori dal Brasile paga {provider}: il denaro arriva sul conto bancario che hai registrato da loro, ed è lì che si cambia.",
   },
 
   onboarding: {

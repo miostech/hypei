@@ -11,6 +11,7 @@ import type { NormalizedProviderEvent, PaymentProvider } from "@/lib/providers/p
 import type { BalanceService } from "@/modules/balances/balance.service";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import type { RiskService } from "@/modules/risk/risk.service";
+import { paysWithPix } from "./payout-destination.service";
 import type { Repositories } from "@/server/repositories";
 import type { UnitOfWork } from "@/server/unit-of-work";
 
@@ -40,7 +41,7 @@ const TERMINAL: Payout["status"][] = ["PAID", "FAILED", "CANCELED"];
  * Producer withdrawals. Rules enforced here:
  * - only AVAILABLE balance (never pending/reserved), computed from the ledger under a row lock;
  * - never above available, never below the minimum;
- * - merchant account must be ACTIVE with payouts enabled;
+ * - merchant account must be ACTIVE with payouts enabled, and, no Brasil, com chave Pix;
  * - idempotent per request key and per provider call;
  * - PAID only from a provider event, never optimistically.
  */
@@ -71,6 +72,18 @@ export class PayoutService {
     return this.config.payoutFee[assertSupportedCurrency(currency)] ?? 0n;
   }
 
+  /**
+   * O destino do saque, ou `null` quando é a própria conta conectada do provedor. Lança
+   * quando o país paga por Pix e a chave ainda não foi cadastrada: um saque sem destino sai
+   * do saldo dela e não chega em lugar nenhum.
+   */
+  private async destinationFor(organizationId: string, country: string) {
+    if (!paysWithPix(country)) return null;
+    const destination = await this.uow.repos.payoutDestinations.findPix(organizationId);
+    if (!destination) throw new PayoutNotAllowedError("No Pix key configured for payouts");
+    return destination;
+  }
+
   async request(input: RequestPayoutInput): Promise<Payout> {
     // A moeda do saldo de onde o dinheiro sai — que não é necessariamente a que entra na conta.
     const source = assertSupportedCurrency(input.currency);
@@ -84,6 +97,10 @@ export class PayoutService {
     if (!isMerchantAccountReadyForPayouts(merchant)) {
       throw new PayoutNotAllowedError("Merchant account is not verified or payouts are disabled");
     }
+
+    // Fora do Brasil o provedor paga na conta bancária que a produtora cadastrou com ele. No
+    // Brasil quem paga é a Kabrun, por Pix, e sem a chave não existe para onde mandar.
+    const destination = await this.destinationFor(input.organizationId, merchant.country);
 
     // A produtora recebe sempre na moeda da conta dela: um saldo em dólar é convertido aqui,
     // pela cotação do momento do saque, e é esse valor convertido que vira a transferência.
@@ -128,6 +145,7 @@ export class PayoutService {
         feeAmount: fee,
         currency,
         provider: this.provider.type,
+        destinationId: destination?.id ?? null,
         idempotencyKey: input.idempotencyKey,
         requestedById: input.userId ?? null,
         ...(quote
@@ -215,11 +233,18 @@ export class PayoutService {
     const merchant = await this.uow.repos.merchantAccounts.findByOrganization(payout.organizationId, this.provider.type);
     if (!merchant) throw new PayoutNotAllowedError("No merchant account configured for payouts");
 
+    // O destino congelado no saque, não o cadastrado agora: trocar a chave depois de pedir o
+    // saque não muda para onde aquele dinheiro foi.
+    const destination = await this.uow.repos.payoutDestinations.findById(payout.destinationId);
+
     const result = await this.provider.createPayout({
       providerAccountId: merchant.providerAccountId,
       // O banco recebe o líquido: a taxa nunca saiu da plataforma.
       amount: payout.amount - payout.feeAmount,
       currency: assertSupportedCurrency(payout.currency),
+      ...(destination?.pixKeyType && destination.pixKey
+        ? { destination: { type: "PIX" as const, keyType: destination.pixKeyType, key: destination.pixKey } }
+        : {}),
       metadata: { organizationId: payout.organizationId, payoutId: payout.id },
       idempotencyKey: `payout:${payout.id}`,
     });

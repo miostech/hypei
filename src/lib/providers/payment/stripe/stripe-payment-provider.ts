@@ -139,6 +139,11 @@ export class StripePaymentProvider implements PaymentProvider {
    * `payout.*` Connect webhook can be reconciled back to the Kabrun Payout.
    */
   async createPayout(input: CreatePayoutInput): Promise<ProviderPayoutResult> {
+    // A Stripe paga na conta bancária da conta conectada. Pix ela não faz — e mandar o
+    // dinheiro para a conta conectada quando a produtora pediu Pix é pagar no lugar errado,
+    // então é melhor falhar aqui do que descobrir depois.
+    if (input.destination) throw new ProviderError("STRIPE", `Stripe cannot pay a ${input.destination.type} destination`);
+
     await this.stripe.transfers.create(
       {
         amount: Number(input.amount),

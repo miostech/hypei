@@ -26,6 +26,7 @@ import { appLocale } from "@/lib/i18n/app/server";
 import { fill } from "@/lib/i18n/locale";
 import { convertMoney, money } from "@/lib/money";
 import { isMerchantAccountReadyForPayouts } from "@/lib/providers/payment/merchant-status";
+import { paysWithPix } from "@/modules/payouts/payout-destination.service";
 import { formatAmount, formatDate, formatDateTime } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { hasPermission } from "@/modules/organizations/permissions";
@@ -109,6 +110,11 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   const accountCurrency = settlesIn ?? organization.defaultCurrency;
   const quote = ready && settlesIn && canRequest ? await services.payouts.quoteFor(currency, settlesIn) : null;
   const payoutFee = services.payouts.feeFor(payoutCurrency);
+  // No Brasil quem paga é a Kabrun, por Pix: conta verificada sem chave cadastrada ainda não
+  // consegue sacar, porque o dinheiro não teria para onde ir.
+  const missingPixKey =
+    ready && paysWithPix(merchant?.country ?? organization.country) && !(await services.payoutDestinations.getPix(organization.id));
+  const canPayout = ready && !missingPixKey;
 
   return (
     <>
@@ -161,7 +167,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
                 availableLabel={formatAmount(summary.available, currency)}
                 feeAmount={payoutFee.toString()}
                 feeLabel={formatAmount(payoutFee, payoutCurrency)}
-                disabled={!ready || summary.available <= 0n}
+                disabled={!canPayout || summary.available <= 0n}
               />
             ) : undefined
           }
@@ -208,7 +214,14 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
       )}
 
       {tab === "saques" && (
-        <PayoutsTab dict={dict} payouts={payouts} currency={currency} ready={ready} hasMerchantAccount={merchant !== null} />
+        <PayoutsTab
+          dict={dict}
+          payouts={payouts}
+          currency={currency}
+          ready={ready}
+          hasMerchantAccount={merchant !== null}
+          missingPixKey={missingPixKey}
+        />
       )}
 
       {tab === "movimentacoes" && (
