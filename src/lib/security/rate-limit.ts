@@ -22,6 +22,35 @@ export class RedisRateLimiter implements RateLimiter {
   }
 }
 
+/**
+ * Tenta o limitador compartilhado e cai para o de memória quando ele falha.
+ *
+ * Existe porque o contrário era pior: com o Redis fora do ar, o `consume` rejeitava e o
+ * comprador recebia erro genérico ao tentar pagar — Redis caído virava checkout caído. O
+ * fallback antigo só cobria `REDIS_URL` ausente, que é o caso que nunca acontece em produção.
+ *
+ * Degrada aberto, de propósito: durante a falha o limite fica mais fraco, e o contador da
+ * memória começa do zero. É prejuízo aceitável; recusar toda venda enquanto o Redis não
+ * volta não é. Cada falha é registrada porque rate limit degradado em silêncio é exatamente
+ * como alguém descobre um cupom por força bruta sem ninguém perceber.
+ */
+export class ResilientRateLimiter implements RateLimiter {
+  constructor(
+    private readonly primary: RateLimiter,
+    private readonly fallback: RateLimiter,
+    private readonly onError: (error: unknown) => void = () => {},
+  ) {}
+
+  async consume(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult> {
+    try {
+      return await this.primary.consume(key, limit, windowSeconds);
+    } catch (error) {
+      this.onError(error);
+      return this.fallback.consume(key, limit, windowSeconds);
+    }
+  }
+}
+
 /** Used in tests / when Redis is unavailable. Per-process only. */
 export class InMemoryRateLimiter implements RateLimiter {
   private readonly hits = new Map<string, { count: number; resetAt: number }>();
