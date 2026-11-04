@@ -2,6 +2,7 @@ import {
   AlertTriangleIcon,
   ArrowDownLeftIcon,
   BanknoteIcon,
+  ClockIcon,
   LockIcon,
   type LucideIcon,
   ReceiptIcon,
@@ -90,7 +91,8 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
       <section className="grid gap-4 lg:grid-cols-3">
         {/*
           No Financeiro o número grande é o quanto ela já vendeu — a pergunta que esta tela
-          responde. O que dá para sacar hoje fica ao lado, e tem a tela de Saques inteira para ele.
+          responde. O saldo fica nos cards ao lado, um por estado, e tem a tela de Saques
+          inteira para ele.
         */}
         <BalanceHero
           dict={dict}
@@ -99,8 +101,6 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
           label={t.grossRevenue}
           amount={formatAmount(summary.grossRevenue, currency)}
           footnote={t.grossRevenueHint}
-          pending={formatAmount(summary.pending, currency)}
-          reserved={formatAmount(summary.reserved, currency)}
           actions={
             <Button className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90" render={<Link href="/payouts" />}>
               <BanknoteIcon />
@@ -109,19 +109,26 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
           }
         />
 
-        {/* Sozinho na coluna, sem esticar até a altura do bloco ao lado. */}
-        <StatCard
-          className="self-start"
-          label={dict.balance.availableForPayout}
-          value={formatAmount(summary.available, currency)}
-          icon={BanknoteIcon}
-          tone="positive"
-          hint={nextAvailable ? fill(t.nextRelease, { date: formatDate(nextAvailable, dict.localeTag) }) : t.noRelease}
-        />
+        {/* O saldo, em dois tempos: o que já dá para sacar e o que ainda está no prazo. */}
+        <div className="grid gap-4 self-start sm:grid-cols-2 lg:grid-cols-1">
+          <StatCard
+            label={dict.balance.availableForPayout}
+            value={formatAmount(summary.available, currency)}
+            icon={BanknoteIcon}
+            tone="positive"
+            hint={nextAvailable ? fill(t.nextRelease, { date: formatDate(nextAvailable, dict.localeTag) }) : t.noRelease}
+          />
+          <StatCard
+            label={dict.balance.pending}
+            value={formatAmount(summary.pending, currency)}
+            icon={ClockIcon}
+            tone="muted"
+            hint={t.pendingHint}
+          />
+        </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label={t.processorFees} value={formatAmount(summary.processorFees, currency)} tone="muted" />
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label={t.refunds} value={formatAmount(summary.refunds, currency)} icon={RotateCcwIcon} tone="muted" />
         <StatCard label={t.chargebacks} value={formatAmount(summary.chargebacks, currency)} icon={AlertTriangleIcon} tone="muted" />
         <StatCard label={t.reserved} value={formatAmount(summary.reserved, currency)} icon={LockIcon} tone={summary.reserved > 0n ? "warning" : "muted"} hint={t.reservedHint} />

@@ -25,7 +25,8 @@ export function BalanceHero({
   /** Padrão: "Saldo disponível". */
   label?: string;
   amount: string;
-  pending: string;
+  /** Os dois valores de apoio são opcionais: há tela que mostra cada um no seu próprio card. */
+  pending?: string;
   reserved?: string;
   footnote?: string;
   actions?: ReactNode;
@@ -59,18 +60,22 @@ export function BalanceHero({
           {footnote && <p className="mt-2.5 max-w-md text-sm text-white/70">{footnote}</p>}
         </div>
 
-        <dl className="flex flex-wrap gap-x-10 gap-y-3">
-          <div>
-            <dt className="text-xs text-white/60">{t.pending}</dt>
-            <dd className="tabular mt-0.5 font-heading text-lg font-semibold">{pending}</dd>
-          </div>
-          {reserved && (
-            <div>
-              <dt className="text-xs text-white/60">{t.reserved}</dt>
-              <dd className="tabular mt-0.5 font-heading text-lg font-semibold">{reserved}</dd>
-            </div>
-          )}
-        </dl>
+        {(pending || reserved) && (
+          <dl className="flex flex-wrap gap-x-10 gap-y-3">
+            {pending && (
+              <div>
+                <dt className="text-xs text-white/60">{t.pending}</dt>
+                <dd className="tabular mt-0.5 font-heading text-lg font-semibold">{pending}</dd>
+              </div>
+            )}
+            {reserved && (
+              <div>
+                <dt className="text-xs text-white/60">{t.reserved}</dt>
+                <dd className="tabular mt-0.5 font-heading text-lg font-semibold">{reserved}</dd>
+              </div>
+            )}
+          </dl>
+        )}
 
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
