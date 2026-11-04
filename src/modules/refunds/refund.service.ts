@@ -7,6 +7,7 @@ import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import { revokeOrderAccess } from "@/modules/members/access";
 import { producerAccountFor, splitByOriginalShares } from "@/modules/payments/payment-shares";
+import { ReserveService } from "@/modules/reserves/reserve.service";
 import type { Repositories } from "@/server/repositories";
 import type { UnitOfWork } from "@/server/unit-of-work";
 
@@ -159,6 +160,9 @@ export class RefundService {
   ) {
     const shares = splitByOriginalShares(payment, amount);
     await this.affiliates.reverseCommission(repos, payment.orderId, shares.affiliate);
+    // A reserva de segurança existe para esta hora: ela paga antes do saldo dela ser tocado.
+    const fromReserve = await ReserveService.consume(repos, payment.id, shares.producer);
+    const fromBalance = shares.producer - fromReserve;
     await this.ledger.post(repos, {
       organizationId: payment.organizationId,
       idempotencyKey: `refund:${refundId}`,
@@ -169,7 +173,10 @@ export class RefundService {
       currency: assertSupportedCurrency(payment.currency),
       description: "Reembolso ao comprador",
       lines: [
-        { account: producerAccountFor(payment), direction: "DEBIT", amount: shares.producer, description: "Estorno da parte do produtor" },
+        ...(fromReserve > 0n
+          ? [{ account: "RESERVES" as const, direction: "DEBIT" as const, amount: fromReserve, description: "Coberto pela reserva de segurança" }]
+          : []),
+        { account: producerAccountFor(payment), direction: "DEBIT", amount: fromBalance, description: "Estorno da parte do produtor" },
         { account: "PLATFORM_REVENUE", direction: "DEBIT", amount: shares.platform, description: "Estorno da taxa Kabrun" },
         { account: "REFUNDS", direction: "DEBIT", amount: shares.processor, description: "Taxa de processamento não recuperada" },
         // The affiliate does not keep a commission on a sale that was given back.

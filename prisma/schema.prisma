@@ -361,6 +361,7 @@ model Organization {
   apiKeys             ApiKey[]
   webhookEndpoints    WebhookEndpoint[]
   auditLogs           AuditLog[]
+  reservePolicies     ReservePolicy[]
 }
 
 model OrganizationMember {
@@ -830,7 +831,10 @@ model Balance {
 model Reserve {
   id             String        @id @default(cuid())
   organizationId String
+  /// Quanto foi retido na venda. Não muda: o que já foi usado fica em `consumedAmount`.
   amount         BigInt
+  /// Quanto desta reserva já cobriu um estorno ou chargeback. O resto é o que ainda volta.
+  consumedAmount BigInt        @default(0)
   currency       String        @db.Char(3)
   reason         String
   referenceType  String?
@@ -843,6 +847,28 @@ model Reserve {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, status])
+  @@index([status, releaseAt])
+  @@index([referenceId])
+}
+
+/// Reserva de segurança: parte de cada venda que fica retida para cobrir estorno e chargeback.
+/// Resolvida como as demais políticas: organização → país → moeda → padrão.
+model ReservePolicy {
+  id             String   @id @default(cuid())
+  organizationId String?
+  country        String?  @db.Char(2)
+  currency       String?  @db.Char(3)
+  /// Percentual da venda retido, em pontos-base (400 = 4%).
+  percentageBps  Int      @default(0)
+  /// Por quantos dias fica retido, contados da aprovação do pagamento.
+  holdDays       Int
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, currency])
 }
 
 /// How long producer funds stay pending. Resolution: organization → country → global default.

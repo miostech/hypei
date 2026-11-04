@@ -39,6 +39,7 @@ import { RefundService } from "@/modules/refunds/refund.service";
 import type { RiskEventRepository } from "@/modules/risk/risk-event.repository";
 import { RiskService } from "@/modules/risk/risk.service";
 import { SettlementService } from "@/modules/settlements/settlement.service";
+import { ReserveService } from "@/modules/reserves/reserve.service";
 import { SubscriptionService } from "@/modules/subscriptions/subscription.service";
 import { WEBHOOK_JOB, WebhookIngestionService } from "@/modules/webhooks/webhook-ingestion.service";
 import type { WebhookPayloadRepository } from "@/modules/webhooks/webhook-payload.repository";
@@ -89,6 +90,7 @@ export function buildServices(deps: ServiceDependencies) {
   const disputes = new DisputeService(uow, ledger, affiliates);
   const finance = new FinanceOverviewService(uow, { defaultSettlementDelayDays: deps.config.defaultSettlementDelayDays });
   const settlements = new SettlementService(uow, ledger, affiliates, finance, deps.clock);
+  const reserves = new ReserveService(uow, ledger, deps.clock);
   const risk = new RiskService(deps.mongo.riskEvents);
   const payouts = new PayoutService(uow, deps.paymentProvider, ledger, balances, risk, deps.clock, {
     minimumPayout: deps.config.minimumPayout,
@@ -146,6 +148,7 @@ export function buildServices(deps: ServiceDependencies) {
     refunds,
     disputes,
     settlements,
+    reserves,
     payouts,
     merchantAccounts,
     verification,

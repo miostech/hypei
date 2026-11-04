@@ -40,13 +40,25 @@ export interface TestApp {
 }
 
 export async function createTestApp(
-  options: { platformFeeBps?: number; settlementDays?: number; processorFeeBps?: number; payoutFee?: bigint } = {},
+  options: {
+    platformFeeBps?: number;
+    settlementDays?: number;
+    processorFeeBps?: number;
+    payoutFee?: bigint;
+    /** Sem reserva por padrão: cada teste de saldo fala de uma coisa só. Quem testa a
+     *  reserva liga a dela, e o padrão publicado tem teste próprio. */
+    reserveBps?: number;
+    reserveHoldDays?: number;
+  } = {},
 ): Promise<TestApp> {
   const prisma = testPrisma();
   await resetDatabase(prisma);
 
   await prisma.platformFeePolicy.create({ data: { currency: "BRL", percentageBps: options.platformFeeBps ?? 1000, fixedAmount: 0n } });
   await prisma.settlementPolicy.create({ data: { delayDays: options.settlementDays ?? 7 } });
+  await prisma.reservePolicy.create({
+    data: { percentageBps: options.reserveBps ?? 0, holdDays: options.reserveHoldDays ?? 30 },
+  });
 
   const clock = {
     // Provider events carry real timestamps, so the test clock starts at "now".

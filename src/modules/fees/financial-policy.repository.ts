@@ -1,5 +1,6 @@
 import type { DbClient } from "@/lib/database/postgres/client";
 import type { PaymentMethodType } from "@/generated/prisma/enums";
+import type { ReserveRule } from "@/modules/balances/settlement-terms";
 import type { PlatformFeeRule } from "./fee.calculator";
 
 export interface PolicyScope {
@@ -17,6 +18,7 @@ export interface PolicyScope {
 export interface FinancialPolicyRepository {
   findPlatformFeeRule(scope: PolicyScope): Promise<PlatformFeeRule | null>;
   findSettlementDelayDays(scope: PolicyScope): Promise<number | null>;
+  findReserveRule(scope: PolicyScope): Promise<ReserveRule | null>;
   /** Grava a condição desta organização: uma linha por moeda e meio, sobrescrita se já existir. */
   setOrganizationSettlementDelay(input: {
     organizationId: string;
@@ -50,6 +52,21 @@ export class PrismaFinancialPolicyRepository implements FinancialPolicyRepositor
     });
     const best = candidates.sort((a, b) => specificity(b) - specificity(a))[0];
     return best ? { percentageBps: best.percentageBps, fixedAmount: best.fixedAmount } : null;
+  }
+
+  async findReserveRule(scope: PolicyScope): Promise<ReserveRule | null> {
+    const candidates = await this.db.reservePolicy.findMany({
+      where: {
+        active: true,
+        OR: [{ organizationId: scope.organizationId }, { organizationId: null }],
+        AND: [
+          { OR: [{ country: scope.country }, { country: null }] },
+          { OR: [{ currency: scope.currency }, { currency: null }] },
+        ],
+      },
+    });
+    const best = candidates.sort((a, b) => specificity(b) - specificity(a))[0];
+    return best ? { percentageBps: best.percentageBps, holdDays: best.holdDays } : null;
   }
 
   async setOrganizationSettlementDelay(input: {

@@ -27,3 +27,26 @@ export const FAST_SETTLEMENT_MIN_REVENUE: Record<CurrencyCode, bigint> = {
   EUR: 100_000_000n, // € 1.000.000,00
   USD: 100_000_000n, // $ 1,000,000.00
 };
+
+/** Quanto de cada venda fica retido para cobrir estorno e chargeback, e por quantos dias. */
+export interface ReserveRule {
+  percentageBps: number;
+  holdDays: number;
+}
+
+/**
+ * A reserva anunciada, por moeda.
+ *
+ * O chargeback chega meses depois da venda, mas o produtor recebe em dias e saca no mesmo dia.
+ * Sem reter nada, o estorno que chega depois do saque é dinheiro que a Kabrun devolve ao
+ * comprador do próprio caixa e cobra de um saldo que já ficou negativo. A reserva é a parte
+ * da venda que fica em casa até essa janela passar — e volta inteira para quem não dá problema.
+ *
+ * Lá fora é mais: o prazo de contestação é maior e a venda está mais longe de qualquer
+ * cobrança nossa.
+ */
+export const PUBLISHED_RESERVE: Record<CurrencyCode, ReserveRule> = {
+  BRL: { percentageBps: 400, holdDays: 30 },
+  EUR: { percentageBps: 1000, holdDays: 45 },
+  USD: { percentageBps: 1000, holdDays: 45 },
+};

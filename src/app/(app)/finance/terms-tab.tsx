@@ -56,6 +56,14 @@ export function TermsTab({ dict, terms, payoutFee, canRequestFast }: {
         </section>
 
         <section>
+          <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{t.reserve}</h3>
+          <p className="mt-1.5 text-base font-medium">
+            {fill(t.reserveValue, { percentage: (terms.reserve.percentageBps / 100).toLocaleString(dict.localeTag), days: days(terms.reserve.holdDays) })}
+          </p>
+          <p className="mt-1 max-w-prose text-xs text-muted-foreground">{t.reserveHint}</p>
+        </section>
+
+        <section>
           <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{t.payoutFee}</h3>
           <p className="mt-1.5 text-base font-medium">{fill(t.payoutFeeValue, { amount: formatAmount(payoutFee, currency) })}</p>
         </section>

@@ -63,6 +63,7 @@ const MOVEMENT_STYLE: Record<string, { icon: LucideIcon; className: string }> = 
   "payout.initiated": { icon: ArrowDownLeftIcon, className: "bg-gold/15 text-warning" },
   "payout.paid": { icon: BanknoteIcon, className: "bg-gold/15 text-warning" },
   "payout.reversed": { icon: RotateCcwIcon, className: "bg-warning/12 text-warning" },
+  "reserve.released": { icon: UnlockIcon, className: "bg-success/10 text-success" },
 };
 
 export default async function FinancePage({ searchParams }: PageProps<"/finance">) {

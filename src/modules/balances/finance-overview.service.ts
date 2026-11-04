@@ -2,7 +2,8 @@ import type { LedgerAccount, PaymentMethodType } from "@/generated/prisma/enums"
 import type { UnitOfWork } from "@/server/unit-of-work";
 import type { JournalTypeTotals } from "@/modules/ledger/ledger.repository";
 import { publishedPlatformFee, type PlatformFeeRule } from "@/modules/fees/fee.calculator";
-import { FAST_CARD_SETTLEMENT_DAYS } from "./settlement-terms";
+import { publishedReserve } from "@/modules/reserves/reserve.calculator";
+import { FAST_CARD_SETTLEMENT_DAYS, type ReserveRule } from "./settlement-terms";
 
 const PRODUCER_ACCOUNTS: LedgerAccount[] = ["PRODUCER_PENDING", "PRODUCER_AVAILABLE", "RESERVES"];
 
@@ -42,6 +43,8 @@ export interface FinanceTerms {
   settlementDays: Record<"card" | "pix" | "boleto", number>;
   /** O prazo de cartão já está no mínimo possível — não há recebimento rápido a pedir. */
   fastCardSettlement: boolean;
+  /** Quanto de cada venda fica retido para cobrir estorno, e por quantos dias. */
+  reserve: ReserveRule;
 }
 
 /** Read models for the producer finance pages. Everything is derived from the ledger. */
@@ -118,8 +121,9 @@ export class FinanceOverviewService {
     const days = async (method: PaymentMethodType) =>
       (await this.uow.repos.policies.findSettlementDelayDays({ ...scope, method })) ?? this.config.defaultSettlementDelayDays;
 
-    const [fee, card, pix, boleto] = await Promise.all([
+    const [fee, reserve, card, pix, boleto] = await Promise.all([
       this.uow.repos.policies.findPlatformFeeRule(scope),
+      this.uow.repos.policies.findReserveRule(scope),
       days("CREDIT_CARD"),
       days("PIX"),
       days("BOLETO"),
@@ -130,6 +134,7 @@ export class FinanceOverviewService {
       platformFee: fee ?? publishedPlatformFee(currency),
       settlementDays: { card, pix, boleto },
       fastCardSettlement: card <= FAST_CARD_SETTLEMENT_DAYS,
+      reserve: reserve ?? publishedReserve(currency),
     };
   }
 }

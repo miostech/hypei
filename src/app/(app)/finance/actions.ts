@@ -72,10 +72,11 @@ export async function simulateSettlement(): Promise<ActionState> {
   return runAction(async () => {
     if (process.env.APP_ENV === "production") throw new ForbiddenError("Indisponível em produção");
     const { organization } = await requirePermission("finance:read");
-    const result = await getServices().settlements.releaseDue({
-      now: new Date(Date.now() + 365 * 86_400_000),
-      organizationId: organization.id,
-    });
+    const future = new Date(Date.now() + 365 * 86_400_000);
+    const services = getServices();
+    const result = await services.settlements.releaseDue({ now: future, organizationId: organization.id });
+    // A reserva vence depois da venda liberar, então ela vem junto no mesmo pulo no tempo.
+    await services.reserves.releaseDue({ now: future, organizationId: organization.id });
     revalidatePath("/finance");
     revalidatePath("/dashboard");
     const dict = await getAppDictionary(await appLocale());

@@ -7,6 +7,7 @@ import type { NormalizedProviderEvent } from "@/lib/providers/payment/types";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import { revokeOrderAccess } from "@/modules/members/access";
 import { producerAccountFor, splitByOriginalShares } from "@/modules/payments/payment-shares";
+import { ReserveService } from "@/modules/reserves/reserve.service";
 import type { Repositories } from "@/server/repositories";
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import type { UnitOfWork } from "@/server/unit-of-work";
@@ -65,20 +66,27 @@ export class DisputeService {
       status: "OPEN",
       evidenceDueAt: event.evidenceDueAt,
     });
-    await this.ledger.post(repos, {
-      organizationId: payment.organizationId,
-      idempotencyKey: `dispute:${dispute.id}:hold`,
-      type: "dispute.hold",
-      referenceType: "Dispute",
-      referenceId: dispute.id,
-      paymentId: payment.id,
-      currency: assertSupportedCurrency(payment.currency),
-      description: "Reserva por disputa/chargeback",
-      lines: [
-        { account: producerAccountFor(payment), direction: "DEBIT", amount: shares.producer },
-        { account: "RESERVES", direction: "CREDIT", amount: shares.producer },
-      ],
-    });
+    // O que a reserva de segurança já segurava desta venda não precisa ser segurado de novo:
+    // o dinheiro já está em RESERVES. Só o que falta sai do saldo dela — e a reserva passa a
+    // responder por esta disputa, em vez de vencer sozinha no prazo dela.
+    const fromReserve = await ReserveService.consume(repos, payment.id, shares.producer);
+    const toHold = shares.producer - fromReserve;
+    if (toHold > 0n) {
+      await this.ledger.post(repos, {
+        organizationId: payment.organizationId,
+        idempotencyKey: `dispute:${dispute.id}:hold`,
+        type: "dispute.hold",
+        referenceType: "Dispute",
+        referenceId: dispute.id,
+        paymentId: payment.id,
+        currency: assertSupportedCurrency(payment.currency),
+        description: "Reserva por disputa/chargeback",
+        lines: [
+          { account: producerAccountFor(payment), direction: "DEBIT", amount: toHold },
+          { account: "RESERVES", direction: "CREDIT", amount: toHold },
+        ],
+      });
+    }
     await repos.outbox.add(createDomainEvent("dispute.created", dispute.id, payment.organizationId, { paymentId: payment.id, amount: event.amount }));
     return dispute;
   }

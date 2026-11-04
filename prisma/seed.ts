@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { createPrismaClient } from "../src/lib/database/postgres/client";
 import { PUBLISHED_PLATFORM_FEE } from "../src/modules/fees/fee.calculator";
-import { CARD_SETTLEMENT_DAYS, INSTANT_SETTLEMENT_DAYS } from "../src/modules/balances/settlement-terms";
+import { CARD_SETTLEMENT_DAYS, INSTANT_SETTLEMENT_DAYS, PUBLISHED_RESERVE } from "../src/modules/balances/settlement-terms";
 
 /**
  * Seeds the financial POLICIES the platform needs to operate.
@@ -31,6 +31,15 @@ async function main() {
     else await prisma.settlementPolicy.create({ data: policy });
   }
 
+  // A reserva de segurança, por moeda. O que fica retido de cada venda até a janela de
+  // contestação passar — mais alta lá fora, onde o prazo para contestar é maior.
+  for (const [currency, rule] of Object.entries(PUBLISHED_RESERVE)) {
+    const existing = await prisma.reservePolicy.findFirst({ where: { organizationId: null, country: null, currency } });
+    const data = { currency, ...rule, active: true };
+    if (existing) await prisma.reservePolicy.update({ where: { id: existing.id }, data });
+    else await prisma.reservePolicy.create({ data });
+  }
+
   // A taxa anunciada, por moeda: o Brasil tem uma condição, a venda lá fora tem outra.
   for (const [currency, rule] of Object.entries(PUBLISHED_PLATFORM_FEE)) {
     const existing = await prisma.platformFeePolicy.findFirst({ where: { organizationId: null, country: null, currency } });
@@ -39,8 +48,12 @@ async function main() {
     else await prisma.platformFeePolicy.create({ data });
   }
 
-  const [settlements, fees] = await Promise.all([prisma.settlementPolicy.count(), prisma.platformFeePolicy.count()]);
-  console.log(`✔ seed: ${settlements} settlement policies, ${fees} platform fee policies`);
+  const [settlements, fees, reserves] = await Promise.all([
+    prisma.settlementPolicy.count(),
+    prisma.platformFeePolicy.count(),
+    prisma.reservePolicy.count(),
+  ]);
+  console.log(`✔ seed: ${settlements} settlement policies, ${fees} platform fee policies, ${reserves} reserve policies`);
   await prisma.$disconnect();
 }
 
