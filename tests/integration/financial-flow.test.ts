@@ -85,6 +85,24 @@ describe("Financial flow: payment → ledger → balance → settlement → payo
     expect(balance).toMatchObject({ pendingAmount: 0n, availableAmount: 0n, reservedAmount: 0n });
   });
 
+  /**
+   * O banco de produção nasce sem nenhuma PlatformFeePolicy, e o default antigo era zero:
+   * toda venda passava sem taxa, sem erro e sem log. O harness sempre cria uma política,
+   * então este caminho nunca era exercitado — era preciso apagá-la para enxergar o furo.
+   */
+  it("charges the published fee when no policy is registered, instead of nothing", async () => {
+    await app.prisma.platformFeePolicy.deleteMany({});
+    const { checkout } = await createSeller(app, { amount: 10_000n });
+    const { payment } = await startPurchase(app, checkout.slug);
+    await confirmPayment(app, payment);
+
+    const paid = await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
+    // 8,99% de 10000 = 899, mais o fixo de 249.
+    expect(paid.platformFeeAmount).toBe(1148n);
+    expect(paid.producerNetAmount).toBe(10_000n - 400n - 1148n);
+    await expectLedgerBalanced(app.prisma);
+  });
+
   it("keeps the Balance projection identical to the ledger", async () => {
     const { organization, checkout } = await createSeller(app, { amount: 4990n });
     for (let i = 0; i < 3; i++) {

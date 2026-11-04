@@ -8,8 +8,6 @@ export interface PlatformFeeRule {
   fixedAmount: bigint;
 }
 
-export const NO_PLATFORM_FEE: PlatformFeeRule = { percentageBps: 0, fixedAmount: 0n };
-
 /**
  * A taxa que a landing page anuncia, e o padrão que o seed grava.
  *
