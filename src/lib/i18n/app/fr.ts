@@ -45,6 +45,7 @@ const fr: AppDictionary = {
     myAccount: "Mon compte",
     settings: "Paramètres",
     language: "Langue",
+    studentPanel: "Passer à l'espace élève",
     signOut: "Se déconnecter",
   },
 

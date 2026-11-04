@@ -105,6 +105,29 @@ export class MemberAreaService {
     await this.uow.repos.progress.setCompleted(access.enrollmentId, lessonId, completed);
   }
 
+  /**
+   * O painel do aluno: tudo que a pessoa comprou, de todos os produtores.
+   *
+   * A área de membros é de um produtor por vez — quem comprou de três tem três endereços. Esta
+   * é a lista que falta no meio: ela entra por aqui e escolhe o que quer assistir.
+   */
+  async listPurchases(email: string) {
+    const enrollments = await this.uow.repos.progress.listEnrollmentsByEmail(email);
+    return Promise.all(
+      enrollments.map(async ({ id, course }) => {
+        const outline = await this.outline(course.organizationId, course.slug, { kind: "enrolled", enrollmentId: id });
+        return {
+          course,
+          organization: course.organization,
+          percentage: outline.percentage,
+          completedLessons: outline.completedLessons,
+          totalLessons: outline.totalLessons,
+          resumeLessonId: outline.resumeLessonId,
+        };
+      }),
+    );
+  }
+
   /** Courses the student can open in an organization, with their progress. */
   async listForStudent(organizationId: string, user: { id: string; email: string }) {
     const courses = await this.uow.repos.courses.listPublished(organizationId);

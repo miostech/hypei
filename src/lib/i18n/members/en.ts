@@ -18,6 +18,14 @@ const en: MembersDictionary = {
     start: "Start",
   },
 
+  student: {
+    title: "Student panel",
+    subtitle: "Everything you have bought, from every producer.",
+    emptyTitle: "You haven't bought anything yet",
+    emptyBody: "What you buy shows up here, ready to watch.",
+    producerPanel: "Producer panel",
+  },
+
   course: {
     title: "Content",
     teamPreview: "Team preview",

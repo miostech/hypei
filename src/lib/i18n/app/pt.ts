@@ -53,6 +53,7 @@ const pt = {
     myAccount: "Minha conta",
     settings: "Configurações",
     language: "Idioma",
+    studentPanel: "Mudar para painel do aluno",
     signOut: "Sair",
   },
 

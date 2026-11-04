@@ -45,6 +45,7 @@ const it: AppDictionary = {
     myAccount: "Il mio account",
     settings: "Impostazioni",
     language: "Lingua",
+    studentPanel: "Passa all'area dello studente",
     signOut: "Esci",
   },
 

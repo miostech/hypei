@@ -24,6 +24,15 @@ const pt = {
     start: "Começar",
   },
 
+  /** A lista que atravessa produtores, antes de escolher a área de membros de um deles. */
+  student: {
+    title: "Painel do aluno",
+    subtitle: "Tudo que você comprou, de todos os produtores.",
+    emptyTitle: "Você ainda não comprou nada",
+    emptyBody: "O que você comprar aparece aqui, pronto para assistir.",
+    producerPanel: "Painel do produtor",
+  },
+
   course: {
     title: "Conteúdo",
     teamPreview: "Prévia da equipe",

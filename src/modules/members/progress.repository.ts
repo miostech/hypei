@@ -1,9 +1,18 @@
 import type { DbClient } from "@/lib/database/postgres/client";
-import type { Enrollment, LessonProgress } from "@/generated/prisma/client";
+import type { Course, Enrollment, LessonProgress, Organization } from "@/generated/prisma/client";
+
+export type EnrolledCourse = Enrollment & { course: Course & { organization: Organization } };
 
 export interface ProgressRepository {
   /** The student's active enrollment in a course, resolved by the e-mail they signed in with. */
   findEnrollment(courseId: string, email: string): Promise<Enrollment | null>;
+  /**
+   * Tudo em que a pessoa está matriculada, de todos os produtores.
+   *
+   * A matrícula é casada pelo e-mail de quem comprou, não pela organização: é isto que permite
+   * um painel só do aluno, com o que ele comprou de gente diferente.
+   */
+  listEnrollmentsByEmail(email: string): Promise<EnrolledCourse[]>;
   listProgress(enrollmentId: string): Promise<LessonProgress[]>;
   /** Records that the student opened the lesson, without touching `completedAt`. */
   markViewed(enrollmentId: string, lessonId: string): Promise<void>;
@@ -18,6 +27,14 @@ export class PrismaProgressRepository implements ProgressRepository {
   findEnrollment(courseId: string, email: string) {
     return this.db.enrollment.findFirst({
       where: { courseId, status: "ACTIVE", customer: { email: email.toLowerCase() } },
+    });
+  }
+
+  listEnrollmentsByEmail(email: string) {
+    return this.db.enrollment.findMany({
+      where: { status: "ACTIVE", customer: { email: email.toLowerCase() }, course: { published: true } },
+      include: { course: { include: { organization: true } } },
+      orderBy: { createdAt: "desc" },
     });
   }
 

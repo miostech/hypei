@@ -26,6 +26,7 @@ const PROTECTED_PREFIXES = [
   "/settings",
   "/admin",
   "/members",
+  "/aluno",
 ];
 
 export async function proxy(request: NextRequest) {

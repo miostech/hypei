@@ -19,6 +19,14 @@ const es: MembersDictionary = {
     start: "Empezar",
   },
 
+  student: {
+    title: "Panel del alumno",
+    subtitle: "Todo lo que has comprado, de todos los productores.",
+    emptyTitle: "Todavía no has comprado nada",
+    emptyBody: "Lo que compres aparece aquí, listo para ver.",
+    producerPanel: "Panel del productor",
+  },
+
   course: {
     title: "Contenido",
     teamPreview: "Vista previa del equipo",

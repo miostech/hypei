@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, ChevronsUpDownIcon, LanguagesIcon, LogOutIcon, PlusIcon, SettingsIcon } from "lucide-react";
+import { ArrowRightLeftIcon, CheckIcon, ChevronsUpDownIcon, LanguagesIcon, LogOutIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { useTransition, type ReactNode } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -129,6 +129,11 @@ export function Topbar({
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            {/* A mesma pessoa compra e vende. A chave troca de painel sem trocar de conta. */}
+            <DropdownMenuItem render={<Link href="/aluno" />}>
+              <ArrowRightLeftIcon />
+              {dict.topbar.studentPanel}
+            </DropdownMenuItem>
             <DropdownMenuItem render={<Link href="/settings" />}>
               <SettingsIcon />
               {dict.topbar.settings}
