@@ -64,9 +64,9 @@ export class SettlementService {
       }
       // The producer's money is out of the window, so the affiliate's is too.
       await repos.affiliates.markSettledCommissions([payment.id]);
-      // E, liberada, a comissão vai para a conta de quem a ganhou: ela não precisa de um
-      // clique do produtor para receber o que já é dela.
-      await this.affiliates.transferSettledCommissions(repos, payment.orderId, now);
+      // A comissão já está na conta de quem indicou desde a venda; aqui ela só sai do
+      // pendente para o disponível, junto com a do produtor.
+      await this.affiliates.releaseSettledCommissions(repos, payment.orderId, now);
       await repos.payments.update(payment.id, { settledAt: now });
       return pending > 0n ? pending : 0n;
     });

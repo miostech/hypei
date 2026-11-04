@@ -430,9 +430,30 @@ describe("Programa aberto de afiliados", () => {
 
   /**
    * A fase 2: a comissão não fica devida na conta do produtor esperando um pagamento manual.
-   * Quando a venda libera, ela vira saldo da afiliada — e sai de lá pelo saque de sempre.
+   * Ela entra no saldo da afiliada na hora da venda e sai de lá pelo saque de sempre.
    */
-  it("transfere a comissão para a conta da afiliada quando a venda libera", async () => {
+  it("põe a comissão no saldo pendente da afiliada assim que a venda é aprovada", async () => {
+    const { producer, inviteCode } = await openProgram();
+    const { ana, affiliation } = await anaAffiliates(inviteCode);
+    const { payment } = await startPurchase(app, producer.checkout.slug, "recem-comprada@example.com", {
+      referralCode: affiliation.code,
+    });
+    await confirmPayment(app, payment);
+
+    // Antes de qualquer liberação: o dinheiro já é dela, e já aparece — como pendente.
+    const balance = await app.prisma.balance.findFirstOrThrow({ where: { organizationId: ana.organization.id, currency: "BRL" } });
+    expect(balance.pendingAmount).toBe(3000n);
+    expect(balance.availableAmount).toBe(0n);
+
+    // E a dívida do produtor com ela nasce e se extingue na mesma transação da venda.
+    expect((await accountTotals(app.prisma, producer.organization.id)).AFFILIATE_PAYABLE).toBe(0n);
+    expect((await app.prisma.affiliateCommission.findFirstOrThrow()).status).toBe("PENDING");
+
+    await expectAffiliateTransfersPaired(app.prisma);
+    await expectLedgerBalanced(app.prisma);
+  });
+
+  it("libera a comissão para saque junto com o saldo do produtor", async () => {
     const { producer, inviteCode } = await openProgram();
     const { ana, affiliation } = await anaAffiliates(inviteCode);
     const { payment } = await startPurchase(app, producer.checkout.slug, "indicada@example.com", {
@@ -519,6 +540,51 @@ describe("Programa aberto de afiliados", () => {
     expect((await accountTotals(app.prisma, producer.organization.id)).AFFILIATE_PAYABLE).toBe(0n);
     expect(await app.prisma.affiliateCommission.findFirstOrThrow()).toMatchObject({ status: "CANCELED", reversedAmount: 3000n });
 
+    await expectAffiliateTransfersPaired(app.prisma);
+    await expectLedgerBalanced(app.prisma);
+  });
+
+  it("recusa o pagamento manual de quem já recebe pelo saldo da conta", async () => {
+    const { producer, inviteCode } = await openProgram();
+    const { affiliation } = await anaAffiliates(inviteCode);
+    const { payment } = await startPurchase(app, producer.checkout.slug, "duplicada@example.com", { referralCode: affiliation.code });
+    await confirmPayment(app, payment);
+    app.clock.advanceDays(10);
+    await app.services.settlements.releaseDue({ now: app.clock.now });
+
+    // Pagar de novo seria pagar a mesma comissão duas vezes, a segunda do bolso do produtor.
+    const affiliate = await app.prisma.affiliate.findFirstOrThrow();
+    await expect(
+      app.services.affiliates.payCommissions(producer.organization.id, producer.user.id, affiliate.id),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+
+  it("tira a comissão do pendente dela quando a venda é estornada antes de liberar", async () => {
+    const { producer, inviteCode } = await openProgram();
+    const { ana, affiliation } = await anaAffiliates(inviteCode);
+    const { payment } = await startPurchase(app, producer.checkout.slug, "desistiu@example.com", { referralCode: affiliation.code });
+    await confirmPayment(app, payment);
+
+    const paid = await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
+    const refund = await app.services.refunds.request({
+      organizationId: producer.organization.id,
+      paymentId: paid.id,
+      amount: paid.amount,
+      idempotencyKey: "estorno-antes-de-liberar",
+    });
+    const stored = await app.prisma.refund.findUniqueOrThrow({ where: { id: refund.id } });
+    await app.deliver({
+      type: "refund.succeeded",
+      providerRefundId: stored.providerRefundId!,
+      providerPaymentId: paid.providerPaymentId!,
+      amount: paid.amount.toString(),
+      currency: paid.currency,
+    });
+
+    // Sai de onde estava — do pendente, que é onde a comissão de uma venda nova fica.
+    const balance = await app.prisma.balance.findFirstOrThrow({ where: { organizationId: ana.organization.id, currency: "BRL" } });
+    expect(balance.pendingAmount).toBe(0n);
+    expect(balance.availableAmount).toBe(0n);
     await expectAffiliateTransfersPaired(app.prisma);
     await expectLedgerBalanced(app.prisma);
   });

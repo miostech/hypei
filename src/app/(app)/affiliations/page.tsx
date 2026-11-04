@@ -51,14 +51,19 @@ export default async function AffiliationsPage() {
         <EmptyState icon={HandshakeIcon} title={t.emptyTitle} description={t.emptyBody} />
       ) : (
         <>
+          {/*
+            Os três falam da comissão, não do saldo: o saldo da conta mistura isto com as
+            vendas dos produtos dela, e quem abre esta tela quer saber o que ganhou indicando.
+          */}
           <section className="grid gap-4 sm:grid-cols-3">
             <StatCard label={t.pending} value={formatAmount(sum(["PENDING"]), currency)} hint={t.pendingHint} />
             <StatCard
               label={t.available}
-              value={formatAmount(sum(["AVAILABLE", "APPROVED"]), currency)}
-              tone={sum(["AVAILABLE", "APPROVED"]) > 0n ? "warning" : "muted"}
+              value={formatAmount(sum(["AVAILABLE", "APPROVED", "PAID"]), currency)}
+              tone="positive"
+              hint={t.balanceHint}
             />
-            <StatCard label={t.received} value={formatAmount(sum(["PAID"]), currency)} tone="positive" />
+            <StatCard label={t.received} value={formatAmount(sum(["PENDING", "AVAILABLE", "APPROVED", "PAID"]), currency)} tone="muted" />
           </section>
 
           <Card className="py-0">

@@ -5,6 +5,7 @@ import { assertSupportedCurrency } from "@/lib/money";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import type { Repositories } from "@/server/repositories";
 import type { UnitOfWork } from "@/server/unit-of-work";
+import type { TransferableCommission } from "./affiliate.repository";
 import type { AffiliateInput } from "./affiliate.schemas";
 import { normalizeReferralCode } from "./referral";
 
@@ -264,8 +265,15 @@ export class AffiliateService {
   }
 
   /**
-   * Records the commission for a captured payment and parks the money in
-   * AFFILIATE_PAYABLE. Called inside the capture transaction, after the split.
+   * Registra a comissão da venda aprovada e passa o dinheiro para a conta de quem indicou.
+   *
+   * Entra no saldo PENDENTE dela, não no disponível: a venda acabou de ser aprovada e ainda
+   * corre o prazo de liberação, o mesmo que vale para o produtor. Ela vê o valor no saldo
+   * desde o primeiro minuto, com a data em que ele libera — e não um nada que vira dinheiro
+   * duas semanas depois.
+   *
+   * Quem não tem conta na Kabrun fica com a comissão parada em AFFILIATE_PAYABLE na conta de
+   * quem vendeu, para o produtor pagar por fora.
    */
   async recordCommission(
     repos: Repositories,
@@ -284,63 +292,96 @@ export class AffiliateService {
       currency: payment.currency,
       status: "PENDING",
     });
+
+    const commission = await repos.affiliates.findCommissionWithPayee(input.orderId);
+    if (commission) await this.transferToPayee(repos, commission, "PRODUCER_PENDING");
   }
 
   /**
-   * Passa para a conta do afiliado a comissão que a venda já liberou.
+   * Passa a comissão da conta de quem vendeu para a conta de quem indicou.
    *
    * Dois lançamentos espelhados, um em cada organização, amarrados pelo id da comissão: o
    * dinheiro não sai da Kabrun, só muda de dono. Na conta do produtor a dívida com o afiliado
-   * se extingue e o caixa atribuído a ela diminui; na conta dele o caixa entra e vira saldo
-   * disponível — o mesmo saldo de onde ele saca, pelo mesmo fluxo de saque do produtor.
+   * se extingue e o caixa atribuído a ela diminui; na conta dele o caixa entra e vira saldo.
    *
    * Dois lançamentos e não um porque cada um fecha em si: o `post` exige débito igual a
    * crédito, e um lançamento só nunca poderia pertencer a duas organizações.
-   *
-   * Quem foi cadastrado à mão e não tem conta na plataforma não entra aqui: a comissão fica
-   * disponível e o produtor paga por fora, com `payCommissions` registrando a baixa.
    */
-  async transferSettledCommissions(repos: Repositories, orderId: string, now: Date): Promise<bigint> {
+  private async transferToPayee(
+    repos: Repositories,
+    commission: TransferableCommission,
+    account: "PRODUCER_PENDING" | "PRODUCER_AVAILABLE",
+  ): Promise<bigint> {
+    const payee = commission.affiliate.payeeOrganizationId;
+    const net = commission.amount - commission.reversedAmount;
+    if (!payee || net <= 0n) return 0n;
+
+    const currency = assertSupportedCurrency(commission.currency);
+    await this.ledger.post(repos, {
+      organizationId: commission.organizationId,
+      idempotencyKey: `affiliate-commission:${commission.id}:out`,
+      type: "affiliate.commission.transferred",
+      referenceType: "AffiliateCommission",
+      referenceId: commission.id,
+      currency,
+      description: `Comissão transferida para ${commission.affiliate.name}`,
+      lines: [
+        { account: "AFFILIATE_PAYABLE", direction: "DEBIT", amount: net, description: "Baixa da comissão devida" },
+        { account: "PLATFORM_CASH", direction: "CREDIT", amount: net, description: "Caixa transferido à conta do afiliado" },
+      ],
+    });
+    await this.ledger.post(repos, {
+      organizationId: payee,
+      idempotencyKey: `affiliate-commission:${commission.id}:in`,
+      type: "affiliate.commission.received",
+      referenceType: "AffiliateCommission",
+      referenceId: commission.id,
+      currency,
+      description: "Comissão de afiliado recebida",
+      lines: [
+        { account: "PLATFORM_CASH", direction: "DEBIT", amount: net, description: "Caixa recebido da conta do produtor" },
+        { account, direction: "CREDIT", amount: net, description: "Comissão de venda indicada" },
+      ],
+    });
+    return net;
+  }
+
+  /**
+   * Libera para saque a comissão que já está no saldo dela.
+   *
+   * Aqui o dinheiro não muda de conta — ele já é dela desde a venda: só sai do pendente para o
+   * disponível, exatamente como o saldo do produtor sai quando o prazo fecha. Por isso um
+   * lançamento só, dentro da organização dela.
+   */
+  async releaseSettledCommissions(repos: Repositories, orderId: string, now: Date): Promise<bigint> {
     const commissions = await repos.affiliates.listTransferableByOrder(orderId);
-    let transferred = 0n;
+    let released = 0n;
 
     for (const commission of commissions) {
       const payee = commission.affiliate.payeeOrganizationId;
       const net = commission.amount - commission.reversedAmount;
       if (!payee || net <= 0n) continue;
 
-      const currency = assertSupportedCurrency(commission.currency);
-      await this.ledger.post(repos, {
-        organizationId: commission.organizationId,
-        idempotencyKey: `affiliate-commission:${commission.id}:out`,
-        type: "affiliate.commission.transferred",
-        referenceType: "AffiliateCommission",
-        referenceId: commission.id,
-        currency,
-        description: `Comissão transferida para ${commission.affiliate.name}`,
-        lines: [
-          { account: "AFFILIATE_PAYABLE", direction: "DEBIT", amount: net, description: "Baixa da comissão devida" },
-          { account: "PLATFORM_CASH", direction: "CREDIT", amount: net, description: "Caixa transferido à conta do afiliado" },
-        ],
-      });
       await this.ledger.post(repos, {
         organizationId: payee,
-        idempotencyKey: `affiliate-commission:${commission.id}:in`,
-        type: "affiliate.commission.received",
+        idempotencyKey: `affiliate-commission:${commission.id}:released`,
+        type: "affiliate.commission.released",
         referenceType: "AffiliateCommission",
         referenceId: commission.id,
-        currency,
-        description: "Comissão de afiliado recebida",
+        currency: assertSupportedCurrency(commission.currency),
+        description: "Comissão liberada para saque",
         lines: [
-          { account: "PLATFORM_CASH", direction: "DEBIT", amount: net, description: "Caixa recebido da conta do produtor" },
-          { account: "PRODUCER_AVAILABLE", direction: "CREDIT", amount: net, description: "Comissão disponível para saque" },
+          { account: "PRODUCER_PENDING", direction: "DEBIT", amount: net },
+          { account: "PRODUCER_AVAILABLE", direction: "CREDIT", amount: net },
         ],
       });
 
+      // PAID porque, para quem tem conta aqui, a Kabrun já entregou: o dinheiro está no saldo
+      // dela, sacável. O que fica AVAILABLE é a comissão de quem o produtor ainda vai pagar.
       await repos.affiliates.updateCommission(commission.id, { status: "PAID", paidAt: now });
-      transferred += net;
+      released += net;
     }
-    return transferred;
+    return released;
   }
 
   /** Gives back part of a commission when the sale is refunded or charged back. */
@@ -359,15 +400,19 @@ export class AffiliateService {
       status: reversedTotal >= commission.amount ? "CANCELED" : commission.status,
     });
 
-    // Comissão que já foi para a conta do afiliado volta de lá, não da do produtor.
+    // Comissão que está na conta do afiliado volta de lá, não da do produtor.
     //
     // Quem reembolsa debita AFFILIATE_PAYABLE na conta de quem vendeu, e depois da
     // transferência essa dívida não existe mais ali — debitá-la sem isto deixaria a conta do
-    // produtor devendo um valor negativo a um afiliado que ficou com o dinheiro. O saldo dele
-    // pode ficar negativo, e fica: é o preço de receber antes de a venda ser definitiva, e a
-    // próxima comissão cobre. O saque já lê o saldo do ledger, então nada sai no vermelho.
+    // produtor devendo um valor negativo a um afiliado que ficou com o dinheiro.
+    //
+    // Sai do mesmo lugar onde o dinheiro está: do pendente enquanto a venda não liberou, do
+    // disponível depois. Se ele já sacou, o disponível fica negativo, e fica: é o preço de
+    // receber antes de a venda ser definitiva, e a próxima comissão cobre. O saque lê o saldo
+    // do ledger antes de pagar, então nada sai no vermelho.
     const payee = commission.affiliate.payeeOrganizationId;
-    if (commission.paidAt && payee) {
+    if (payee) {
+      const account = commission.status === "PENDING" ? "PRODUCER_PENDING" : "PRODUCER_AVAILABLE";
       const currency = assertSupportedCurrency(commission.currency);
       await this.ledger.post(repos, {
         organizationId: payee,
@@ -378,7 +423,7 @@ export class AffiliateService {
         currency,
         description: "Comissão devolvida — venda estornada",
         lines: [
-          { account: "PRODUCER_AVAILABLE", direction: "DEBIT", amount: reversed, description: "Baixa da comissão estornada" },
+          { account, direction: "DEBIT", amount: reversed, description: "Baixa da comissão estornada" },
           { account: "PLATFORM_CASH", direction: "CREDIT", amount: reversed, description: "Caixa devolvido à conta do produtor" },
         ],
       });
@@ -408,6 +453,11 @@ export class AffiliateService {
     return this.uow.transaction(async (repos) => {
       const affiliate = await repos.affiliates.findById(organizationId, affiliateId);
       if (!affiliate) throw new NotFoundError("Affiliate", affiliateId);
+      // Quem tem conta na Kabrun já recebeu: a comissão caiu no saldo dele na hora da venda.
+      // Sem isto o produtor pagaria a mesma comissão duas vezes, e a segunda do bolso dele.
+      if (affiliate.payeeOrganizationId) {
+        throw new ValidationError("Esta pessoa recebe pelo saldo da conta Kabrun dela, não por fora");
+      }
 
       const payable = await repos.affiliates.listPayable(organizationId, affiliateId);
       const total = payable.reduce((sum, row) => sum + (row.amount - row.reversedAmount), 0n);
