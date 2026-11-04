@@ -206,12 +206,10 @@ const es: AppDictionary = {
       platformFee: "Comisión de Kabrun",
       net: "Recibes",
       refunded: "Ya reembolsado",
-      taxIncluded: "Impuesto incluido · {regime}",
       method: "Forma de pago",
       paidAt: "Pagado el",
       settledAt: "Liberado el",
       settlesAt: "Se libera el",
-      taxNote: "El impuesto ya está dentro del importe cobrado y no sale de lo que recibes — pagarlo te corresponde a ti.",
       none: "Este pedido todavía no generó un pago.",
     },
     refunds: {
@@ -1122,26 +1120,6 @@ const es: AppDictionary = {
     taxDescription: "Guardamos solo los últimos dígitos del documento; el valor completo nunca se almacena.",
     document: "Documento",
     verificationLabel: "Verificación:",
-    regimeTitle: "Régimen tributario",
-    regimeDescription:
-      "Quien vende eres tú, así que el impuesto es tuyo. Kabrun calcula cuánto del precio es impuesto y lo muestra en el detalle de cada venta: lo que paga el comprador no cambia.",
-    regimeReadOnly: "Solo el propietario y el administrador cambian el régimen. Actual:",
-    regime: "Régimen",
-    rate: "Tipo (%)",
-    rateHint: "Ya incluido en el precio que anuncias.",
-    jurisdiction: "Municipio",
-    jurisdictionHint: "Aparece en el desglose de la venta.",
-    saveRegime: "Guardar régimen",
-    regimeSaved: "Régimen guardado. Vale para las próximas ventas.",
-    regimeCleared: "Las ventas dejan de desglosar impuesto.",
-    taxRegimes: {
-      NONE: { label: "No calcular impuesto", hint: "No se desglosa ningún impuesto en tus ventas. Lo declaras por tu cuenta." },
-      BR_SIMPLES_NACIONAL: {
-        label: "Simples Nacional",
-        hint: "Indica el tipo efectivo de tu tramo de facturación, no el nominal de la tabla.",
-      },
-      BR_ISS: { label: "ISS — impuesto municipal sobre servicios", hint: "El tipo de tu municipio, normalmente entre el 2% y el 5%." },
-    },
   },
 
   onboarding: {

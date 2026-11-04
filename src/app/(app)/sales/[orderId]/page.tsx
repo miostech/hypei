@@ -116,11 +116,6 @@ export default async function SaleDetailPage({ params }: PageProps<"/sales/[orde
                   {payment.refundedAmount > 0n && (
                     <Row label={t.payment.refunded}>− {formatAmount(payment.refundedAmount, payment.currency)}</Row>
                   )}
-                  {order.taxAmount > 0n && (
-                    <Row label={fill(t.payment.taxIncluded, { regime: dict.settings.taxRegimes[order.taxRegime].label })}>
-                      {formatAmount(order.taxAmount, order.currency)}
-                    </Row>
-                  )}
                   <Row label={t.payment.method}>
                     {payment.paymentMethod ? dict.status.paymentMethod[payment.paymentMethod] : "—"}
                   </Row>
@@ -130,7 +125,6 @@ export default async function SaleDetailPage({ params }: PageProps<"/sales/[orde
                       {formatDateTime(payment.settledAt ?? payment.settleAt, dict.localeTag)}
                     </Row>
                   )}
-                  {order.taxAmount > 0n && <p className="border-t pt-3 text-xs text-muted-foreground">{t.payment.taxNote}</p>}
                 </>
               ) : (
                 <p className="text-muted-foreground">{t.payment.none}</p>

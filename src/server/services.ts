@@ -45,7 +45,6 @@ import { SubscriptionService } from "@/modules/subscriptions/subscription.servic
 import { WEBHOOK_JOB, WebhookIngestionService } from "@/modules/webhooks/webhook-ingestion.service";
 import type { WebhookPayloadRepository } from "@/modules/webhooks/webhook-payload.repository";
 import { WebhookProcessor } from "@/modules/webhooks/webhook-processor.service";
-import { TaxSettingsService } from "@/modules/taxes/tax-settings.service";
 import { PolicyTaxService } from "@/modules/taxes/tax.service";
 import { PrismaUnitOfWork } from "./unit-of-work";
 
@@ -102,7 +101,6 @@ export function buildServices(deps: ServiceDependencies) {
   const merchantAccounts = new MerchantAccountService(uow, deps.paymentProvider, deps.mongo.providerSnapshots);
   // O imposto é do produtor: calculado e registrado aqui, recolhido por ele.
   const taxes = new PolicyTaxService(uow.repos.taxPolicies);
-  const taxSettings = new TaxSettingsService(uow);
   const subscriptions = new SubscriptionService(uow, deps.paymentProvider, payments, taxes);
   const organizations = new OrganizationService(uow, merchantAccounts, deps.config.dataHashSecret);
   const products = new ProductService(uow, deps.storageProvider);
@@ -168,7 +166,6 @@ export function buildServices(deps: ServiceDependencies) {
     checkouts,
     coupons,
     affiliates,
-    taxSettings,
     finance,
     outboxPublisher,
     webhookIngestion,

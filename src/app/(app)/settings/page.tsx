@@ -8,7 +8,6 @@ import { appLocale } from "@/lib/i18n/app/server";
 import { countryName } from "@/lib/i18n/countries";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
-import { TaxRegimeForm } from "./tax-regime-form";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getAppDictionary(await appLocale())).settings.title };
@@ -17,12 +16,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SettingsPage() {
   const { organization, membership } = await requirePagePermission("organization:read");
   const services = getServices();
-  const [taxIdentities, verification, taxSettings] = await Promise.all([
+  const [taxIdentities, verification] = await Promise.all([
     services.uow.repos.organizations.taxIdentities(organization.id),
     services.uow.repos.organizations.latestVerification(organization.id),
-    services.taxSettings.get(organization.id),
   ]);
-  const canManage = membership.role === "OWNER" || membership.role === "ADMIN";
   const dict = await getAppDictionary(await appLocale());
   const t = dict.settings;
 
@@ -83,23 +80,6 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>{t.regimeTitle}</CardTitle>
-            <CardDescription>{t.regimeDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {canManage ? (
-              <TaxRegimeForm settings={taxSettings} />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {t.regimeReadOnly}{" "}
-                <span className="font-medium text-foreground">{t.taxRegimes[taxSettings.regime].label}</span>
-                {taxSettings.rate && <> · {taxSettings.rate}%</>}
-              </p>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </>
   );

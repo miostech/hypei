@@ -206,12 +206,10 @@ const de: AppDictionary = {
       platformFee: "Kabrun-Gebühr",
       net: "Sie erhalten",
       refunded: "Bereits erstattet",
-      taxIncluded: "Steuer enthalten · {regime}",
       method: "Zahlungsart",
       paidAt: "Bezahlt am",
       settledAt: "Freigegeben am",
       settlesAt: "Wird frei am",
-      taxNote: "Die Steuer steckt bereits im berechneten Betrag und geht nicht von Ihrem Anteil ab — das Abführen liegt bei Ihnen.",
       none: "Zu dieser Bestellung gibt es noch keine Zahlung.",
     },
     refunds: {
@@ -1122,26 +1120,6 @@ const de: AppDictionary = {
     taxDescription: "Wir behalten nur die letzten Ziffern des Dokuments; der vollständige Wert wird nie gespeichert.",
     document: "Dokument",
     verificationLabel: "Verifizierung:",
-    regimeTitle: "Steuerregime",
-    regimeDescription:
-      "Verkäufer sind Sie, also ist die Steuer Ihre Sache. Kabrun rechnet aus, wie viel vom Preis Steuer ist, und zeigt es bei jedem Verkauf — was der Käufer zahlt, ändert sich nicht.",
-    regimeReadOnly: "Nur Inhaber und Administrator ändern das Regime. Aktuell:",
-    regime: "Regime",
-    rate: "Satz (%)",
-    rateHint: "Bereits im Preis enthalten, den Sie ausweisen.",
-    jurisdiction: "Gemeinde",
-    jurisdictionHint: "Erscheint in der Aufschlüsselung des Verkaufs.",
-    saveRegime: "Regime speichern",
-    regimeSaved: "Regime gespeichert. Es gilt für die nächsten Verkäufe.",
-    regimeCleared: "Bei Verkäufen wird keine Steuer mehr ausgewiesen.",
-    taxRegimes: {
-      NONE: { label: "Keine Steuer berechnen", hint: "Bei Ihren Verkäufen wird keine Steuer ausgewiesen. Sie melden sie selbst." },
-      BR_SIMPLES_NACIONAL: {
-        label: "Simples Nacional",
-        hint: "Geben Sie den effektiven Satz Ihrer Umsatzstufe an, nicht den nominalen aus der Tabelle.",
-      },
-      BR_ISS: { label: "ISS — kommunale Dienstleistungssteuer", hint: "Der Satz Ihrer Gemeinde, meist zwischen 2 % und 5 %." },
-    },
   },
 
   onboarding: {

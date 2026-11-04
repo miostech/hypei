@@ -206,12 +206,10 @@ const fr: AppDictionary = {
       platformFee: "Frais Kabrun",
       net: "Vous recevez",
       refunded: "Déjà remboursé",
-      taxIncluded: "Taxe incluse · {regime}",
       method: "Moyen de paiement",
       paidAt: "Payé le",
       settledAt: "Débloqué le",
       settlesAt: "Se débloque le",
-      taxNote: "La taxe est déjà comprise dans le montant prélevé et ne sort pas de ce que vous recevez — c’est à vous de la reverser.",
       none: "Cette commande n’a pas encore généré de paiement.",
     },
     refunds: {
@@ -1122,26 +1120,6 @@ const fr: AppDictionary = {
     taxDescription: "Nous ne gardons que les derniers chiffres du document ; la valeur complète n'est jamais stockée.",
     document: "Document",
     verificationLabel: "Vérification :",
-    regimeTitle: "Régime fiscal",
-    regimeDescription:
-      "C'est vous qui vendez, donc l'impôt est à vous de reverser. Kabrun calcule la part de taxe dans le prix et l'affiche sur chaque vente — ce que l'acheteur paie ne change pas.",
-    regimeReadOnly: "Seuls le propriétaire et un administrateur changent le régime. Actuel :",
-    regime: "Régime",
-    rate: "Taux (%)",
-    rateHint: "Déjà compris dans le prix que vous affichez.",
-    jurisdiction: "Commune",
-    jurisdictionHint: "Apparaît dans le détail de la vente.",
-    saveRegime: "Enregistrer le régime",
-    regimeSaved: "Régime enregistré. Il vaut pour les prochaines ventes.",
-    regimeCleared: "Les ventes n'affichent plus de taxe.",
-    taxRegimes: {
-      NONE: { label: "Ne pas calculer de taxe", hint: "Aucune taxe n'est affichée sur vos ventes. Vous la déclarez de votre côté." },
-      BR_SIMPLES_NACIONAL: {
-        label: "Simples Nacional",
-        hint: "Indiquez le taux effectif de votre tranche de chiffre d'affaires, pas le taux nominal du barème.",
-      },
-      BR_ISS: { label: "ISS — taxe communale sur les services", hint: "Le taux de votre commune, en général entre 2 % et 5 %." },
-    },
   },
 
   onboarding: {

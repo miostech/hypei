@@ -18,7 +18,6 @@ import {
   PaymentStatus,
   RefundStatus,
   SubscriptionStatus,
-  TaxRegime,
   VerificationStatus,
 } from "@/generated/prisma/enums";
 
@@ -177,10 +176,6 @@ describe("checkout dictionaries", () => {
       for (const status of Object.values(PayoutStatus)) {
         expect(dict.payouts.statuses[status], `${locale}/payouts.statuses.${status}`).toBeTruthy();
       }
-      for (const regime of Object.values(TaxRegime)) {
-        expect(dict.settings.taxRegimes[regime]?.label, `${locale}/settings.taxRegimes.${regime}`).toBeTruthy();
-        expect(dict.settings.taxRegimes[regime]?.hint, `${locale}/settings.taxRegimes.${regime}.hint`).toBeTruthy();
-      }
       for (const status of Object.values(VerificationStatus)) {
         const entry = dict.verification.statuses[status];
         expect(entry?.label, `${locale}/verification.statuses.${status}.label`).toBeTruthy();
@@ -242,7 +237,7 @@ describe("checkout dictionaries", () => {
       expect(app.nav.testEnvironment, locale).not.toBe(appPt.nav.testEnvironment);
       expect(app.roles.OWNER, locale).not.toBe(appPt.roles.OWNER);
       expect(app.dashboard.description, locale).not.toBe(appPt.dashboard.description);
-      expect(app.sale.payment.taxNote, locale).not.toBe(appPt.sale.payment.taxNote);
+      expect(app.sale.payment.description, locale).not.toBe(appPt.sale.payment.description);
       expect(app.refunds.disputes.description, locale).not.toBe(appPt.refunds.disputes.description);
       expect(app.status.order.PENDING_PAYMENT, locale).not.toBe(appPt.status.order.PENDING_PAYMENT);
     }

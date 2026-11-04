@@ -206,12 +206,10 @@ const en: AppDictionary = {
       platformFee: "Kabrun fee",
       net: "You receive",
       refunded: "Already refunded",
-      taxIncluded: "Tax included · {regime}",
       method: "Payment method",
       paidAt: "Paid on",
       settledAt: "Released on",
       settlesAt: "Releases on",
-      taxNote: "The tax is already inside the amount charged and does not come out of what you receive — paying it is on you.",
       none: "This order has not generated a payment yet.",
     },
     refunds: {
@@ -1122,26 +1120,6 @@ const en: AppDictionary = {
     taxDescription: "We keep only the last digits of the document; the full value is never stored.",
     document: "Document",
     verificationLabel: "Verification:",
-    regimeTitle: "Tax regime",
-    regimeDescription:
-      "You are the one selling, so the tax is yours to pay. Kabrun works out how much of the price is tax and shows it on each sale — what the buyer pays does not change.",
-    regimeReadOnly: "Only the owner and an administrator can change the regime. Current:",
-    regime: "Regime",
-    rate: "Rate (%)",
-    rateHint: "Already included in the price you advertise.",
-    jurisdiction: "Municipality",
-    jurisdictionHint: "Shown in the breakdown of the sale.",
-    saveRegime: "Save regime",
-    regimeSaved: "Regime saved. It applies to the next sales.",
-    regimeCleared: "Sales will no longer break out any tax.",
-    taxRegimes: {
-      NONE: { label: "Do not work out tax", hint: "No tax is broken out on your sales. You declare it yourself." },
-      BR_SIMPLES_NACIONAL: {
-        label: "Simples Nacional",
-        hint: "Enter the effective rate for your revenue bracket, not the nominal one from the table.",
-      },
-      BR_ISS: { label: "ISS — municipal service tax", hint: "Your municipality's rate, usually between 2% and 5%." },
-    },
   },
 
   onboarding: {

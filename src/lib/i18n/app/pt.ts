@@ -216,12 +216,10 @@ const pt = {
       platformFee: "Taxa Kabrun",
       net: "Você recebe",
       refunded: "Já reembolsado",
-      taxIncluded: "Tributo incluso · {regime}",
       method: "Forma de pagamento",
       paidAt: "Pago em",
       settledAt: "Liberado em",
       settlesAt: "Libera em",
-      taxNote: "O tributo já está dentro do valor cobrado e não sai do que você recebe — o recolhimento é seu.",
       none: "Este pedido ainda não gerou pagamento.",
     },
     refunds: {
@@ -1135,32 +1133,6 @@ const pt = {
     taxDescription: "Guardamos apenas os últimos dígitos do documento; o valor completo nunca é armazenado.",
     document: "Documento",
     verificationLabel: "Verificação:",
-    regimeTitle: "Regime tributário",
-    regimeDescription:
-      "Quem vende é você, então o imposto é seu para recolher. A Kabrun calcula quanto do preço é tributo e mostra no detalhe de cada venda — o valor que o comprador paga não muda.",
-    regimeReadOnly: "Somente proprietário e administrador alteram o regime. Atual:",
-    regime: "Regime",
-    rate: "Alíquota (%)",
-    rateHint: "Já embutida no preço que você anuncia.",
-    jurisdiction: "Município",
-    jurisdictionHint: "Aparece no detalhamento da venda.",
-    saveRegime: "Salvar regime",
-    regimeSaved: "Regime salvo. Vale para as próximas vendas.",
-    regimeCleared: "As vendas deixam de destacar imposto.",
-    taxRegimes: {
-      NONE: {
-        label: "Não calcular imposto",
-        hint: "Nenhum imposto é destacado nas suas vendas. Você declara por fora.",
-      },
-      BR_SIMPLES_NACIONAL: {
-        label: "Simples Nacional",
-        hint: "Informe a alíquota efetiva da sua faixa de faturamento, não a nominal da tabela.",
-      },
-      BR_ISS: {
-        label: "ISS — nota fiscal de serviço municipal",
-        hint: "Alíquota do seu município, normalmente entre 2% e 5%.",
-      },
-    },
   },
 
   onboarding: {

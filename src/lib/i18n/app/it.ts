@@ -206,12 +206,10 @@ const it: AppDictionary = {
       platformFee: "Commissione Kabrun",
       net: "Ricevi",
       refunded: "Già rimborsato",
-      taxIncluded: "Imposta inclusa · {regime}",
       method: "Metodo di pagamento",
       paidAt: "Pagato il",
       settledAt: "Sbloccato il",
       settlesAt: "Si sblocca il",
-      taxNote: "L’imposta è già dentro l’importo addebitato e non esce da quello che ricevi — il versamento spetta a te.",
       none: "Questo ordine non ha ancora generato un pagamento.",
     },
     refunds: {
@@ -1122,26 +1120,6 @@ const it: AppDictionary = {
     taxDescription: "Conserviamo solo le ultime cifre del documento; il valore completo non viene mai salvato.",
     document: "Documento",
     verificationLabel: "Verifica:",
-    regimeTitle: "Regime fiscale",
-    regimeDescription:
-      "Chi vende sei tu, quindi l'imposta è tua da versare. Kabrun calcola quanta parte del prezzo è imposta e la mostra nel dettaglio di ogni vendita: quello che paga l'acquirente non cambia.",
-    regimeReadOnly: "Solo il proprietario e l'amministratore cambiano il regime. Attuale:",
-    regime: "Regime",
-    rate: "Aliquota (%)",
-    rateHint: "Già compresa nel prezzo che pubblichi.",
-    jurisdiction: "Comune",
-    jurisdictionHint: "Compare nel dettaglio della vendita.",
-    saveRegime: "Salva il regime",
-    regimeSaved: "Regime salvato. Vale per le prossime vendite.",
-    regimeCleared: "Le vendite non evidenziano più l'imposta.",
-    taxRegimes: {
-      NONE: { label: "Non calcolare l'imposta", hint: "Sulle tue vendite non viene evidenziata nessuna imposta. La dichiari per conto tuo." },
-      BR_SIMPLES_NACIONAL: {
-        label: "Simples Nacional",
-        hint: "Indica l'aliquota effettiva della tua fascia di fatturato, non quella nominale della tabella.",
-      },
-      BR_ISS: { label: "ISS — imposta comunale sui servizi", hint: "L'aliquota del tuo comune, di solito fra il 2% e il 5%." },
-    },
   },
 
   onboarding: {
