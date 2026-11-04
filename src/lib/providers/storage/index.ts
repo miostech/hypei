@@ -7,8 +7,8 @@ export { LocalStorageProvider } from "./local-storage-provider";
 export { S3StorageProvider } from "./s3-storage-provider";
 
 /**
- * `local` keeps files on disk with signed URLs (development); `s3`, `r2` and `minio`
- * talk to real object storage; anything else disables uploads.
+ * `local` keeps files on disk with signed URLs (development); `s3`, `r2`, `hetzner` and
+ * `minio` talk to real object storage; anything else disables uploads.
  */
 export interface StorageEnv {
   STORAGE_PROVIDER: string;
@@ -36,6 +36,11 @@ export function createStorageProvider(env: StorageEnv): StorageProvider {
   if (!config) return new NoopStorageProvider();
   if (!config.bucket || !config.accessKeyId || !config.secretAccessKey) {
     throw new Error(`STORAGE_PROVIDER=${config.provider} requires bucket and credentials`);
+  }
+  // Sem endpoint o SDK assina contra a AWS, e o pedido sai da máquina para o provedor errado
+  // com a credencial de outro — falha de autenticação num lugar que ninguém pensa em olhar.
+  if (!config.endpoint && config.provider !== "s3") {
+    throw new Error(`STORAGE_PROVIDER=${config.provider} requires STORAGE_ENDPOINT`);
   }
   return new S3StorageProvider(config);
 }
