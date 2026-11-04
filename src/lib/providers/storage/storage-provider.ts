@@ -1,5 +1,6 @@
 /**
- * S3-compatible storage abstraction (AWS S3, Cloudflare R2, MinIO share the same API).
+ * S3-compatible storage abstraction (AWS S3, Cloudflare R2, Hetzner and MinIO share the
+ * same API).
  * Lesson media, thumbnails and downloads go here; the database only stores the object key.
  *
  * Uploads never pass through the app server: the browser receives a short-lived signed
@@ -25,7 +26,7 @@ export interface StorageProvider {
 }
 
 export interface S3CompatibleConfig {
-  provider: "s3" | "r2" | "minio";
+  provider: "s3" | "r2" | "minio" | "hetzner";
   bucket: string;
   region: string;
   endpoint?: string;
@@ -54,6 +55,28 @@ export class NoopStorageProvider implements StorageProvider {
   }
 }
 
+/**
+ * A Hetzner carrega a localização no próprio endpoint (`fsn1.your-objectstorage.com`), e a
+ * assinatura precisa da mesma localização como região. Tirar uma da outra evita o erro de
+ * duas variáveis que têm de concordar e não concordam: trocar de datacenter é mexer em uma.
+ */
+function defaultRegion(provider: S3CompatibleConfig["provider"], endpoint?: string): string {
+  if (provider === "r2") return "auto";
+  if (provider !== "hetzner") return "us-east-1";
+  const location = endpoint?.replace(/^https?:\/\//, "").split(".")[0];
+  return location || "fsn1";
+}
+
+/**
+ * O painel da Hetzner mostra o endpoint sem protocolo, e é assim que ele chega na variável.
+ * Sem o `https://` o SDK estoura um `Invalid URL` cru de dentro do Smithy, sem dizer qual
+ * variável estava errada — e só na hora do primeiro upload, não ao subir a aplicação.
+ */
+function normalizeEndpoint(endpoint?: string): string | undefined {
+  if (!endpoint) return undefined;
+  return /^https?:\/\//.test(endpoint) ? endpoint : `https://${endpoint}`;
+}
+
 export function resolveStorageConfig(env: {
   STORAGE_PROVIDER?: string;
   STORAGE_BUCKET?: string;
@@ -63,12 +86,12 @@ export function resolveStorageConfig(env: {
   STORAGE_SECRET_ACCESS_KEY?: string;
 }): S3CompatibleConfig | null {
   const provider = env.STORAGE_PROVIDER;
-  if (provider !== "s3" && provider !== "r2" && provider !== "minio") return null;
+  if (provider !== "s3" && provider !== "r2" && provider !== "minio" && provider !== "hetzner") return null;
   return {
     provider,
     bucket: env.STORAGE_BUCKET ?? "",
-    region: env.STORAGE_REGION || (provider === "r2" ? "auto" : "us-east-1"),
-    endpoint: env.STORAGE_ENDPOINT || undefined,
+    region: env.STORAGE_REGION || defaultRegion(provider, env.STORAGE_ENDPOINT),
+    endpoint: normalizeEndpoint(env.STORAGE_ENDPOINT || undefined),
     accessKeyId: env.STORAGE_ACCESS_KEY_ID ?? "",
     secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY ?? "",
     forcePathStyle: provider === "minio",

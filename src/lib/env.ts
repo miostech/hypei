@@ -31,10 +31,10 @@ const envSchema = z.object({
   MOCK_WEBHOOK_SECRET: z.string().default("mock-webhook-local-dev-secret"),
   MOCK_PROCESSOR_FEE_BPS: z.coerce.number().int().min(0).max(10_000).default(400),
 
-  STORAGE_PROVIDER: z.enum(["local", "s3", "r2", "minio", "none"]).default("none"),
+  STORAGE_PROVIDER: z.enum(["local", "s3", "r2", "minio", "hetzner", "none"]).default("none"),
   STORAGE_LOCAL_DIR: z.string().default(".storage"),
-  // Credentials for the s3/r2/minio providers. They must be part of the schema: `getEnv()`
-  // returns the parsed object, and Zod drops every key the schema does not declare.
+  // Credentials for the s3/r2/minio/hetzner providers. They must be part of the schema:
+  // `getEnv()` returns the parsed object, and Zod drops every key the schema does not declare.
   STORAGE_BUCKET: optionalString,
   STORAGE_REGION: optionalString,
   STORAGE_ENDPOINT: optionalString,
@@ -75,7 +75,7 @@ function assertProductionReady(env: Env): void {
   }
   if (env.STORAGE_PROVIDER === "local") {
     problems.push(
-      "STORAGE_PROVIDER=local writes to the container disk and loses files on restart (use s3/r2/minio, or none to disable uploads)",
+      "STORAGE_PROVIDER=local writes to the container disk and loses files on restart (use s3/r2/minio/hetzner, or none to disable uploads)",
     );
   }
   if (!env.APP_URL.startsWith("https://")) {
