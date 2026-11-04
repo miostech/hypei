@@ -1100,8 +1100,9 @@ const es: AppDictionary = {
     webhooksDescription: "POST /api/webhooks/{provider}: firma verificada y eventos deduplicados.",
     apiKeysTitle: "Claves de API",
     apiKeysDescription: "Las claves de API para integraciones externas llegan en una fase posterior.",
-    emailTitle: "Correo",
-    emailDescription: "Proveedor de correo configurable (consola en desarrollo, Resend/SES/Postmark en producción).",
+    recoveryTitle: "Recuperación de venta",
+    recoveryDescription:
+      "Carrito abandonado, Pix y boleto sin pagar y tarjeta rechazada se convierten en un aviso para que el comprador vuelva y termine. Llega en una próxima fase.",
   },
 
   settings: {

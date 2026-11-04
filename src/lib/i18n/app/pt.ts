@@ -1113,8 +1113,9 @@ const pt = {
     webhooksDescription: "POST /api/webhooks/{provider} — assinatura verificada e eventos deduplicados.",
     apiKeysTitle: "API Keys",
     apiKeysDescription: "Chaves de API para integrações externas chegam em uma próxima fase.",
-    emailTitle: "E-mail",
-    emailDescription: "Provedor de e-mail configurável (console em desenvolvimento, Resend/SES/Postmark em produção).",
+    recoveryTitle: "Recuperação de venda",
+    recoveryDescription:
+      "Carrinho abandonado, Pix e boleto não pagos e cartão recusado viram um aviso para o comprador voltar e concluir. Chega em uma próxima fase.",
   },
 
   settings: {

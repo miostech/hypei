@@ -1100,8 +1100,9 @@ const de: AppDictionary = {
     webhooksDescription: "POST /api/webhooks/{provider} — Signatur geprüft und Ereignisse entdoppelt.",
     apiKeysTitle: "API-Schlüssel",
     apiKeysDescription: "API-Schlüssel für externe Integrationen kommen in einer späteren Phase.",
-    emailTitle: "E-Mail",
-    emailDescription: "Einstellbarer E-Mail-Anbieter (Konsole in der Entwicklung, Resend/SES/Postmark in der Produktion).",
+    recoveryTitle: "Verkaufs-Recovery",
+    recoveryDescription:
+      "Abgebrochene Warenkörbe, unbezahlte Pix und Boletos und abgelehnte Karten werden zu einer Erinnerung, damit die Käuferin zurückkommt und abschließt. Kommt in einer späteren Phase.",
   },
 
   settings: {
