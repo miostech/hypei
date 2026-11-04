@@ -380,13 +380,24 @@ const fr: AppDictionary = {
       title: "Publication",
       description: "Seuls les produits actifs peuvent être vendus.",
     },
+    tabs: {
+      general: "Général",
+      checkout: "Checkout",
+      affiliates: "Affiliés",
+      links: "Liens",
+    },
     offers: {
-      title: "Offres",
+      title: "Tarifs",
       description: "Chaque offre est un prix et un mode de facturation de ce produit.",
-      empty: "Aucune offre créée pour ce produit.",
+      empty: "Aucun prix défini pour ce produit.",
       new: "Nouvelle offre",
       active: "Active",
       inactive: "Inactive",
+    },
+    links: {
+      title: "Liens de vente",
+      description: "Les adresses que vous diffusez. Chaque lien ouvre une offre de ce produit.",
+      empty: "Aucun lien de vente créé pour ce produit.",
     },
   },
 

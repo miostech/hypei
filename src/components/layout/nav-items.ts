@@ -2,7 +2,6 @@ import {
   BarChart3Icon,
   BanknoteIcon,
   BookOpenIcon,
-  CreditCardIcon,
   HandshakeIcon,
   type LucideIcon,
   LayoutDashboardIcon,
@@ -15,7 +14,6 @@ import {
   SettingsIcon,
   ShieldCheckIcon,
   ShoppingBagIcon,
-  TagIcon,
   TicketIcon,
   UsersIcon,
   WalletIcon,
@@ -57,8 +55,8 @@ export const NAV_GROUPS: NavGroup[] = [
     key: "catalog",
     items: [
       { href: "/products", key: "products", icon: PackageIcon, permission: "products:read" },
-      { href: "/offers", key: "offers", icon: TagIcon, permission: "products:read" },
-      { href: "/checkouts", key: "checkouts", icon: CreditCardIcon, permission: "products:read" },
+      // Preço e checkout agora são abas do produto. As telas /offers e /checkouts continuam de pé
+      // — a aba leva para elas —, mas não competem mais com o produto no menu.
       { href: "/coupons", key: "coupons", icon: TicketIcon, permission: "products:read" },
     ],
   },

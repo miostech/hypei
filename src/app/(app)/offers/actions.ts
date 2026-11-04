@@ -31,6 +31,8 @@ export async function createOffer(_prev: ActionState, formData: FormData): Promi
     const offer = await getServices().offers.create(organization.id, userId, parse(formData));
     offerId = offer.id;
     revalidatePath("/offers");
+    // Os preços do produto aparecem na aba Geral dele.
+    revalidatePath("/products/[productId]", "page");
     return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.offerCreated };
   });
   if (offerId) redirect(`/offers/${offerId}?created=1`);
@@ -44,6 +46,7 @@ export async function updateOffer(_prev: ActionState, formData: FormData): Promi
     await getServices().offers.update(organization.id, userId, id, parse(formData));
     revalidatePath("/offers");
     revalidatePath(`/offers/${id}`);
+    revalidatePath("/products/[productId]", "page");
     return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.offerUpdated };
   });
 }

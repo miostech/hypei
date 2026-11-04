@@ -391,13 +391,24 @@ const pt = {
       title: "Publicação",
       description: "Só produtos ativos podem ser vendidos.",
     },
+    tabs: {
+      general: "Geral",
+      checkout: "Checkout",
+      affiliates: "Afiliados",
+      links: "Links",
+    },
     offers: {
-      title: "Ofertas",
+      title: "Preços",
       description: "Cada oferta é um preço e uma forma de cobrança deste produto.",
-      empty: "Nenhuma oferta criada para este produto.",
+      empty: "Nenhum preço definido para este produto.",
       new: "Nova oferta",
       active: "Ativa",
       inactive: "Inativa",
+    },
+    links: {
+      title: "Links de venda",
+      description: "Os endereços que você divulga. Cada link abre uma oferta deste produto.",
+      empty: "Nenhum link de venda criado para este produto.",
     },
   },
 

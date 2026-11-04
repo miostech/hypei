@@ -380,13 +380,24 @@ const en: AppDictionary = {
       title: "Publishing",
       description: "Only active products can be sold.",
     },
+    tabs: {
+      general: "General",
+      checkout: "Checkout",
+      affiliates: "Affiliates",
+      links: "Links",
+    },
     offers: {
-      title: "Offers",
+      title: "Pricing",
       description: "Each offer is one price and one billing method for this product.",
-      empty: "No offers created for this product.",
+      empty: "No price set for this product.",
       new: "New offer",
       active: "Active",
       inactive: "Inactive",
+    },
+    links: {
+      title: "Sales links",
+      description: "The addresses you share. Each link opens one offer of this product.",
+      empty: "No sales link created for this product.",
     },
   },
 

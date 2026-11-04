@@ -86,6 +86,8 @@ export async function createCheckout(_prev: ActionState, formData: FormData): Pr
     const checkout = await getServices().checkouts.create(organization.id, userId, parse(formData));
     checkoutId = checkout.id;
     revalidatePath("/checkouts");
+    // O checkout também é editado de dentro do produto, nas abas Checkout e Links.
+    revalidatePath("/products/[productId]", "page");
     return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.checkoutCreated };
   });
   if (checkoutId) redirect(`/checkouts/${checkoutId}?created=1`);
@@ -99,6 +101,7 @@ export async function updateCheckout(_prev: ActionState, formData: FormData): Pr
     const id = String(formData.get("id"));
     const { version } = await getServices().checkouts.updateConfig(organization.id, userId, id, parse(formData));
     revalidatePath(`/checkouts/${id}`);
+    revalidatePath("/products/[productId]", "page");
     return { status: "success", message: `Checkout salvo (versão ${version})` };
   });
 }
