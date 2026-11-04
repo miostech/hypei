@@ -38,7 +38,9 @@ export interface TestApp {
   deliver(event: MockEvent, eventId?: string): Promise<{ duplicate: boolean }>;
 }
 
-export async function createTestApp(options: { platformFeeBps?: number; settlementDays?: number; processorFeeBps?: number } = {}): Promise<TestApp> {
+export async function createTestApp(
+  options: { platformFeeBps?: number; settlementDays?: number; processorFeeBps?: number; payoutFee?: bigint } = {},
+): Promise<TestApp> {
   const prisma = testPrisma();
   await resetDatabase(prisma);
 
@@ -76,6 +78,7 @@ export async function createTestApp(options: { platformFeeBps?: number; settleme
       dataHashSecret: "test-hash-secret-with-at-least-32-chars!!",
       defaultSettlementDelayDays: 30,
       minimumPayout: { BRL: 1000n },
+      payoutFee: { BRL: options.payoutFee ?? 367n },
     },
   });
 

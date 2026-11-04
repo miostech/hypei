@@ -945,6 +945,8 @@ const it: AppDictionary = {
       amount: "Importo ({currency})",
       pending: "Richiesta in corso…",
       confirm: "Conferma prelievo",
+      fee: "Addebitiamo una commissione di {amount} per ogni prelievo.",
+      net: "Ricevi {amount}.",
     },
   },
 

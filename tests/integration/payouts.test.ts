@@ -85,3 +85,53 @@ describe("Payout safety", () => {
     await expectLedgerBalanced(app.prisma);
   });
 });
+
+/**
+ * A taxa de saque sai do valor pedido: ela pede 100 e o banco transfere 100 menos a taxa.
+ * O caminho contrário — cobrar por cima — poderia estourar o saldo dela num saque do valor cheio.
+ */
+describe("Payout fee", () => {
+  let app: TestApp;
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  it("deduz a taxa do valor pedido: o banco recebe o líquido e a taxa fica com a Kabrun", async () => {
+    const { organization } = await sellerWithAvailable(app);
+    const before = (await accountTotals(app.prisma, organization.id)).PLATFORM_REVENUE ?? 0n;
+
+    const payout = await app.services.payouts.request({ organizationId: organization.id, amount: 5000n, currency: "BRL", idempotencyKey: "com-taxa" });
+
+    expect(payout.amount).toBe(5000n); // o que saiu do saldo dela
+    expect(payout.feeAmount).toBe(367n);
+    expect(app.mock.transferredAmount(payout.providerPayoutId!)).toBe(4633n); // o que o banco recebe
+
+    const totals = await accountTotals(app.prisma, organization.id);
+    expect(-totals.PRODUCER_AVAILABLE).toBe(3600n); // 8600 − 5000
+    expect(-totals.PAYOUTS).toBe(4633n);
+    expect(-((totals.PLATFORM_REVENUE ?? 0n) - before)).toBe(367n);
+    await expectLedgerBalanced(app.prisma);
+  });
+
+  it("devolve o valor cheio e desfaz a taxa quando o saque não acontece", async () => {
+    const { organization } = await sellerWithAvailable(app);
+    const before = (await accountTotals(app.prisma, organization.id)).PLATFORM_REVENUE ?? 0n;
+    const payout = await app.services.payouts.request({ organizationId: organization.id, amount: 5000n, currency: "BRL", idempotencyKey: "vai-falhar" });
+    await app.deliver({ type: "payout.updated", providerPayoutId: payout.providerPayoutId!, payoutId: payout.id, status: "failed", failureReason: "account_closed" });
+
+    const totals = await accountTotals(app.prisma, organization.id);
+    expect(-totals.PRODUCER_AVAILABLE).toBe(8600n); // volta inteiro: saque que não aconteceu não cobra taxa
+    expect(totals.PAYOUTS).toBe(0n);
+    expect(totals.PLATFORM_REVENUE ?? 0n).toBe(before);
+    await expectLedgerBalanced(app.prisma);
+  });
+
+  it("recusa um saque que não sobraria nada depois da taxa", async () => {
+    app = await createTestApp({ payoutFee: 1000n });
+    const { organization } = await sellerWithAvailable(app);
+    await expect(
+      app.services.payouts.request({ organizationId: organization.id, amount: 1000n, currency: "BRL", idempotencyKey: "so-a-taxa" }),
+    ).rejects.toMatchObject({ code: "PAYOUT_NOT_ALLOWED" });
+    expect(await app.prisma.payout.count()).toBe(0);
+  });
+});

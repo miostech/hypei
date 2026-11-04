@@ -6,6 +6,7 @@ export interface PayoutRepository {
   create(input: {
     organizationId: string;
     amount: bigint;
+    feeAmount: bigint;
     currency: string;
     provider: PaymentProviderType;
     idempotencyKey: string;
@@ -28,6 +29,7 @@ export class PrismaPayoutRepository implements PayoutRepository {
   create(input: {
     organizationId: string;
     amount: bigint;
+    feeAmount: bigint;
     currency: string;
     provider: PaymentProviderType;
     idempotencyKey: string;

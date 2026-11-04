@@ -86,6 +86,9 @@ function createContainer(): Services {
       // Fallback only when no SettlementPolicy matches (policies are data, see prisma/seed.ts).
       defaultSettlementDelayDays: 30,
       minimumPayout: { BRL: 1000n, EUR: 500n, USD: 500n },
+      // O que a Kabrun cobra por saque. É preço: muda aqui, e cada saque já feito guarda
+      // o que foi cobrado nele.
+      payoutFee: { BRL: 367n, EUR: 100n, USD: 100n },
     },
   });
 

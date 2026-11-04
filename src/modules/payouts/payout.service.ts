@@ -26,6 +26,11 @@ export interface RequestPayoutInput {
 
 export interface PayoutServiceConfig {
   minimumPayout: Partial<Record<CurrencyCode, bigint>>;
+  /**
+   * Quanto a Kabrun cobra por saque, em unidades menores da moeda. Sai do valor solicitado:
+   * ela pede 100 e recebe 100 menos a taxa, para que um saque nunca possa estourar o saldo.
+   */
+  payoutFee: Partial<Record<CurrencyCode, bigint>>;
 }
 
 const TERMINAL: Payout["status"][] = ["PAID", "FAILED", "CANCELED"];
@@ -49,11 +54,19 @@ export class PayoutService {
     private readonly config: PayoutServiceConfig,
   ) {}
 
+  /** A taxa desta moeda, em unidades menores. Moeda sem taxa configurada não cobra nada. */
+  feeFor(currency: string): bigint {
+    return this.config.payoutFee[assertSupportedCurrency(currency)] ?? 0n;
+  }
+
   async request(input: RequestPayoutInput): Promise<Payout> {
     const currency = assertSupportedCurrency(input.currency);
     if (input.amount <= 0n) throw new ValidationError("Payout amount must be positive");
     const minimum = this.config.minimumPayout[currency] ?? 0n;
     if (input.amount < minimum) throw new PayoutNotAllowedError(`Minimum payout is ${minimum} (${currency} minor units)`);
+    // Saque que não sobra nada depois da taxa é dinheiro saindo do saldo para lugar nenhum.
+    const fee = this.feeFor(currency);
+    if (input.amount <= fee) throw new PayoutNotAllowedError(`Payout must be above the ${fee} (${currency} minor units) fee`);
 
     const replay = await this.uow.repos.payouts.findByIdempotencyKey(input.idempotencyKey);
     if (replay) return replay;
@@ -87,6 +100,7 @@ export class PayoutService {
       const created = await repos.payouts.create({
         organizationId: input.organizationId,
         amount: input.amount,
+        feeAmount: fee,
         currency,
         provider: this.provider.type,
         idempotencyKey: input.idempotencyKey,
@@ -100,9 +114,12 @@ export class PayoutService {
         referenceId: created.id,
         currency,
         description: "Saque solicitado",
+        // Sai o valor cheio do saldo dela; só o líquido fica a caminho do banco, e a taxa
+        // vira receita da plataforma na mesma hora.
         lines: [
           { account: "PRODUCER_AVAILABLE", direction: "DEBIT", amount: input.amount },
-          { account: "PAYOUTS", direction: "CREDIT", amount: input.amount },
+          { account: "PAYOUTS", direction: "CREDIT", amount: input.amount - fee },
+          ...(fee > 0n ? [{ account: "PLATFORM_REVENUE" as const, direction: "CREDIT" as const, amount: fee }] : []),
         ],
       });
       await repos.audit.record({
@@ -134,7 +151,8 @@ export class PayoutService {
 
     const result = await this.provider.createPayout({
       providerAccountId: merchant.providerAccountId,
-      amount: payout.amount,
+      // O banco recebe o líquido: a taxa nunca saiu da plataforma.
+      amount: payout.amount - payout.feeAmount,
       currency: assertSupportedCurrency(payout.currency),
       metadata: { organizationId: payout.organizationId, payoutId: payout.id },
       idempotencyKey: `payout:${payout.id}`,
@@ -192,8 +210,8 @@ export class PayoutService {
       currency: assertSupportedCurrency(payout.currency),
       description: "Saque pago",
       lines: [
-        { account: "PAYOUTS", direction: "DEBIT", amount: payout.amount },
-        { account: "PLATFORM_CASH", direction: "CREDIT", amount: payout.amount },
+        { account: "PAYOUTS", direction: "DEBIT", amount: payout.amount - payout.feeAmount },
+        { account: "PLATFORM_CASH", direction: "CREDIT", amount: payout.amount - payout.feeAmount },
       ],
     });
     await repos.payouts.update(payout.id, { status: "PAID", paidAt });
@@ -210,8 +228,11 @@ export class PayoutService {
       referenceId: payout.id,
       currency: assertSupportedCurrency(payout.currency),
       description: "Saque não concluído — valor devolvido ao saldo disponível",
+      // Saque que não aconteceu não cobra taxa: ela volta com o valor cheio, e a receita
+      // que a plataforma tinha reconhecido é desfeita.
       lines: [
-        { account: "PAYOUTS", direction: "DEBIT", amount: payout.amount },
+        { account: "PAYOUTS", direction: "DEBIT", amount: payout.amount - payout.feeAmount },
+        ...(payout.feeAmount > 0n ? [{ account: "PLATFORM_REVENUE" as const, direction: "DEBIT" as const, amount: payout.feeAmount }] : []),
         { account: "PRODUCER_AVAILABLE", direction: "CREDIT", amount: payout.amount },
       ],
     });

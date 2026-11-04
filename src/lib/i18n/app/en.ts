@@ -945,6 +945,8 @@ const en: AppDictionary = {
       amount: "Amount ({currency})",
       pending: "Requesting…",
       confirm: "Confirm payout",
+      fee: "We charge a {amount} fee per payout.",
+      net: "You receive {amount}.",
     },
   },
 

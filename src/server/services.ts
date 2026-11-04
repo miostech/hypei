@@ -70,6 +70,7 @@ export interface ServiceDependencies {
     dataHashSecret: string;
     defaultSettlementDelayDays: number;
     minimumPayout: Partial<Record<CurrencyCode, bigint>>;
+    payoutFee: Partial<Record<CurrencyCode, bigint>>;
   };
 }
 
@@ -90,6 +91,7 @@ export function buildServices(deps: ServiceDependencies) {
   const risk = new RiskService(deps.mongo.riskEvents);
   const payouts = new PayoutService(uow, deps.paymentProvider, ledger, balances, risk, deps.clock, {
     minimumPayout: deps.config.minimumPayout,
+    payoutFee: deps.config.payoutFee,
   });
   const merchantAccounts = new MerchantAccountService(uow, deps.paymentProvider, deps.mongo.providerSnapshots);
   // O imposto é do produtor: calculado e registrado aqui, recolhido por ele.

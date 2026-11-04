@@ -957,6 +957,8 @@ const pt = {
       amount: "Valor ({currency})",
       pending: "Solicitando…",
       confirm: "Confirmar saque",
+      fee: "Nós cobramos uma taxa de {amount} por saque.",
+      net: "Você recebe {amount}.",
     },
   },
 

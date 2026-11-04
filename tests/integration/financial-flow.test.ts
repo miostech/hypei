@@ -67,7 +67,7 @@ describe("Financial flow: payment → ledger → balance → settlement → payo
     expect(payout.status).toBe("PENDING"); // never PAID before the provider confirms
     totals = await accountTotals(app.prisma, organization.id);
     expect(totals.PRODUCER_AVAILABLE).toBe(0n); // available decreased by 8600
-    expect(-totals.PAYOUTS).toBe(8600n); // in transit
+    expect(-totals.PAYOUTS).toBe(8600n - 367n); // in transit: the full amount left her balance, minus the payout fee
 
     await app.deliver({ type: "payout.updated", providerPayoutId: payout.providerPayoutId!, payoutId: payout.id, status: "paid" });
     const paidPayout = await app.prisma.payout.findUniqueOrThrow({ where: { id: payout.id } });
@@ -76,7 +76,7 @@ describe("Financial flow: payment → ledger → balance → settlement → payo
 
     totals = await accountTotals(app.prisma, organization.id);
     expect(totals.PAYOUTS).toBe(0n);
-    expect(totals.PLATFORM_CASH).toBe(1400n); // 10000 in − 8600 out
+    expect(totals.PLATFORM_CASH).toBe(1400n + 367n); // 10000 in − 8233 out (the payout fee never left)
     // Accounting equation: cash = processor fees owed + Kabrun revenue + producer balances.
     expect(totals.PLATFORM_CASH).toBe(-totals.PROCESSOR_FEES + -totals.PLATFORM_REVENUE + -(totals.PRODUCER_PENDING ?? 0n) + -(totals.PRODUCER_AVAILABLE ?? 0n));
     await expectLedgerBalanced(app.prisma);

@@ -65,6 +65,8 @@ interface MockPayout {
   id: string;
   payoutId: string | null;
   status: ProviderPayoutResult["status"];
+  /** O que a Kabrun mandou transferir — o líquido, já sem a taxa de saque. */
+  amount: bigint;
 }
 
 export interface MockPaymentProviderOptions {
@@ -180,7 +182,7 @@ export class MockPaymentProvider implements PaymentProvider {
   async createPayout(input: CreatePayoutInput): Promise<ProviderPayoutResult> {
     const result = this.once(input.idempotencyKey, () => {
       const id = `mock_po_${randomUUID()}`;
-      this.payouts.set(id, { id, payoutId: input.metadata.payoutId ?? null, status: "pending" });
+      this.payouts.set(id, { id, payoutId: input.metadata.payoutId ?? null, status: "pending", amount: input.amount });
       return { providerPayoutId: id, status: "pending" as const, fresh: true };
     });
     if (result.fresh) {
@@ -193,6 +195,11 @@ export class MockPaymentProvider implements PaymentProvider {
       });
     }
     return { providerPayoutId: result.providerPayoutId, status: result.status };
+  }
+
+  /** Só para teste: quanto a Kabrun pediu para transferir neste saque. */
+  transferredAmount(providerPayoutId: string): bigint | undefined {
+    return this.payouts.get(providerPayoutId)?.amount;
   }
 
   async getPayout(providerPayoutId: string): Promise<ProviderPayoutResult> {

@@ -500,7 +500,7 @@ describe("Programa aberto de afiliados", () => {
 
     const totals = await accountTotals(app.prisma, ana.organization.id);
     expect(totals.PRODUCER_AVAILABLE).toBe(0n);
-    expect(-totals.PAYOUTS).toBe(3000n);
+    expect(-totals.PAYOUTS).toBe(3000n - 367n); // o banco recebe os 3000 menos a taxa de saque
 
     // Mais do que isso ela não tem: a comissão é o único dinheiro dela nesta conta.
     await expect(

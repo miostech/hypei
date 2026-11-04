@@ -39,6 +39,7 @@ export default async function PayoutsPage() {
     services.finance.nextAvailableDate(organization.id, currency),
   ]);
 
+  const payoutFee = services.payouts.feeFor(currency);
   const canRequest = hasPermission(membership.role, "payouts:request");
   const ready = merchant ? isMerchantAccountReadyForPayouts(merchant) : false;
   const totalPaid = payouts.filter((p) => p.status === "PAID").reduce((acc, p) => acc + p.amount, 0n);
@@ -80,7 +81,9 @@ export default async function PayoutsPage() {
                 currency={currency}
                 availableAmount={summary.available.toString()}
                 availableLabel={formatAmount(summary.available, currency)}
-                disabled={!ready || summary.available <= 0n}
+                feeAmount={payoutFee.toString()}
+                feeLabel={formatAmount(payoutFee, currency)}
+                disabled={!ready || summary.available <= payoutFee}
               />
             ) : undefined
           }

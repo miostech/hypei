@@ -16,11 +16,16 @@ export function RequestPayoutDialog({
   currency,
   availableAmount,
   availableLabel,
+  feeAmount,
+  feeLabel,
   disabled,
 }: {
   currency: string;
+  /** Unidades menores, como string: bigint não atravessa a fronteira do servidor. */
   availableAmount: string;
   availableLabel: string;
+  feeAmount: string;
+  feeLabel: string;
   disabled: boolean;
 }) {
   const dict = useAppDictionary();
@@ -38,6 +43,12 @@ export function RequestPayoutDialog({
   }, [state, dict]);
 
   const maxDecimal = (Number(availableAmount) / 100).toFixed(2);
+  const [amount, setAmount] = useState(maxDecimal);
+
+  // O que ela vê depois da taxa, enquanto digita. Valor inválido ou menor que a taxa não
+  // mostra número nenhum: o servidor é quem recusa, e aqui inventar um negativo só confunde.
+  const typed = Math.round(Number(amount.replace(",", ".")) * 100);
+  const net = Number.isFinite(typed) && typed > Number(feeAmount) ? (typed - Number(feeAmount)) / 100 : null;
 
   return (
     <Dialog
@@ -67,10 +78,20 @@ export function RequestPayoutDialog({
             name="amount"
             inputMode="decimal"
             placeholder={maxDecimal}
-            defaultValue={maxDecimal}
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
             required
             error={state.status === "error" ? (state.fieldErrors?.amount ?? state.message) : undefined}
           />
+
+          <div className="rounded-lg bg-muted/60 px-3 py-2.5 text-xs text-muted-foreground">
+            <p>{fill(t.fee, { amount: feeLabel })}</p>
+            {net !== null && (
+              <p className="mt-1 font-medium text-foreground">
+                {fill(t.net, { amount: net.toLocaleString(dict.localeTag, { style: "currency", currency }) })}
+              </p>
+            )}
+          </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setRequested(false)}>
               {dict.common.cancel}
