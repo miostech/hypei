@@ -21,9 +21,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getAppDictionary } from "@/lib/i18n/app";
 import { appLocale } from "@/lib/i18n/app/server";
 import { fill } from "@/lib/i18n/locale";
+import { isMerchantAccountReadyForPayouts } from "@/lib/providers/payment/merchant-status";
 import { formatAmount, formatDate, formatDateTime } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
+import { hasPermission } from "@/modules/organizations/permissions";
 import { getServices } from "@/server/container";
+import { FinanceTabs, resolveFinanceTab } from "./finance-tabs";
+import { PayoutsTab } from "./payouts-tab";
+import { RequestPayoutDialog } from "./request-payout-dialog";
 import { SimulateSettlementButton } from "./simulate-settlement";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -44,21 +49,29 @@ const MOVEMENT_STYLE: Record<string, { icon: LucideIcon; className: string }> = 
 };
 
 export default async function FinancePage({ searchParams }: PageProps<"/finance">) {
-  const { organization } = await requirePagePermission("finance:read");
+  const { organization, membership } = await requirePagePermission("finance:read");
   const services = getServices();
   const params = await searchParams;
   const currencies = await services.finance.currencies(organization.id, organization.defaultCurrency);
   const requested = typeof params.currency === "string" ? params.currency : undefined;
   const currency = requested && currencies.includes(requested) ? requested : currencies[0];
+  const tab = resolveFinanceTab(typeof params.aba === "string" ? params.aba : undefined);
 
   const dict = await getAppDictionary(await appLocale());
   const t = dict.finance;
 
-  const [summary, movements, nextAvailable] = await Promise.all([
+  // O saldo e a conta de recebimento aparecem nas duas abas: é o cabeçalho da tela, não da aba.
+  const [summary, nextAvailable, merchant, movements, payouts] = await Promise.all([
     services.finance.summary(organization.id, currency),
-    services.finance.movements(organization.id, currency, 40),
     services.finance.nextAvailableDate(organization.id, currency),
+    services.merchantAccounts.getForOrganization(organization.id),
+    tab === "movimentacoes" ? services.finance.movements(organization.id, currency, 40) : [],
+    tab === "saques" ? services.payouts.list(organization.id) : [],
   ]);
+
+  const payoutFee = services.payouts.feeFor(currency);
+  const ready = merchant ? isMerchantAccountReadyForPayouts(merchant) : false;
+  const canRequest = hasPermission(membership.role, "payouts:request");
 
   return (
     <>
@@ -76,7 +89,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
                     size="sm"
                     variant={code === currency ? "default" : "ghost"}
                     className="h-7 rounded-lg px-2.5"
-                    render={<Link href={`/finance?currency=${code}`} />}
+                    render={<Link href={`/finance?aba=${tab}&currency=${code}`} />}
                   >
                     {code}
                   </Button>
@@ -91,8 +104,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
       <section className="grid gap-4 lg:grid-cols-3">
         {/*
           No Financeiro o número grande é o quanto ela já vendeu — a pergunta que esta tela
-          responde. O saldo fica nos cards ao lado, um por estado, e tem a tela de Saques
-          inteira para ele.
+          responde. O saldo fica nos cards ao lado, um por estado, e o saque sai daqui mesmo.
         */}
         <BalanceHero
           dict={dict}
@@ -102,10 +114,16 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
           amount={formatAmount(summary.grossRevenue, currency)}
           footnote={t.grossRevenueHint}
           actions={
-            <Button className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90" render={<Link href="/payouts" />}>
-              <BanknoteIcon />
-              {t.requestPayout}
-            </Button>
+            canRequest ? (
+              <RequestPayoutDialog
+                currency={currency}
+                availableAmount={summary.available.toString()}
+                availableLabel={formatAmount(summary.available, currency)}
+                feeAmount={payoutFee.toString()}
+                feeLabel={formatAmount(payoutFee, currency)}
+                disabled={!ready || summary.available <= payoutFee}
+              />
+            ) : undefined
           }
         />
 
@@ -128,56 +146,70 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label={t.refunds} value={formatAmount(summary.refunds, currency)} icon={RotateCcwIcon} tone="muted" />
-        <StatCard label={t.chargebacks} value={formatAmount(summary.chargebacks, currency)} icon={AlertTriangleIcon} tone="muted" />
-        <StatCard label={t.reserved} value={formatAmount(summary.reserved, currency)} icon={LockIcon} tone={summary.reserved > 0n ? "warning" : "muted"} hint={t.reservedHint} />
-      </section>
+      <FinanceTabs active={tab} currency={currency} labels={t.tabs} />
 
-      <Card>
-        <CardHeader className="border-b pb-4">
-          <CardTitle>{t.movementsTitle}</CardTitle>
-          <CardDescription>{t.movementsDescription}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-0">
-          {movements.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">{t.noMovements}</p>
-          ) : (
-            <ul className="divide-y">
-              {movements.map((row) => {
-                const style = MOVEMENT_STYLE[row.type] ?? { icon: ReceiptIcon, className: "bg-muted text-muted-foreground" };
-                const Icon = style.icon;
-                return (
-                  <li key={row.id} className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-muted/50">
-                    <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${style.className}`}>
-                      <Icon className="size-4.5" aria-hidden />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{row.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t.journalTypes[row.type as keyof typeof t.journalTypes] ?? row.type} · {formatDateTime(row.date, dict.localeTag)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p
-                        className={`tabular text-sm font-semibold ${
-                          row.amount > 0n ? "text-success" : row.amount < 0n ? "text-destructive" : "text-muted-foreground"
-                        }`}
-                      >
-                        {row.amount > 0n ? "+" : ""}
-                        {formatAmount(row.amount, currency)}
-                      </p>
-                      <p className="tabular text-xs text-muted-foreground">
-                        {fill(t.balanceAfter, { amount: formatAmount(row.balanceAfter, currency) })}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      {tab === "saques" ? (
+        <PayoutsTab dict={dict} payouts={payouts} currency={currency} ready={ready} hasMerchantAccount={merchant !== null} />
+      ) : (
+        <>
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard label={t.refunds} value={formatAmount(summary.refunds, currency)} icon={RotateCcwIcon} tone="muted" />
+            <StatCard label={t.chargebacks} value={formatAmount(summary.chargebacks, currency)} icon={AlertTriangleIcon} tone="muted" />
+            <StatCard
+              label={t.reserved}
+              value={formatAmount(summary.reserved, currency)}
+              icon={LockIcon}
+              tone={summary.reserved > 0n ? "warning" : "muted"}
+              hint={t.reservedHint}
+            />
+          </section>
+
+          <Card>
+            <CardHeader className="border-b pb-4">
+              <CardTitle>{t.movementsTitle}</CardTitle>
+              <CardDescription>{t.movementsDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="px-0">
+              {movements.length === 0 ? (
+                <p className="py-10 text-center text-sm text-muted-foreground">{t.noMovements}</p>
+              ) : (
+                <ul className="divide-y">
+                  {movements.map((row) => {
+                    const style = MOVEMENT_STYLE[row.type] ?? { icon: ReceiptIcon, className: "bg-muted text-muted-foreground" };
+                    const Icon = style.icon;
+                    return (
+                      <li key={row.id} className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-muted/50">
+                        <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${style.className}`}>
+                          <Icon className="size-4.5" aria-hidden />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{row.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {t.journalTypes[row.type as keyof typeof t.journalTypes] ?? row.type} · {formatDateTime(row.date, dict.localeTag)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p
+                            className={`tabular text-sm font-semibold ${
+                              row.amount > 0n ? "text-success" : row.amount < 0n ? "text-destructive" : "text-muted-foreground"
+                            }`}
+                          >
+                            {row.amount > 0n ? "+" : ""}
+                            {formatAmount(row.amount, currency)}
+                          </p>
+                          <p className="tabular text-xs text-muted-foreground">
+                            {fill(t.balanceAfter, { amount: formatAmount(row.balanceAfter, currency) })}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </>
   );
 }

@@ -29,7 +29,7 @@ export async function syncMerchantAccount(): Promise<ActionState> {
     const { organization } = await requirePermission("integrations:manage");
     await getServices().merchantAccounts.sync(organization.id);
     revalidatePath("/integrations");
-    revalidatePath("/payouts");
+    revalidatePath("/finance");
     return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.statusUpdated };
   });
 }

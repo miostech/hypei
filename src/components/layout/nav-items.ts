@@ -1,6 +1,5 @@
 import {
   BarChart3Icon,
-  BanknoteIcon,
   BookOpenIcon,
   type LucideIcon,
   LayoutDashboardIcon,
@@ -75,8 +74,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     key: "finance",
     items: [
-      { href: "/finance", key: "finance", icon: ReceiptIcon, permission: "finance:read" },
-      { href: "/payouts", key: "payouts", icon: BanknoteIcon, permission: "finance:read" },
+      // Saques é aba do Financeiro: é o mesmo dinheiro visto de outro ângulo.
+      { href: "/finance", key: "finance", icon: ReceiptIcon, permission: "finance:read", tabs: ["/payouts"] },
     ],
   },
   {
