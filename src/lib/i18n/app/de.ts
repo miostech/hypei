@@ -701,7 +701,7 @@ const de: AppDictionary = {
 
   affiliations: {
     title: "Meine Partnerschaften",
-    description: "Produkte anderer Anbieter, die Sie bewerben, und was Sie damit bereits verdient haben.",
+    description: "Produkte anderer Anbieter, die Sie bewerben, jedes mit Ihrem eigenen Link.",
     emptyTitle: "Sie sind noch nirgends Partner",
     emptyBody: "Sobald ein Anbieter Ihnen einen Einladungslink schickt, erscheint die Partnerschaft hier — mit Ihrem Verkaufslink.",
     producer: "Anbieter",

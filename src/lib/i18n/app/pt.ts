@@ -712,7 +712,7 @@ const pt = {
 
   affiliations: {
     title: "Minhas afiliações",
-    description: "Produtos de outros produtores que você divulga, e o que você já ganhou com eles.",
+    description: "Produtos de outros produtores que você divulga, cada um com o seu link.",
     emptyTitle: "Você ainda não se afiliou a nada",
     emptyBody: "Quando um produtor te mandar um link de convite, a afiliação aparece aqui junto com o seu link de venda.",
     producer: "Produtor",

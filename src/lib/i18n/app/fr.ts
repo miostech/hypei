@@ -701,7 +701,7 @@ const fr: AppDictionary = {
 
   affiliations: {
     title: "Mes affiliations",
-    description: "Les produits d'autres producteurs que vous promouvez, et ce que vous avez déjà gagné avec eux.",
+    description: "Les produits d'autres producteurs que vous promouvez, chacun avec votre lien.",
     emptyTitle: "Vous n'êtes affilié à rien pour l'instant",
     emptyBody: "Quand un producteur vous envoie un lien d'invitation, l'affiliation apparaît ici avec votre lien de vente.",
     producer: "Producteur",
