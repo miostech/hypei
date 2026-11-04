@@ -8,6 +8,7 @@ import { getEnv } from "@/lib/env";
 import { InProcessEventBus } from "@/lib/events/event-bus";
 import { logger } from "@/lib/logger";
 import { createEmailProvider } from "@/lib/providers/email/email-provider";
+import { createExchangeRateProvider } from "@/lib/providers/exchange";
 import { createStorageProvider } from "@/lib/providers/storage";
 import { MockPaymentProvider } from "@/lib/providers/payment/mock/mock-payment-provider";
 import { StripePaymentProvider } from "@/lib/providers/payment/stripe/stripe-payment-provider";
@@ -80,6 +81,7 @@ function createContainer(): Services {
     emailProvider: createEmailProvider(env),
     storageProvider: createStorageProvider(env),
     clock: systemClock,
+    exchangeRates: createExchangeRateProvider(),
     config: {
       appUrl: env.APP_URL,
       dataHashSecret: env.DATA_HASH_SECRET,

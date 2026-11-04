@@ -185,6 +185,8 @@ enum LedgerAccount {
   AFFILIATE_PAYABLE
   TAXES
   PAYOUTS
+  /// Contrapartida da conversão de moeda: um saldo em dólar sai por aqui e entra em real.
+  FX_CONVERSION
 }
 
 enum LedgerDirection {
@@ -959,6 +961,13 @@ model Payout {
   /// o que foi cobrado neste saque não.
   feeAmount        BigInt              @default(0)
   currency         String              @db.Char(3)
+  /// Quando o saldo sacado estava em outra moeda, o que saiu do saldo e a que cotação.
+  /// Nulos quando o saque já era na moeda da conta de recebimento — a maioria deles.
+  sourceAmount     BigInt?
+  sourceCurrency   String?             @db.Char(3)
+  /// Cotação usada, inteira na escala de `RATE_SCALE` (1e8), congelada no saque.
+  exchangeRate     BigInt?
+  exchangeRateSource String?
   provider         PaymentProviderType
   providerPayoutId String?
   destinationId    String?

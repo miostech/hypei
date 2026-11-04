@@ -1,6 +1,8 @@
 import {
+  AlertCircleIcon,
   AlertTriangleIcon,
   ArrowDownLeftIcon,
+  ArrowLeftRightIcon,
   BanknoteIcon,
   ClockIcon,
   LockIcon,
@@ -17,10 +19,12 @@ import { BalanceHero } from "@/components/shared/balance-hero";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAppDictionary } from "@/lib/i18n/app";
 import { appLocale } from "@/lib/i18n/app/server";
 import { fill } from "@/lib/i18n/locale";
+import { convertMoney, money } from "@/lib/money";
 import { isMerchantAccountReadyForPayouts } from "@/lib/providers/payment/merchant-status";
 import { formatAmount, formatDate, formatDateTime } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
@@ -64,6 +68,7 @@ const MOVEMENT_STYLE: Record<string, { icon: LucideIcon; className: string }> = 
   "payout.paid": { icon: BanknoteIcon, className: "bg-gold/15 text-warning" },
   "payout.reversed": { icon: RotateCcwIcon, className: "bg-warning/12 text-warning" },
   "reserve.released": { icon: UnlockIcon, className: "bg-success/10 text-success" },
+  "fx.converted": { icon: ArrowLeftRightIcon, className: "bg-muted text-muted-foreground" },
 };
 
 export default async function FinancePage({ searchParams }: PageProps<"/finance">) {
@@ -93,10 +98,17 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   ]);
 
   const hasMoreMovements = movements.length > shown;
-  const payoutFee = services.payouts.feeFor(currency);
   const payoutFees = Object.fromEntries(terms.map((block) => [block.currency, services.payouts.feeFor(block.currency)]));
   const ready = merchant ? isMerchantAccountReadyForPayouts(merchant) : false;
   const canRequest = hasPermission(membership.role, "payouts:request");
+  // A produtora recebe sempre na moeda da conta dela: um saldo em outra moeda é convertido
+  // no saque, e é por isso que a taxa e o valor que ela vê saem na moeda da conta.
+  const settlesIn = merchant?.defaultCurrency ?? null;
+  const payoutCurrency = settlesIn ?? currency;
+  // Nas condições, "a sua moeda" é a da conta que recebe — é onde o dinheiro realmente cai.
+  const accountCurrency = settlesIn ?? organization.defaultCurrency;
+  const quote = ready && settlesIn && canRequest ? await services.payouts.quoteFor(currency, settlesIn) : null;
+  const payoutFee = services.payouts.feeFor(payoutCurrency);
 
   return (
     <>
@@ -142,11 +154,14 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
             canRequest ? (
               <RequestPayoutDialog
                 currency={currency}
+                payoutCurrency={payoutCurrency}
+                rate={quote?.rate.toString() ?? null}
+                rateLabel={quote ? formatAmount(convertMoney(money(100n, currency), quote.rate, payoutCurrency).amount, payoutCurrency) : null}
                 availableAmount={summary.available.toString()}
                 availableLabel={formatAmount(summary.available, currency)}
                 feeAmount={payoutFee.toString()}
-                feeLabel={formatAmount(payoutFee, currency)}
-                disabled={!ready || summary.available <= payoutFee}
+                feeLabel={formatAmount(payoutFee, payoutCurrency)}
+                disabled={!ready || summary.available <= 0n}
               />
             ) : undefined
           }
@@ -171,6 +186,15 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
         </div>
       </section>
 
+      {/* Fica fora das abas: o botão de saque está no topo da tela, em qualquer uma delas. */}
+      {settlesIn && settlesIn !== currency && (
+        <Alert>
+          <AlertCircleIcon />
+          <AlertTitle>{fill(dict.payouts.conversionTitle, { balance: currency, account: settlesIn })}</AlertTitle>
+          <AlertDescription>{fill(dict.payouts.conversionNote, { account: settlesIn, balance: currency })}</AlertDescription>
+        </Alert>
+      )}
+
       <FinanceTabs active={tab} currency={currency} labels={t.tabs} />
 
       {tab === "taxas" && (
@@ -178,7 +202,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
           dict={dict}
           terms={terms}
           payoutFees={payoutFees}
-          localCurrency={organization.defaultCurrency}
+          localCurrency={accountCurrency}
           canRequestFast={canRequest}
         />
       )}

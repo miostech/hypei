@@ -25,7 +25,10 @@ export default async function OfferPage({ params }: PageProps<"/offers/[offerId]
     if (error instanceof NotFoundError) notFound();
     throw error;
   });
-  const products = await services.products.list(organization.id);
+  const [products, merchant] = await Promise.all([
+    services.products.list(organization.id),
+    services.merchantAccounts.getForOrganization(organization.id),
+  ]);
   const dict = await getAppDictionary(await appLocale());
 
   return (
@@ -35,6 +38,7 @@ export default async function OfferPage({ params }: PageProps<"/offers/[offerId]
         action={updateOffer}
         products={products.map((p) => ({ id: p.id, name: p.name }))}
         submitLabel={dict.common.saveChanges}
+        settlesIn={merchant?.defaultCurrency ?? null}
         defaultValues={{
           id: offer.id,
           productId: offer.productId,

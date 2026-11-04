@@ -4,6 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import type { PaymentMethodType } from "@/generated/prisma/enums";
 import { createPrismaClient } from "@/lib/database/postgres/client";
 import { InProcessEventBus } from "@/lib/events/event-bus";
+import { DEVELOPMENT_RATES, FixedExchangeRateProvider, type RateTable } from "@/lib/providers/exchange";
 import { MockPaymentProvider, type MockEvent } from "@/lib/providers/payment/mock/mock-payment-provider";
 import { InMemoryAnalyticsEventRepository } from "@/modules/analytics/analytics-event.repository";
 import { InMemoryCheckoutConfigRepository } from "@/modules/checkout/checkout-config.repository";
@@ -49,6 +50,8 @@ export async function createTestApp(
      *  reserva liga a dela, e o padrão publicado tem teste próprio. */
     reserveBps?: number;
     reserveHoldDays?: number;
+    /** Cotações desta instância, para o teste de saque com conversão. */
+    rates?: RateTable;
   } = {},
 ): Promise<TestApp> {
   const prisma = testPrisma();
@@ -71,6 +74,8 @@ export async function createTestApp(
   const queue = new ManualQueue();
   const email = new FakeEmailProvider();
   const storage = new FakeStorageProvider();
+  // Cotações fixas: o teste que converte sabe exatamente que número esperar.
+  const exchangeRates = new FixedExchangeRateProvider(options.rates ?? DEVELOPMENT_RATES, () => clock.now, "test");
 
   const services = buildServices({
     prisma,
@@ -85,6 +90,7 @@ export async function createTestApp(
     eventBus: new InProcessEventBus(),
     emailProvider: email,
     storageProvider: storage,
+    exchangeRates,
     clock: () => clock.now,
     config: {
       appUrl: "https://app.kabrun.test",
@@ -198,11 +204,11 @@ export async function flushEvents(app: TestApp): Promise<number> {
   return app.services.outboxPublisher.publishPending();
 }
 
-/** Sum of each account (normal side) across ALL organizations. */
-export async function accountTotals(prisma: PrismaClient, organizationId?: string) {
+/** Sum of each account (normal side) across ALL organizations, opcionalmente de uma moeda. */
+export async function accountTotals(prisma: PrismaClient, organizationId?: string, currency?: string) {
   const rows = await prisma.ledgerEntry.groupBy({
     by: ["account", "direction"],
-    where: organizationId ? { organizationId } : {},
+    where: { ...(organizationId ? { organizationId } : {}), ...(currency ? { currency } : {}) },
     _sum: { amount: true },
   });
   const net: Record<string, bigint> = {};

@@ -72,9 +72,13 @@ export function TermsTab({ dict, terms, payoutFees, localCurrency, canRequestFas
                   })}
                 </dd>
 
-                <dt className="text-sm text-muted-foreground">{t.payoutFee}</dt>
+                {/* A taxa de saque é cobrada uma vez, na moeda da conta: as outras moedas
+                    são convertidas antes de sair, então aqui elas mostram o caminho. */}
+                <dt className="text-sm text-muted-foreground">{isLocal ? t.payoutFee : t.conversion}</dt>
                 <dd className="text-sm font-medium">
-                  {fill(t.payoutFeeValue, { amount: formatAmount(payoutFees[currency] ?? 0n, currency) })}
+                  {isLocal
+                    ? fill(t.payoutFeeValue, { amount: formatAmount(payoutFees[currency] ?? 0n, currency) })
+                    : fill(t.conversionValue, { account: localCurrency })}
                 </dd>
               </dl>
             </section>

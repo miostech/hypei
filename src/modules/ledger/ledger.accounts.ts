@@ -16,6 +16,8 @@ import type { LedgerAccount, LedgerDirection } from "@/generated/prisma/enums";
  *                       recolhimento. Hoje quem vende é o produtor (ADR 008): o imposto é
  *                       calculado e registrado no pedido, e NÃO gera lançamento aqui.
  * - PAYOUTS             liability producer funds in transit to their bank
+ * - FX_CONVERSION       clearing  contrapartida da conversão de moeda: zera quando os dois
+ *                       lados do câmbio são lançados, um em cada moeda
  */
 export const ACCOUNT_NORMAL_SIDE: Record<LedgerAccount, LedgerDirection> = {
   PLATFORM_CASH: "DEBIT",
@@ -28,6 +30,7 @@ export const ACCOUNT_NORMAL_SIDE: Record<LedgerAccount, LedgerDirection> = {
   RESERVES: "CREDIT",
   AFFILIATE_PAYABLE: "CREDIT",
   TAXES: "CREDIT",
+  FX_CONVERSION: "CREDIT",
   PAYOUTS: "CREDIT",
 };
 

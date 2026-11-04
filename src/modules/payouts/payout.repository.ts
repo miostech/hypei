@@ -1,17 +1,25 @@
 import type { DbClient } from "@/lib/database/postgres/client";
 import type { Payout, PaymentProviderType, Prisma } from "@/generated/prisma/client";
 
+export interface CreatePayoutInput {
+  organizationId: string;
+  /** O que vai para o banco, na moeda da conta de recebimento. */
+  amount: bigint;
+  feeAmount: bigint;
+  currency: string;
+  /** Preenchidos só quando o saldo sacado era de outra moeda. */
+  sourceAmount?: bigint;
+  sourceCurrency?: string;
+  exchangeRate?: bigint;
+  exchangeRateSource?: string;
+  provider: PaymentProviderType;
+  idempotencyKey: string;
+  requestedById?: string | null;
+}
+
 export interface PayoutRepository {
   findByIdempotencyKey(key: string): Promise<Payout | null>;
-  create(input: {
-    organizationId: string;
-    amount: bigint;
-    feeAmount: bigint;
-    currency: string;
-    provider: PaymentProviderType;
-    idempotencyKey: string;
-    requestedById?: string | null;
-  }): Promise<Payout>;
+  create(input: CreatePayoutInput): Promise<Payout>;
   findById(id: string): Promise<Payout | null>;
   findByProviderPayoutId(provider: PaymentProviderType, providerPayoutId: string): Promise<Payout | null>;
   lock(id: string): Promise<Payout>;
@@ -26,15 +34,7 @@ export class PrismaPayoutRepository implements PayoutRepository {
     return this.db.payout.findUnique({ where: { idempotencyKey: key } });
   }
 
-  create(input: {
-    organizationId: string;
-    amount: bigint;
-    feeAmount: bigint;
-    currency: string;
-    provider: PaymentProviderType;
-    idempotencyKey: string;
-    requestedById?: string | null;
-  }) {
+  create(input: CreatePayoutInput) {
     return this.db.payout.create({ data: { ...input, status: "REQUESTED" } });
   }
 

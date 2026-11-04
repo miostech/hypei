@@ -7,6 +7,7 @@ import { IdempotencyService } from "@/lib/idempotency/idempotency.service";
 import { logger } from "@/lib/logger";
 import type { CurrencyCode } from "@/lib/money";
 import type { EmailProvider } from "@/lib/providers/email/email-provider";
+import type { ExchangeRateProvider } from "@/lib/providers/exchange";
 import type { StorageProvider } from "@/lib/providers/storage";
 import type { PaymentProvider } from "@/lib/providers/payment/types";
 import type { JobQueue } from "@/lib/providers/queue/job-queue";
@@ -65,6 +66,8 @@ export interface ServiceDependencies {
   eventBus: EventBus;
   emailProvider: EmailProvider;
   storageProvider: StorageProvider;
+  /** De onde vem o câmbio que converte um saldo em outra moeda na hora do saque. */
+  exchangeRates: ExchangeRateProvider;
   clock: Clock;
   config: {
     appUrl: string;
@@ -92,7 +95,7 @@ export function buildServices(deps: ServiceDependencies) {
   const settlements = new SettlementService(uow, ledger, affiliates, finance, deps.clock);
   const reserves = new ReserveService(uow, ledger, deps.clock);
   const risk = new RiskService(deps.mongo.riskEvents);
-  const payouts = new PayoutService(uow, deps.paymentProvider, ledger, balances, risk, deps.clock, {
+  const payouts = new PayoutService(uow, deps.paymentProvider, ledger, balances, risk, deps.exchangeRates, deps.clock, {
     minimumPayout: deps.config.minimumPayout,
     payoutFee: deps.config.payoutFee,
   });
