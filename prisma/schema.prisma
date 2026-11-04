@@ -868,14 +868,17 @@ model TaxPolicy {
 }
 
 model SettlementPolicy {
-  id             String   @id @default(cuid())
+  id             String             @id @default(cuid())
   organizationId String?
-  country        String?  @db.Char(2)
-  currency       String?  @db.Char(3)
+  country        String?            @db.Char(2)
+  currency       String?            @db.Char(3)
+  /// O meio de pagamento a que o prazo se aplica. Nulo vale para todos: cartão compensa
+  /// devagar, Pix e boleto caem na conta em dois dias, e o prazo precisa saber disso.
+  method         PaymentMethodType?
   delayDays      Int
-  active         Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  active         Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 

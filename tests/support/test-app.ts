@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Locale } from "@/lib/i18n/locale";
 import type { PrismaClient } from "@/generated/prisma/client";
+import type { PaymentMethodType } from "@/generated/prisma/enums";
 import { createPrismaClient } from "@/lib/database/postgres/client";
 import { InProcessEventBus } from "@/lib/events/event-bus";
 import { MockPaymentProvider, type MockEvent } from "@/lib/providers/payment/mock/mock-payment-provider";
@@ -161,9 +162,21 @@ export async function startPurchase(
   return { result, payment };
 }
 
-export async function confirmPayment(app: TestApp, payment: { providerPaymentId: string | null; amount: bigint; currency: string }, eventId?: string) {
+export async function confirmPayment(
+  app: TestApp,
+  payment: { providerPaymentId: string | null; amount: bigint; currency: string },
+  eventId?: string,
+  /** O meio que o provedor informa. Sem isto o mock diz cartão, como a maioria das vendas. */
+  paymentMethod?: PaymentMethodType,
+) {
   return app.deliver(
-    { type: "payment.succeeded", providerPaymentId: payment.providerPaymentId!, amount: payment.amount.toString(), currency: payment.currency },
+    {
+      type: "payment.succeeded",
+      providerPaymentId: payment.providerPaymentId!,
+      amount: payment.amount.toString(),
+      currency: payment.currency,
+      paymentMethod,
+    },
     eventId,
   );
 }

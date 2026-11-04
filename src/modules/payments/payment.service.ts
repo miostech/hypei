@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 import { assertSupportedCurrency, money, type Money } from "@/lib/money";
 import type { NormalizedProviderEvent, PaymentProvider } from "@/lib/providers/payment/types";
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
-import { calculateFeeBreakdown, PUBLISHED_PLATFORM_FEE, type AffiliateShare } from "@/modules/fees/fee.calculator";
+import { calculateFeeBreakdown, publishedPlatformFee, type AffiliateShare } from "@/modules/fees/fee.calculator";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import { grantOrderAccess } from "@/modules/members/access";
 import type { Repositories } from "@/server/repositories";
@@ -164,12 +164,14 @@ export class PaymentService {
 
       const organization = await repos.organizations.findById(payment.organizationId);
       if (!organization) throw new NotFoundError("Organization", payment.organizationId);
-      const scope = { organizationId: organization.id, country: organization.country, currency: payment.currency };
+      // O meio de pagamento entra na conta do prazo: cartão demora a compensar, Pix e boleto não.
+      const method = event.paymentMethod ?? payment.paymentMethod;
+      const scope = { organizationId: organization.id, country: organization.country, currency: payment.currency, method };
       // Sem política cadastrada vale a taxa anunciada, não zero. O default anterior era
       // `NO_PLATFORM_FEE`, e faltar uma linha no banco não dava erro: dava venda de graça,
       // em silêncio, para sempre. Errar para o lado da taxa publicada é recuperável — o
       // produtor reclama e o valor se devolve. Errar para zero não aparece em lugar nenhum.
-      const feeRule = (await repos.policies.findPlatformFeeRule(scope)) ?? PUBLISHED_PLATFORM_FEE;
+      const feeRule = (await repos.policies.findPlatformFeeRule(scope)) ?? publishedPlatformFee(payment.currency);
       const delayDays = (await repos.policies.findSettlementDelayDays(scope)) ?? this.config.defaultSettlementDelayDays;
 
       const gross = money(payment.amount, payment.currency);
@@ -187,7 +189,7 @@ export class PaymentService {
       await repos.payments.update(payment.id, {
         status: "PAID",
         paidAt,
-        paymentMethod: event.paymentMethod ?? payment.paymentMethod,
+        paymentMethod: method,
         providerChargeId: event.providerChargeId,
         processorFeeAmount: fees.processorFeeAmount.amount,
         platformFeeAmount: fees.platformFeeAmount.amount,

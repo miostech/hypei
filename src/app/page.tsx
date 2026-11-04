@@ -86,8 +86,8 @@ const SWITCH = [
 ];
 
 /** Formatados a partir da constante: a página não pode anunciar um número que o ledger não cobra. */
-const FEE_PERCENTAGE = (PUBLISHED_PLATFORM_FEE.percentageBps / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
-const FEE_FIXED = formatAmount(PUBLISHED_PLATFORM_FEE.fixedAmount, "BRL");
+const FEE_PERCENTAGE = (PUBLISHED_PLATFORM_FEE.BRL.percentageBps / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+const FEE_FIXED = formatAmount(PUBLISHED_PLATFORM_FEE.BRL.fixedAmount, "BRL");
 
 const INCLUDED = [
   "Checkout em real, euro e dólar",

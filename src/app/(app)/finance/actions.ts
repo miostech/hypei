@@ -6,8 +6,9 @@ import { z } from "zod";
 import { ForbiddenError } from "@/lib/errors";
 import { getAppDictionary } from "@/lib/i18n/app";
 import { appLocale } from "@/lib/i18n/app/server";
-import { plural } from "@/lib/i18n/locale";
+import { fill, plural } from "@/lib/i18n/locale";
 import { assertSupportedCurrency, parseDecimalToMinorUnits } from "@/lib/money";
+import { formatAmount } from "@/lib/ui/format";
 import { requirePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
 import { runAction, type ActionState } from "@/server/actions/action-state";
@@ -34,6 +35,32 @@ export async function requestPayout(_prev: ActionState, formData: FormData): Pro
 
     revalidatePath("/finance");
     return { status: "success", message: (await getAppDictionary(await appLocale())).toasts.payoutRequested };
+  });
+}
+
+/**
+ * Pedido de recebimento de cartão em 2 dias.
+ *
+ * A resposta vem na hora e é sempre a mesma pergunta: quanto esta conta já vendeu. Negado não
+ * é erro de quem pediu — é a condição ainda não valer —, por isso a mensagem explica o que
+ * falta em vez de só dizer que não deu.
+ */
+export async function requestFastSettlement(): Promise<ActionState> {
+  return runAction(async () => {
+    const { organization, userId } = await requirePermission("payouts:request");
+    const currency = assertSupportedCurrency(organization.defaultCurrency);
+    const decision = await getServices().settlements.requestFastCardSettlement({
+      organizationId: organization.id,
+      currency,
+      userId,
+    });
+    const dict = await getAppDictionary(await appLocale());
+    const t = dict.finance.terms;
+    if (!decision.granted) {
+      return { status: "error", message: fill(t.fastDenied, { amount: formatAmount(decision.minimumRevenue, currency) }) };
+    }
+    revalidatePath("/finance");
+    return { status: "success", message: t.fastGranted };
   });
 }
 

@@ -3,6 +3,8 @@ import { createDomainEvent } from "@/lib/events/domain-event";
 import { logger } from "@/lib/logger";
 import { assertSupportedCurrency } from "@/lib/money";
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
+import type { FinanceOverviewService } from "@/modules/balances/finance-overview.service";
+import { FAST_CARD_SETTLEMENT_DAYS, FAST_SETTLEMENT_MIN_REVENUE } from "@/modules/balances/settlement-terms";
 import { accountBalance } from "@/modules/ledger/ledger.accounts";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import type { UnitOfWork } from "@/server/unit-of-work";
@@ -10,6 +12,13 @@ import type { UnitOfWork } from "@/server/unit-of-work";
 export interface SettlementRunResult {
   processed: number;
   released: bigint;
+}
+
+export interface FastSettlementDecision {
+  granted: boolean;
+  /** Quanto a conta precisa ter vendido — o que a tela diz a quem ainda não chegou lá. */
+  minimumRevenue: bigint;
+  revenue: bigint;
 }
 
 /**
@@ -22,8 +31,42 @@ export class SettlementService {
     private readonly uow: UnitOfWork,
     private readonly ledger: LedgerService,
     private readonly affiliates: AffiliateService,
+    private readonly finance: FinanceOverviewService,
     private readonly clock: Clock,
   ) {}
+
+  /**
+   * Pedido de recebimento de cartão em 2 dias, decidido na hora pelo faturamento da conta.
+   *
+   * Receber antes é a Kabrun adiantando dinheiro que a bandeira só paga depois — quem já
+   * vendeu muito tem como cobrir um estorno, quem está começando não. Acima do mínimo a
+   * liberação é automática e vale só para o cartão: Pix e boleto já caem em dois dias.
+   * Abaixo, nada muda e a conta continua no prazo que já tinha.
+   */
+  async requestFastCardSettlement(input: { organizationId: string; currency: string; userId?: string | null }): Promise<FastSettlementDecision> {
+    const currency = assertSupportedCurrency(input.currency);
+    const { grossRevenue } = await this.finance.summary(input.organizationId, currency);
+    const minimumRevenue = FAST_SETTLEMENT_MIN_REVENUE[currency];
+    if (grossRevenue < minimumRevenue) return { granted: false, minimumRevenue, revenue: grossRevenue };
+
+    await this.uow.transaction(async (repos) => {
+      await repos.policies.setOrganizationSettlementDelay({
+        organizationId: input.organizationId,
+        currency,
+        method: "CREDIT_CARD",
+        delayDays: FAST_CARD_SETTLEMENT_DAYS,
+      });
+      await repos.audit.record({
+        organizationId: input.organizationId,
+        userId: input.userId,
+        action: "settlement.fast_card_enabled",
+        entity: "SettlementPolicy",
+        entityId: input.organizationId,
+        metadata: { currency, delayDays: FAST_CARD_SETTLEMENT_DAYS, revenue: grossRevenue },
+      });
+    });
+    return { granted: true, minimumRevenue, revenue: grossRevenue };
+  }
 
   async releaseDue(options: { now?: Date; organizationId?: string; limit?: number } = {}): Promise<SettlementRunResult> {
     const now = options.now ?? this.clock();

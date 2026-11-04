@@ -87,7 +87,8 @@ export function buildServices(deps: ServiceDependencies) {
   });
   const refunds = new RefundService(uow, deps.paymentProvider, ledger, affiliates);
   const disputes = new DisputeService(uow, ledger, affiliates);
-  const settlements = new SettlementService(uow, ledger, affiliates, deps.clock);
+  const finance = new FinanceOverviewService(uow, { defaultSettlementDelayDays: deps.config.defaultSettlementDelayDays });
+  const settlements = new SettlementService(uow, ledger, affiliates, finance, deps.clock);
   const risk = new RiskService(deps.mongo.riskEvents);
   const payouts = new PayoutService(uow, deps.paymentProvider, ledger, balances, risk, deps.clock, {
     minimumPayout: deps.config.minimumPayout,
@@ -118,7 +119,6 @@ export function buildServices(deps: ServiceDependencies) {
   // Cross-tenant reads for Kabrun staff; never reachable from the producer app.
   const platformAdmin = new PlatformAdminService(new PrismaPlatformAdminRepository(deps.prisma));
   const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, subscriptions, deps.paymentProvider.type, taxes, deps.storageProvider);
-  const finance = new FinanceOverviewService(uow);
   const outboxPublisher = new OutboxPublisher(uow.repos.outbox, deps.eventBus);
 
   const webhookIngestion = new WebhookIngestionService(uow, deps.webhookProviders, deps.mongo.webhookPayloads, deps.queue);

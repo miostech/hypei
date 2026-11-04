@@ -1,5 +1,5 @@
 import { ValidationError } from "@/lib/errors";
-import { addMoney, calculatePercentage, money, subtractMoney, type Money } from "@/lib/money";
+import { addMoney, assertSupportedCurrency, calculatePercentage, money, subtractMoney, type CurrencyCode, type Money } from "@/lib/money";
 
 export interface PlatformFeeRule {
   /** Percentage in basis points (500 = 5%). */
@@ -9,17 +9,27 @@ export interface PlatformFeeRule {
 }
 
 /**
- * A taxa que a landing page anuncia, e o padrão que o seed grava.
+ * A taxa que a landing page anuncia, e o padrão que o seed grava, por moeda.
  *
  * Existe para que preço anunciado e preço cobrado não possam divergir em silêncio: antes disto
  * a página não dizia nada e o seed gravava 10%, então qualquer número escrito à mão na página
  * nasceria errado. A verdade final continua sendo a PlatformFeePolicy no banco — uma
  * organização pode ter condição negociada —, mas o padrão sai daqui.
  *
- * O fixo é em unidades menores da moeda da venda: 249 vira R$ 2,49, € 2,49 ou US$ 2,49. Em euro
- * e dólar isso é bem mais caro em valor; se a condição lá fora for outra, é aqui que muda.
+ * O fixo é em unidades menores da moeda da venda. Venda fora do Brasil custa mais: o dinheiro
+ * demora mais a chegar e o risco de chargeback é maior, então o percentual é outro e o fixo é
+ * cobrado na moeda da venda, não convertido do real.
  */
-export const PUBLISHED_PLATFORM_FEE: PlatformFeeRule = { percentageBps: 899, fixedAmount: 249n };
+export const PUBLISHED_PLATFORM_FEE: Record<CurrencyCode, PlatformFeeRule> = {
+  BRL: { percentageBps: 899, fixedAmount: 249n },
+  EUR: { percentageBps: 999, fixedAmount: 80n },
+  USD: { percentageBps: 999, fixedAmount: 80n },
+};
+
+/** A taxa anunciada da moeda da venda. Moeda não suportada nunca chega aqui. */
+export function publishedPlatformFee(currency: string): PlatformFeeRule {
+  return PUBLISHED_PLATFORM_FEE[assertSupportedCurrency(currency)];
+}
 
 /** Supports percentage, fixed, or percentage + fixed (e.g. 5% + R$1,00). */
 export function calculatePlatformFee(gross: Money, rule: PlatformFeeRule): Money {

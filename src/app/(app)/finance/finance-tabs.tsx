@@ -2,13 +2,14 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { AppDictionary } from "@/lib/i18n/app";
 
-export const FINANCE_TABS = ["movimentacoes", "saques"] as const;
+export const FINANCE_TABS = ["movimentacoes", "saques", "taxas"] as const;
 export type FinanceTab = (typeof FINANCE_TABS)[number];
 
 /** O nome na URL é fixo em português, como nas outras rotas; o rótulo é que segue o idioma. */
 const LABEL_KEYS: Record<FinanceTab, keyof AppDictionary["finance"]["tabs"]> = {
   movimentacoes: "movements",
   saques: "payouts",
+  taxas: "terms",
 };
 
 /**

@@ -30,6 +30,7 @@ import { FinanceTabs, resolveFinanceTab } from "./finance-tabs";
 import { PayoutsTab } from "./payouts-tab";
 import { RequestPayoutDialog } from "./request-payout-dialog";
 import { SimulateSettlementButton } from "./simulate-settlement";
+import { TermsTab } from "./terms-tab";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getAppDictionary(await appLocale())).finance.eyebrow };
@@ -78,13 +79,14 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   const t = dict.finance;
 
   // O saldo e a conta de recebimento aparecem nas duas abas: é o cabeçalho da tela, não da aba.
-  const [summary, nextAvailable, merchant, movements, payouts] = await Promise.all([
+  const [summary, nextAvailable, merchant, movements, payouts, terms] = await Promise.all([
     services.finance.summary(organization.id, currency),
     services.finance.nextAvailableDate(organization.id, currency),
     services.merchantAccounts.getForOrganization(organization.id),
     // Uma a mais do que cabe na tela: é assim que a página sabe se ainda há o que mostrar.
     tab === "movimentacoes" ? services.finance.movements(organization.id, currency, shown + 1) : [],
     tab === "saques" ? services.payouts.list(organization.id) : [],
+    tab === "taxas" ? services.finance.terms(organization.id, organization.country, currency) : null,
   ]);
 
   const hasMoreMovements = movements.length > shown;
@@ -167,9 +169,13 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
 
       <FinanceTabs active={tab} currency={currency} labels={t.tabs} />
 
-      {tab === "saques" ? (
+      {tab === "taxas" && terms && <TermsTab dict={dict} terms={terms} payoutFee={payoutFee} canRequestFast={canRequest} />}
+
+      {tab === "saques" && (
         <PayoutsTab dict={dict} payouts={payouts} currency={currency} ready={ready} hasMerchantAccount={merchant !== null} />
-      ) : (
+      )}
+
+      {tab === "movimentacoes" && (
         <>
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard label={t.refunds} value={formatAmount(summary.refunds, currency)} icon={RotateCcwIcon} tone="muted" />
