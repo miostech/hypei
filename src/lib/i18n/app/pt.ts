@@ -962,6 +962,7 @@ const pt = {
     pendingVerification: "Verificação pendente",
     notEnabled: "Sua conta de recebimento ainda não está habilitada para saques. Conclua a verificação em Integrações.",
     noAccount: "Nenhuma conta de recebimento configurada. Configure-a em Integrações para poder sacar.",
+    convertedFrom: "Convertido de {amount} · 1 {currency} = {rate}",
     conversionTitle: "Saldo em {balance}, conta em {account}",
     conversionNote:
       "No saque, este saldo é convertido para {account} pela cotação do momento: você recebe sempre na moeda da sua conta de recebimento.",

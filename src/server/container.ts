@@ -81,7 +81,7 @@ function createContainer(): Services {
     emailProvider: createEmailProvider(env),
     storageProvider: createStorageProvider(env),
     clock: systemClock,
-    exchangeRates: createExchangeRateProvider(),
+    exchangeRates: createExchangeRateProvider(env),
     config: {
       appUrl: env.APP_URL,
       dataHashSecret: env.DATA_HASH_SECRET,

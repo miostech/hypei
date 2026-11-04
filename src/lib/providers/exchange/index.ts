@@ -1,15 +1,16 @@
 export * from "./exchange-rate-provider";
 export { FixedExchangeRateProvider, ratePair, type RateTable } from "./fixed-exchange-rate-provider";
+export { PtaxExchangeRateProvider, type PtaxOptions } from "./ptax-exchange-rate-provider";
 
 import { FixedExchangeRateProvider, ratePair, type RateTable } from "./fixed-exchange-rate-provider";
+import { PtaxExchangeRateProvider } from "./ptax-exchange-rate-provider";
 import type { ExchangeRateProvider } from "./exchange-rate-provider";
 
 /**
- * Cotações de desenvolvimento, na escala de `RATE_SCALE` (1e8).
+ * Cotações de tabela, na escala de `RATE_SCALE` (1e8).
  *
- * São números plausíveis, não cotações: existem para a tela e os testes funcionarem. Antes de
- * converter dinheiro de verdade é preciso trocar isto por uma fonte do dia — para o real, a
- * PTAX do Banco Central é a referência que a conversão de um recebimento costuma usar.
+ * São números plausíveis, não cotações: existem para os testes terem uma conta previsível e
+ * para o ambiente local funcionar sem internet. Quem converte dinheiro de verdade é a PTAX.
  */
 export const DEVELOPMENT_RATES: RateTable = {
   [ratePair("USD", "BRL")]: 540_000_000n, // R$ 5,40
@@ -20,6 +21,17 @@ export const DEVELOPMENT_RATES: RateTable = {
   [ratePair("EUR", "USD")]: 115_000_000n, // $ 1,15
 };
 
-export function createExchangeRateProvider(): ExchangeRateProvider {
-  return new FixedExchangeRateProvider(DEVELOPMENT_RATES);
+export interface ExchangeEnv {
+  EXCHANGE_RATE_PROVIDER: string;
+}
+
+/**
+ * `ptax` busca a cotação oficial do Banco Central; `fixed` usa a tabela acima.
+ *
+ * Produção recusa `fixed` (ver `src/lib/env.ts`): converter o saldo de alguém a um número
+ * inventado é o tipo de erro que só aparece no extrato do produtor, tarde demais.
+ */
+export function createExchangeRateProvider(env: ExchangeEnv): ExchangeRateProvider {
+  if (env.EXCHANGE_RATE_PROVIDER === "fixed") return new FixedExchangeRateProvider(DEVELOPMENT_RATES);
+  return new PtaxExchangeRateProvider();
 }

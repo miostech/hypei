@@ -950,6 +950,7 @@ const en: AppDictionary = {
     pendingVerification: "Verification pending",
     notEnabled: "Your payout account is not enabled for payouts yet. Finish the verification under Integrations.",
     noAccount: "No payout account set up. Set one up under Integrations to be able to withdraw.",
+    convertedFrom: "Converted from {amount} · 1 {currency} = {rate}",
     conversionTitle: "Balance in {balance}, account in {account}",
     conversionNote:
       "On payout this balance is converted to {account} at the rate of the moment: you are always paid in the currency of your payout account.",

@@ -950,6 +950,7 @@ const es: AppDictionary = {
     pendingVerification: "Verificación pendiente",
     notEnabled: "Tu cuenta de cobro todavía no está habilitada para retiros. Termina la verificación en Integraciones.",
     noAccount: "Ninguna cuenta de cobro configurada. Configúrala en Integraciones para poder retirar.",
+    convertedFrom: "Convertido de {amount} · 1 {currency} = {rate}",
     conversionTitle: "Saldo en {balance}, cuenta en {account}",
     conversionNote:
       "En el retiro, este saldo se convierte a {account} con la cotización del momento: siempre cobras en la moneda de tu cuenta.",

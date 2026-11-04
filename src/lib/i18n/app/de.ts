@@ -950,6 +950,7 @@ const de: AppDictionary = {
     pendingVerification: "Verifizierung offen",
     notEnabled: "Ihr Empfängerkonto ist noch nicht für Auszahlungen freigeschaltet. Schließen Sie die Verifizierung unter Integrationen ab.",
     noAccount: "Kein Empfängerkonto eingerichtet. Richten Sie eines unter Integrationen ein, um auszahlen zu können.",
+    convertedFrom: "Umgerechnet aus {amount} · 1 {currency} = {rate}",
     conversionTitle: "Guthaben in {balance}, Konto in {account}",
     conversionNote:
       "Bei der Auszahlung wird dieses Guthaben zum aktuellen Kurs in {account} umgerechnet: ausgezahlt wird immer in der Währung deines Kontos.",

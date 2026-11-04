@@ -950,6 +950,7 @@ const it: AppDictionary = {
     pendingVerification: "Verifica in sospeso",
     notEnabled: "Il tuo conto di incasso non è ancora abilitato ai prelievi. Completa la verifica in Integrazioni.",
     noAccount: "Nessun conto di incasso configurato. Configuralo in Integrazioni per poter prelevare.",
+    convertedFrom: "Convertito da {amount} · 1 {currency} = {rate}",
     conversionTitle: "Saldo in {balance}, conto in {account}",
     conversionNote:
       "Al prelievo questo saldo viene convertito in {account} al cambio del momento: vieni pagato sempre nella valuta del tuo conto.",

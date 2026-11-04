@@ -950,6 +950,7 @@ const fr: AppDictionary = {
     pendingVerification: "Vérification en attente",
     notEnabled: "Votre compte de réception n'est pas encore activé pour les virements. Terminez la vérification dans Intégrations.",
     noAccount: "Aucun compte de réception configuré. Configurez-en un dans Intégrations pour pouvoir retirer.",
+    convertedFrom: "Converti de {amount} · 1 {currency} = {rate}",
     conversionTitle: "Solde en {balance}, compte en {account}",
     conversionNote:
       "Au moment du virement, ce solde est converti en {account} au taux du moment : vous êtes toujours payé dans la devise de votre compte.",

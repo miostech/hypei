@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AppDictionary } from "@/lib/i18n/app";
 import { fill, plural } from "@/lib/i18n/locale";
+import { convertMoney, money } from "@/lib/money";
 import { formatAmount, formatDateTime } from "@/lib/ui/format";
 import { PAYOUT_STATUS_VARIANT } from "./payout-status";
 
@@ -71,6 +72,17 @@ export function PayoutsTab({
                       {formatDateTime(payout.requestedAt, dict.localeTag)}
                       {payout.paidAt ? ` · ${fill(t.paidOn, { date: formatDateTime(payout.paidAt, dict.localeTag) })}` : ""}
                     </p>
+                    {/* De onde este dinheiro veio, quando não nasceu nesta moeda: o valor de
+                        origem e a cotação que a converteu, como foram congelados no saque. */}
+                    {payout.sourceCurrency && payout.sourceAmount !== null && payout.exchangeRate !== null && (
+                      <p className="text-xs text-muted-foreground">
+                        {fill(t.convertedFrom, {
+                          amount: formatAmount(payout.sourceAmount, payout.sourceCurrency),
+                          currency: payout.sourceCurrency,
+                          rate: formatAmount(convertMoney(money(100n, payout.sourceCurrency), payout.exchangeRate, payout.currency).amount, payout.currency),
+                        })}
+                      </p>
+                    )}
                     {payout.failureReason && <p className="text-xs text-destructive">{payout.failureReason}</p>}
                   </div>
                   <Badge variant={PAYOUT_STATUS_VARIANT[payout.status]}>{t.statuses[payout.status]}</Badge>
