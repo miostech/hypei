@@ -867,6 +867,7 @@ const en: AppDictionary = {
 
   balance: {
     available: "Available balance",
+    availableForPayout: "Available to withdraw",
     pending: "To be released",
     reserved: "Reserved",
   },
@@ -884,8 +885,6 @@ const en: AppDictionary = {
     requestPayout: "Request payout",
     grossRevenue: "Gross revenue",
     grossRevenueHint: "Total captured from buyers",
-    platformFees: "Kabrun fees",
-    platformFeesHint: "The platform's commission",
     processorFees: "Processing fees",
     refunds: "Refunds",
     chargebacks: "Chargebacks",

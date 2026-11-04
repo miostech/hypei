@@ -88,16 +88,19 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
       />
 
       <section className="grid gap-4 lg:grid-cols-3">
+        {/*
+          No Financeiro o número grande é o quanto ela já vendeu — a pergunta que esta tela
+          responde. O que dá para sacar hoje fica ao lado, e tem a tela de Saques inteira para ele.
+        */}
         <BalanceHero
           dict={dict}
           className="lg:col-span-2"
           currency={currency}
-          available={formatAmount(summary.available, currency)}
+          label={t.grossRevenue}
+          amount={formatAmount(summary.grossRevenue, currency)}
+          footnote={t.grossRevenueHint}
           pending={formatAmount(summary.pending, currency)}
           reserved={formatAmount(summary.reserved, currency)}
-          footnote={
-            nextAvailable ? fill(t.nextRelease, { date: formatDate(nextAvailable, dict.localeTag) }) : t.noRelease
-          }
           actions={
             <Button className="bg-gold-gradient border-0 text-gold-foreground shadow-gold hover:opacity-90" render={<Link href="/payouts" />}>
               <BanknoteIcon />
@@ -106,10 +109,15 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
           }
         />
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-          <StatCard label={t.grossRevenue} value={formatAmount(summary.grossRevenue, currency)} icon={ReceiptIcon} hint={t.grossRevenueHint} />
-          <StatCard label={t.platformFees} value={formatAmount(summary.platformFees, currency)} tone="gold" icon={SparklesIcon} hint={t.platformFeesHint} />
-        </div>
+        {/* Sozinho na coluna, sem esticar até a altura do bloco ao lado. */}
+        <StatCard
+          className="self-start"
+          label={dict.balance.availableForPayout}
+          value={formatAmount(summary.available, currency)}
+          icon={BanknoteIcon}
+          tone="positive"
+          hint={nextAvailable ? fill(t.nextRelease, { date: formatDate(nextAvailable, dict.localeTag) }) : t.noRelease}
+        />
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

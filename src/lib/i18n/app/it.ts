@@ -867,6 +867,7 @@ const it: AppDictionary = {
 
   balance: {
     available: "Saldo disponibile",
+    availableForPayout: "Disponibile per il prelievo",
     pending: "Da liberare",
     reserved: "Accantonato",
   },
@@ -884,8 +885,6 @@ const it: AppDictionary = {
     requestPayout: "Richiedi un prelievo",
     grossRevenue: "Ricavo lordo",
     grossRevenueHint: "Totale incassato dagli acquirenti",
-    platformFees: "Commissioni Kabrun",
-    platformFeesHint: "La commissione della piattaforma",
     processorFees: "Commissioni di incasso",
     refunds: "Rimborsi",
     chargebacks: "Storni",

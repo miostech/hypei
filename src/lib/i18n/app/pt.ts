@@ -879,6 +879,7 @@ const pt = {
   /** O bloco roxo do saldo, compartilhado entre o financeiro e os saques. */
   balance: {
     available: "Saldo disponível",
+    availableForPayout: "Disponível para saque",
     pending: "A liberar",
     reserved: "Reservado",
   },
@@ -896,8 +897,6 @@ const pt = {
     requestPayout: "Solicitar saque",
     grossRevenue: "Receita bruta",
     grossRevenueHint: "Total capturado dos compradores",
-    platformFees: "Taxas Kabrun",
-    platformFeesHint: "Comissão da plataforma",
     processorFees: "Taxas de processamento",
     refunds: "Reembolsos",
     chargebacks: "Chargebacks",

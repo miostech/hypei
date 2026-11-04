@@ -69,7 +69,7 @@ export default async function PayoutsPage() {
           dict={dict}
           className="lg:col-span-2"
           currency={currency}
-          available={formatAmount(summary.available, currency)}
+          amount={formatAmount(summary.available, currency)}
           pending={formatAmount(summary.pending, currency)}
           footnote={
             nextAvailable ? fill(t.moreComing, { date: formatDateTime(nextAvailable, dict.localeTag) }) : dict.finance.noRelease
