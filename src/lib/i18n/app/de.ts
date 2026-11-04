@@ -149,8 +149,6 @@ const de: AppDictionary = {
     salesWindow: "Verkäufe ({days} Tage)",
     referredWindow: "Vermittelt ({days} Tage)",
     referredSales: { one: "{count} vermittelter Verkauf", other: "{count} vermittelte Verkäufe" },
-    averageTicket: "Durchschnittsbon",
-    samePeriod: "Im selben Zeitraum",
     chart: {
       title: "Bestätigte Verkäufe",
       description: "Bezahltes Volumen pro Tag in den letzten {days} Tagen.",

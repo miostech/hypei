@@ -1,4 +1,4 @@
-import { ArrowRightIcon, ArrowUpRightIcon, HandshakeIcon, PackageIcon, ReceiptIcon, ShoppingBagIcon } from "lucide-react";
+import { ArrowRightIcon, ArrowUpRightIcon, HandshakeIcon, PackageIcon, ShoppingBagIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { RevenueChart } from "@/components/charts/revenue-chart";
@@ -70,7 +70,6 @@ export default async function DashboardPage() {
   const sales = paid.find((row) => row.currency === currency);
   const salesTotal = sales?.total ?? 0n;
   const salesCount = sales?.count ?? 0;
-  const averageTicket = salesCount > 0 ? salesTotal / BigInt(salesCount) : 0n;
   const series = buildDailySeries(
     daily.filter((row) => row.currency === currency),
     WINDOW_DAYS,
@@ -127,13 +126,6 @@ export default async function DashboardPage() {
             value={formatAmount(salesTotal, currency)}
             icon={ShoppingBagIcon}
             hint={plural(locale, salesCount, d.today.paidOrders)}
-          />
-          <StatCard
-            label={d.averageTicket}
-            value={formatAmount(averageTicket, currency)}
-            icon={ReceiptIcon}
-            tone="muted"
-            hint={d.samePeriod}
           />
           {referredSales && referredSales.count > 0 && (
             <StatCard

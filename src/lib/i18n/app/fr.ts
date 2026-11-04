@@ -149,8 +149,6 @@ const fr: AppDictionary = {
     salesWindow: "Ventes ({days} jours)",
     referredWindow: "Ventes apportées ({days} jours)",
     referredSales: { one: "{count} vente apportée", other: "{count} ventes apportées" },
-    averageTicket: "Panier moyen",
-    samePeriod: "Sur la même période",
     chart: {
       title: "Ventes confirmées",
       description: "Volume payé par jour sur les {days} derniers jours.",

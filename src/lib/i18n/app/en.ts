@@ -149,8 +149,6 @@ const en: AppDictionary = {
     salesWindow: "Sales ({days} days)",
     referredWindow: "Referrals ({days} days)",
     referredSales: { one: "{count} referred sale", other: "{count} referred sales" },
-    averageTicket: "Average order",
-    samePeriod: "Same period",
     chart: {
       title: "Confirmed sales",
       description: "Paid volume per day over the last {days} days.",
