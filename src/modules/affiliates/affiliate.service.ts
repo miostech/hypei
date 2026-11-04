@@ -58,8 +58,17 @@ export class AffiliateService {
         commissionBps: input.commissionBps,
         active: input.active,
       });
-      // Every affiliate starts with one link, otherwise they have nothing to share.
-      await repos.affiliates.createLink({ affiliateId: affiliate.id, code: generateCode(), checkoutId: input.checkoutId || null });
+      // Sem afiliação a pessoa não tem o que divulgar. O produto escolhido manda a comissão
+      // quando oferece uma; senão vale a que o produtor digitou para esta pessoa.
+      if (input.productId) {
+        const product = await repos.products.findById(organizationId, input.productId);
+        await repos.affiliates.createAffiliation({
+          productId: input.productId,
+          affiliateId: affiliate.id,
+          commissionBps: product?.affiliateCommissionBps ?? input.commissionBps,
+          code: generateCode(),
+        });
+      }
       await repos.audit.record({
         organizationId,
         userId,
@@ -105,14 +114,131 @@ export class AffiliateService {
     });
   }
 
-  async addLink(organizationId: string, id: string, checkoutId: string | null) {
-    await this.get(organizationId, id);
-    return this.uow.repos.affiliates.createLink({ affiliateId: id, code: generateCode(), checkoutId });
+  /**
+   * Liga afiliação no produto e devolve o código do convite.
+   *
+   * O código é gerado uma vez e fica: o produtor manda esse link para muita gente, e trocá-lo
+   * a cada edição invalidaria convites que já estão circulando. Desligar a afiliação não o
+   * apaga — só fecha a porta, e religar volta a aceitar pelo mesmo link.
+   */
+  async enableAffiliation(organizationId: string, userId: string, productId: string, commissionBps: number) {
+    return this.uow.transaction(async (repos) => {
+      const product = await repos.products.findById(organizationId, productId);
+      if (!product) throw new NotFoundError("Product", productId);
+
+      const inviteCode = product.affiliateInviteCode ?? generateCode();
+      await repos.products.update(organizationId, productId, {
+        affiliationEnabled: true,
+        affiliateCommissionBps: commissionBps,
+        affiliateInviteCode: inviteCode,
+      });
+      await repos.audit.record({
+        organizationId,
+        userId,
+        action: "product.affiliation_enabled",
+        entity: "Product",
+        entityId: productId,
+        metadata: { commissionBps },
+      });
+      return { inviteCode };
+    });
+  }
+
+  /** Fecha o convite. As afiliações que já existem continuam valendo e vendendo. */
+  async disableAffiliation(organizationId: string, userId: string, productId: string) {
+    await this.uow.transaction(async (repos) => {
+      await repos.products.update(organizationId, productId, { affiliationEnabled: false });
+      await repos.audit.record({
+        organizationId,
+        userId,
+        action: "product.affiliation_disabled",
+        entity: "Product",
+        entityId: productId,
+      });
+    });
+  }
+
+  /** O produto que um convite abre, para a página de confirmação mostrar o que está sendo oferecido. */
+  invitation(code: string) {
+    return this.uow.repos.affiliates.findProductByInviteCode(code.trim().toUpperCase());
+  }
+
+  /**
+   * A pessoa aceita o convite e passa a ter o link dela para aquele produto.
+   *
+   * O `payeeOrganizationId` é a conta que vai receber: se ela já vende na Kabrun, a comissão
+   * cai no mesmo saldo das vendas dela. Quem nunca vendeu chega aqui sem organização, e a
+   * afiliação é criada sem conta de destino — o dinheiro fica devido até ela ter uma.
+   *
+   * Idempotente de propósito: clicar duas vezes no convite devolve a mesma afiliação, em vez
+   * de criar um segundo código para a mesma pessoa no mesmo produto.
+   */
+  async acceptInvitation(input: { code: string; user: { id: string; name: string | null; email: string }; payeeOrganizationId: string | null }) {
+    return this.uow.transaction(async (repos) => {
+      const product = await repos.affiliates.findProductByInviteCode(input.code.trim().toUpperCase());
+      if (!product) throw new NotFoundError("Convite", input.code);
+      if (product.organizationId === input.payeeOrganizationId) {
+        throw new ValidationError("Você não pode se afiliar a um produto da sua própria conta");
+      }
+
+      const email = input.user.email.toLowerCase();
+      const existing =
+        (await repos.affiliates.findByUser(product.organizationId, input.user.id)) ??
+        (await repos.affiliates.findByEmail(product.organizationId, email));
+
+      const affiliate =
+        existing ??
+        (await repos.affiliates.create({
+          organizationId: product.organizationId,
+          name: input.user.name ?? email,
+          email,
+          commissionBps: product.affiliateCommissionBps ?? 0,
+          active: true,
+          userId: input.user.id,
+          payeeOrganizationId: input.payeeOrganizationId,
+        }));
+
+      // Cadastro manual que depois virou conta: liga os dois, senão o dinheiro não tem destino.
+      if (existing && (!existing.userId || !existing.payeeOrganizationId)) {
+        await repos.affiliates.update(product.organizationId, existing.id, {
+          userId: existing.userId ?? input.user.id,
+          payeeOrganizationId: existing.payeeOrganizationId ?? input.payeeOrganizationId,
+        });
+      }
+
+      const already = await repos.affiliates.findAffiliation(product.id, affiliate.id);
+      if (already) return { affiliation: already, product };
+
+      const affiliation = await repos.affiliates.createAffiliation({
+        productId: product.id,
+        affiliateId: affiliate.id,
+        commissionBps: product.affiliateCommissionBps ?? affiliate.commissionBps,
+        code: generateCode(),
+      });
+      await repos.audit.record({
+        organizationId: product.organizationId,
+        userId: input.user.id,
+        action: "affiliation.accepted",
+        entity: "Affiliation",
+        entityId: affiliation.id,
+        metadata: { productId: product.id, commissionBps: affiliation.commissionBps },
+      });
+      return { affiliation, product };
+    });
+  }
+
+  /** As afiliações de quem está logado, para a área dela. */
+  listForUser(userId: string) {
+    return this.uow.repos.affiliates.listAffiliationsForUser(userId);
+  }
+
+  earningsForUser(payeeOrganizationId: string, limit = 100) {
+    return this.uow.repos.affiliates.listCommissionsForPayee(payeeOrganizationId, limit);
   }
 
   /** Resolves a referral code to the affiliate that earns from it, if still active. */
   async resolveAttribution(organizationId: string, code: string) {
-    const target = await this.uow.repos.affiliates.findLinkByCode(code.trim().toUpperCase());
+    const target = await this.uow.repos.affiliates.findAffiliationByCode(code.trim().toUpperCase());
     if (!target || target.organizationId !== organizationId) return null;
     return target;
   }

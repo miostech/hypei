@@ -84,10 +84,10 @@ export default async function AffiliatesPage() {
               <TableBody>
                 {affiliates.map((affiliate) => {
                   const entry = byAffiliate.get(affiliate.id);
-                  const link = affiliate.links[0];
-                  const url = link?.checkout
-                    ? `${appUrl}/checkout/${link.checkout.slug}?ref=${link.code}`
-                    : null;
+                  // Uma pessoa pode estar afiliada a vários produtos; a tabela mostra o
+                  // primeiro e o contador diz quantos são, para a linha não virar uma lista.
+                  const affiliation = affiliate.affiliations[0];
+                  const url = affiliation ? `${appUrl}/r/${affiliation.code}` : null;
                   const values: AffiliateValues = {
                     id: affiliate.id,
                     name: affiliate.name,
@@ -114,7 +114,7 @@ export default async function AffiliatesPage() {
                         ) : (
                           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <LinkIcon className="size-3.5" aria-hidden />
-                            {fill(t.code, { code: link?.code ?? "—" })}
+                            {fill(t.code, { code: affiliation?.code ?? "—" })}
                           </span>
                         )}
                       </TableCell>

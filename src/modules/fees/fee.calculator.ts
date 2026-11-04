@@ -35,20 +35,33 @@ export interface FeeBreakdown {
   producerNetAmount: Money;
 }
 
+/** Quanto o afiliado ganha, e sobre qual parte da venda. */
+export interface AffiliateShare {
+  bps: number;
+  /**
+   * O que foi cobrado pelos itens do produto afiliado. Nunca o pedido inteiro: a afiliação
+   * é por produto, e um order bump de outro produto entra na mesma cobrança. Pagar comissão
+   * sobre ele seria pagar por uma venda que o afiliado não fez.
+   *
+   * O total do item já vem líquido de cupom, e não inclui imposto — que é exatamente a base
+   * que o afiliado deve receber: o dinheiro da venda dele, sem o que nunca foi receita.
+   */
+  base: Money;
+}
+
 /**
  * gross = processorFee + platformFee + affiliateCommission + producerNet — always
  * exact, never floats. The commission is charged against the producer's share, as
  * the producer is the one who hired the affiliate; the platform fee is untouched.
  *
- * `affiliateBps` is applied to the gross sale value, the number the affiliate was
- * promised, and is capped at whatever is left for the producer so the split can
- * never go negative.
+ * A comissão sai do `base` que quem chama informou, e é limitada ao que sobrou para o
+ * produtor, de modo que a divisão nunca fique negativa.
  */
 export function calculateFeeBreakdown(
   gross: Money,
   processorFee: Money,
   rule: PlatformFeeRule,
-  affiliateBps = 0,
+  affiliate?: AffiliateShare,
 ): FeeBreakdown {
   if (gross.amount <= 0n) throw new ValidationError("Gross amount must be positive");
   if (processorFee.amount < 0n) throw new ValidationError("Processor fee cannot be negative");
@@ -62,7 +75,10 @@ export function calculateFeeBreakdown(
     });
   }
 
-  const requested = affiliateBps > 0 ? calculatePercentage(gross, affiliateBps) : money(0n, gross.currency);
+  const requested =
+    affiliate && affiliate.bps > 0 && affiliate.base.amount > 0n
+      ? calculatePercentage(affiliate.base, affiliate.bps)
+      : money(0n, gross.currency);
   const commission = requested.amount > beforeCommission.amount ? beforeCommission : requested;
 
   return {

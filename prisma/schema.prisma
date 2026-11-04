@@ -243,6 +243,13 @@ enum PayoutDestinationStatus {
   DISABLED
 }
 
+enum AffiliationStatus {
+  ACTIVE
+  /// Encerrada pelo produtor ou pela própria pessoa. O link para de atribuir, e as
+  /// comissões já ganhas continuam a caminho: desligar não apaga o que foi vendido.
+  REVOKED
+}
+
 enum AffiliateCommissionStatus {
   PENDING
   APPROVED
@@ -304,6 +311,7 @@ model User {
 
   memberships OrganizationMember[]
   auditLogs   AuditLog[]
+  affiliates  Affiliate[]          @relation("AffiliateUser")
 }
 
 model Organization {
@@ -346,6 +354,8 @@ model Organization {
   platformFeePolicies PlatformFeePolicy[]
   taxPolicies        TaxPolicy[]
   affiliates         Affiliate[]
+  /// Afiliações cuja comissão é paga NESTA organização (ela é a afiliada, não a vendedora).
+  affiliateEarnings  Affiliate[]        @relation("AffiliatePayee")
   coupons            Coupon[]
   courses            Course[]
   apiKeys            ApiKey[]
@@ -437,12 +447,19 @@ model Product {
   type           ProductType
   status         ProductStatus @default(DRAFT)
   thumbnailKey   String?
+  /// Aceita afiliados. Desligar não desfaz as afiliações existentes: só fecha o convite.
+  affiliationEnabled     Boolean @default(false)
+  /// Comissão oferecida a quem se afiliar, em basis points (3000 = 30%).
+  affiliateCommissionBps Int?
+  /// Código do link de convite que o produtor distribui. Único na plataforma.
+  affiliateInviteCode    String? @unique
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   offers       Offer[]
   course       Course?
+  affiliations Affiliation[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
@@ -507,7 +524,6 @@ model Checkout {
   orders       Order[]
 
   @@index([organizationId])
-  affiliateLinks AffiliateLink[]
 }
 
 // ─────────────────────────── Commerce ────────────────────────────
@@ -565,7 +581,7 @@ model Order {
   /// Snapshot of the code typed by the buyer, kept even if the coupon is deleted.
   couponCode      String?
   affiliateId     String?
-  affiliateLinkId String?
+  affiliationId   String?
   taxAmount       BigInt      @default(0)
   /// Regime aplicado no momento da venda; mudar a política depois não reescreve o passado.
   taxRegime       TaxRegime   @default(NONE)
@@ -581,7 +597,8 @@ model Order {
   items        OrderItem[]
   payments     Payment[]
   commissions  AffiliateCommission[]
-  affiliate    Affiliate? @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
+  affiliate    Affiliate?   @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
+  affiliation  Affiliation? @relation(fields: [affiliationId], references: [id], onDelete: SetNull)
   couponRedemption CouponRedemption?
 
   @@index([organizationId, createdAt])
@@ -932,35 +949,56 @@ model Payout {
 
 // ─────────────────────────── Growth ──────────────────────────────
 
+/// Uma pessoa que vende para esta organização. Pode ter chegado por autoafiliação (userId
+/// preenchido) ou ter sido cadastrada à mão pelo produtor, que então paga por fora.
 model Affiliate {
   id             String   @id @default(cuid())
   organizationId String
   name           String
   email          String
-  /// Commission over the sale value, in basis points (3000 = 30%).
+  /// Comissão padrão herdada por novas afiliações quando o produto não define uma.
   commissionBps  Int
   active         Boolean  @default(true)
+  /// Conta Kabrun de quem se afiliou. Null = cadastro manual, sem conta na plataforma.
+  userId         String?
+  /// Organização que recebe a comissão. Null = o produtor repassa por fora.
+  payeeOrganizationId String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt @default(now())
 
   organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  links        AffiliateLink[]
+  user         User?                 @relation("AffiliateUser", fields: [userId], references: [id], onDelete: SetNull)
+  payee        Organization?         @relation("AffiliatePayee", fields: [payeeOrganizationId], references: [id], onDelete: SetNull)
+  affiliations Affiliation[]
   commissions  AffiliateCommission[]
   orders       Order[]
 
   @@unique([organizationId, email])
+  @@index([userId])
 }
 
-model AffiliateLink {
-  id          String   @id @default(cuid())
-  affiliateId String
-  code        String   @unique
-  checkoutId  String?
-  clicks      Int      @default(0)
-  createdAt   DateTime @default(now())
+/// A afiliação de uma pessoa a UM produto: é ela que carrega o link e a comissão.
+///
+/// A comissão é congelada aqui no momento em que a pessoa aceita. O produtor pode baixar
+/// a oferta do produto depois, e isso não reduz o que já foi prometido a quem se afiliou —
+/// mudar o combinado de alguém que já está vendendo seria calote, não ajuste de preço.
+model Affiliation {
+  id            String            @id @default(cuid())
+  productId     String
+  affiliateId   String
+  commissionBps Int
+  /// Código do link pessoal desta afiliação. Único na plataforma.
+  code          String            @unique
+  clicks        Int               @default(0)
+  status        AffiliationStatus @default(ACTIVE)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
-  checkout  Checkout? @relation(fields: [checkoutId], references: [id], onDelete: Cascade)
+  orders    Order[]
+
+  @@unique([productId, affiliateId])
 }
 
 /// Commissions only become AVAILABLE after the sale leaves the refund/chargeback risk window.

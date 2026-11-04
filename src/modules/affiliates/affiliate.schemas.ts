@@ -10,7 +10,7 @@ export const affiliateInputSchema = z.object({
     .regex(/^\d{1,2}([.,]\d{1,2})?$/, "Percentual inválido (ex.: 30)")
     .transform((value) => Math.round(Number(value.replace(",", ".")) * 100))
     .refine((bps) => bps > 0 && bps <= 9000, "A comissão deve ficar entre 0,01% e 90%"),
-  checkoutId: z.string().optional(),
+  productId: z.string().optional(),
   active: z.boolean(),
 });
 

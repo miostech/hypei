@@ -3,12 +3,13 @@ import { addDays, type Clock } from "@/lib/clock";
 import { NotFoundError, ProviderError } from "@/lib/errors";
 import { createDomainEvent } from "@/lib/events/domain-event";
 import { logger } from "@/lib/logger";
-import { assertSupportedCurrency, money } from "@/lib/money";
+import { assertSupportedCurrency, money, type Money } from "@/lib/money";
 import type { NormalizedProviderEvent, PaymentProvider } from "@/lib/providers/payment/types";
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
-import { calculateFeeBreakdown, PUBLISHED_PLATFORM_FEE } from "@/modules/fees/fee.calculator";
+import { calculateFeeBreakdown, PUBLISHED_PLATFORM_FEE, type AffiliateShare } from "@/modules/fees/fee.calculator";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import { grantOrderAccess } from "@/modules/members/access";
+import type { Repositories } from "@/server/repositories";
 import type { UnitOfWork } from "@/server/unit-of-work";
 import { canTransition, isCaptured } from "./payment-status";
 
@@ -116,6 +117,29 @@ export class PaymentService {
   }
 
   /**
+   * Quanto o afiliado ganha nesta venda, e sobre qual parte dela.
+   *
+   * A afiliação é por produto, então a base é só a fatia do produto afiliado — não o pedido
+   * inteiro. Sem isto, um order bump de outro produto pagaria comissão a quem não o indicou.
+   *
+   * A afiliação é relida aqui, e não copiada da que valia no checkout, porque a comissão
+   * congelada é a da afiliação; e `status` ou `active` podem ter mudado entre a criação do
+   * pedido e a confirmação do pagamento. Quem foi desligado nesse intervalo não ganha.
+   */
+  private async affiliateShare(
+    repos: Repositories,
+    order: { id: string; affiliationId: string | null } | null,
+    gross: Money,
+  ): Promise<AffiliateShare | undefined> {
+    if (!order?.affiliationId) return undefined;
+    const affiliation = await repos.affiliates.findAffiliationById(order.affiliationId);
+    if (!affiliation) return undefined;
+
+    const affiliated = await repos.orders.productItemsTotal(order.id, affiliation.productId);
+    return { bps: affiliation.commissionBps, base: money(affiliated, gross.currency) };
+  }
+
+  /**
    * Applies a confirmed capture atomically:
    * Payment PAID + Order PAID + Transactions + ledger journal + balance projection + outbox.
    * Idempotent: a duplicate/late event for an already captured payment is a no-op.
@@ -152,14 +176,11 @@ export class PaymentService {
       // A referred sale pays the affiliate out of the producer's share, so the
       // commission has to be known before the split is written anywhere.
       const order = await repos.orders.findById(payment.organizationId, payment.orderId);
-      const affiliate = order?.affiliateId
-        ? await repos.affiliates.findById(payment.organizationId, order.affiliateId)
-        : null;
       const fees = calculateFeeBreakdown(
         gross,
         money(event.processorFeeAmount, payment.currency),
         feeRule,
-        affiliate?.active ? affiliate.commissionBps : 0,
+        await this.affiliateShare(repos, order, gross),
       );
       const paidAt = event.occurredAt;
 

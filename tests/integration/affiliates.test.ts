@@ -17,9 +17,10 @@ async function sellerWithAffiliate(app: TestApp, options: { bps?: string; slug?:
     email: "ana@example.com",
     commissionBps: Number(options.bps ?? 3000),
     active: true,
+    productId: seller.product.id,
   });
   const detail = await app.services.affiliates.get(seller.organization.id, affiliate.id);
-  return { seller, affiliate, code: detail.links[0].code };
+  return { seller, affiliate, code: detail.affiliations[0].code };
 }
 
 describe("Affiliates", () => {
@@ -217,6 +218,53 @@ describe("Affiliates", () => {
     expect(commission.status).toBe("PAID");
     expect(commission.paidAt).not.toBeNull();
     expect((await accountTotals(app.prisma, seller.organization.id)).AFFILIATE_PAYABLE).toBe(0n);
+    await expectLedgerBalanced(app.prisma);
+  });
+
+  /**
+   * A afiliação é por produto, e o order bump cobra outro produto no mesmo pedido. Antes a
+   * comissão incidia sobre o pedido inteiro: quem indicou o curso ganhava também sobre a
+   * planilha que o comprador levou por impulso, e que o afiliado nunca divulgou.
+   */
+  it("pays commission only on the affiliated product, not on a bump of another one", async () => {
+    const { seller, code } = await sellerWithAffiliate(app);
+
+    const bump = await app.services.products.create(seller.organization.id, seller.user.id, {
+      name: "Planilhas",
+      slug: "planilhas",
+      type: "DIGITAL_PRODUCT",
+      status: "ACTIVE",
+    });
+    const bumpOffer = await app.services.offers.create(seller.organization.id, seller.user.id, {
+      productId: bump.id,
+      name: "Oferta avulsa",
+      price: "40,00",
+      currency: "BRL",
+      billingType: "ONE_TIME",
+      active: true,
+    });
+    await app.services.checkouts.updateConfig(seller.organization.id, seller.user.id, seller.checkout.id, {
+      offerId: seller.offer.id,
+      name: seller.checkout.name,
+      slug: seller.checkout.slug,
+      headline: "Compre agora",
+      accentColor: "#5B3DF5",
+      collectPhone: false,
+      guaranteeDays: 7,
+      enabledPaymentMethods: [],
+      orderBumps: [{ offerId: bumpOffer.id, headline: "Leve as planilhas", price: "40,00" }],
+    });
+
+    const { payment } = await startPurchase(app, seller.checkout.slug, "ana-compradora@example.com", {
+      referralCode: code,
+      bumpOfferIds: [bumpOffer.id],
+    });
+    await confirmPayment(app, payment);
+
+    const paid = await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
+    // Curso 100,00 + planilhas 40,00 = 140,00 cobrados; 30% só sobre os 100,00 do curso.
+    expect(paid.amount).toBe(14_000n);
+    expect(paid.affiliateCommissionAmount).toBe(3_000n);
     await expectLedgerBalanced(app.prisma);
   });
 
