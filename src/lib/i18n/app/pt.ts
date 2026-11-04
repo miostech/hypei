@@ -349,6 +349,7 @@ const pt = {
   products: {
     title: "Produtos",
     description: "Cursos, comunidades, mentorias e outros produtos digitais.",
+    mine: "Meus produtos",
     new: "Novo produto",
     create: "Criar produto",
     emptyTitle: "Nenhum produto cadastrado",

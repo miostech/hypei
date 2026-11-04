@@ -2,7 +2,6 @@ import {
   BarChart3Icon,
   BanknoteIcon,
   BookOpenIcon,
-  HandshakeIcon,
   type LucideIcon,
   LayoutDashboardIcon,
   LinkIcon,
@@ -34,6 +33,8 @@ export interface NavItem {
   key: keyof AppDictionary["nav"]["items"];
   icon: LucideIcon;
   permission: Permission;
+  /** Rotas que são abas desta tela: continuam acendendo o item do menu. */
+  tabs?: string[];
 }
 
 export interface NavGroup {
@@ -54,7 +55,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     key: "catalog",
     items: [
-      { href: "/products", key: "products", icon: PackageIcon, permission: "products:read" },
+      { href: "/products", key: "products", icon: PackageIcon, permission: "products:read", tabs: ["/affiliations"] },
       // Preço e checkout agora são abas do produto. As telas /offers e /checkouts continuam de pé
       // — a aba leva para elas —, mas não competem mais com o produto no menu.
       { href: "/coupons", key: "coupons", icon: TicketIcon, permission: "products:read" },
@@ -67,9 +68,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/subscriptions", key: "subscriptions", icon: RepeatIcon, permission: "sales:read" },
       { href: "/members-area", key: "membersArea", icon: BookOpenIcon, permission: "products:read" },
       { href: "/affiliates", key: "affiliates", icon: LinkIcon, permission: "sales:read" },
-      // Esta é a única entrada do menu que não é sobre a operação da organização, e sim sobre a
-      // pessoa: o que ela divulga de outros produtores. Por isso a permissão mais frouxa.
-      { href: "/affiliations", key: "affiliations", icon: HandshakeIcon, permission: "organization:read" },
+      // "Minhas afiliações" — o que a pessoa divulga de outros produtores — virou aba de Produtos,
+      // ao lado dos produtos dela. É a mesma pergunta: de que produtos eu tiro dinheiro?
     ],
   },
   {

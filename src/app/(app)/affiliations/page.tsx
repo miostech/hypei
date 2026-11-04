@@ -14,6 +14,7 @@ import { formatAmount, formatDateTime } from "@/lib/ui/format";
 import { requireOrganization } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
 import { CopyLink } from "../affiliates/copy-link";
+import { CatalogTabs } from "../products/catalog-tabs";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getAppDictionary(await appLocale())).affiliations.title };
@@ -45,7 +46,10 @@ export default async function AffiliationsPage() {
 
   return (
     <>
-      <PageHeader title={t.title} description={t.description} />
+      {/* O título é "Produtos" porque esta é uma das abas dele: o que ela divulga também é produto dela. */}
+      <PageHeader title={dict.products.title} description={t.description} />
+
+      <CatalogTabs active="affiliations" dict={dict} />
 
       {affiliations.length === 0 ? (
         <EmptyState icon={HandshakeIcon} title={t.emptyTitle} description={t.emptyBody} />

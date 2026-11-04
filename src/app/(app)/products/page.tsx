@@ -13,6 +13,7 @@ import { plural } from "@/lib/i18n/locale";
 import { formatDate } from "@/lib/ui/format";
 import { requirePagePermission } from "@/modules/organizations/current-organization";
 import { getServices } from "@/server/container";
+import { CatalogTabs } from "./catalog-tabs";
 
 export async function generateMetadata(): Promise<Metadata> {
   const dict = await getAppDictionary(await appLocale());
@@ -38,6 +39,8 @@ export default async function ProductsPage() {
           </Button>
         }
       />
+
+      <CatalogTabs active="mine" dict={dict} />
 
       {products.length === 0 ? (
         <EmptyState

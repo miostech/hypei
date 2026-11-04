@@ -338,6 +338,7 @@ const fr: AppDictionary = {
   products: {
     title: "Produits",
     description: "Formations, communautés, accompagnements et autres produits numériques.",
+    mine: "Mes produits",
     new: "Nouveau produit",
     create: "Créer un produit",
     emptyTitle: "Aucun produit enregistré",
