@@ -891,6 +891,7 @@ const es: AppDictionary = {
     reservedHint: "Retenido por disputas",
     tabs: { movements: "Movimientos", payouts: "Retiros" },
     movementsTitle: "Movimientos",
+    showMore: "Ver más",
     movementsDescription: "Saldo del productor después de cada apunte (pendiente + disponible + reservado).",
     noMovements: "Todavía no hay ningún movimiento financiero.",
     balanceAfter: "saldo {amount}",

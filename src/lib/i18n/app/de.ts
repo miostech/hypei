@@ -891,6 +891,7 @@ const de: AppDictionary = {
     reservedHint: "Wegen Streitfällen zurückgehalten",
     tabs: { movements: "Bewegungen", payouts: "Auszahlungen" },
     movementsTitle: "Bewegungen",
+    showMore: "Mehr anzeigen",
     movementsDescription: "Das Guthaben nach jeder Buchung (offen + verfügbar + reserviert).",
     noMovements: "Noch keine Geldbewegung.",
     balanceAfter: "Stand {amount}",

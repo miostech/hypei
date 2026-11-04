@@ -891,6 +891,7 @@ const fr: AppDictionary = {
     reservedHint: "Retenu par des litiges",
     tabs: { movements: "Mouvements", payouts: "Virements" },
     movementsTitle: "Mouvements",
+    showMore: "Voir plus",
     movementsDescription: "Le solde du producteur après chaque écriture (en attente + disponible + réservé).",
     noMovements: "Aucun mouvement financier pour l'instant.",
     balanceAfter: "solde {amount}",

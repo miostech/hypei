@@ -891,6 +891,7 @@ const it: AppDictionary = {
     reservedHint: "Trattenuto per contestazioni",
     tabs: { movements: "Movimenti", payouts: "Prelievi" },
     movementsTitle: "Movimenti",
+    showMore: "Mostra altri",
     movementsDescription: "Il saldo dopo ogni movimento (in attesa + disponibile + accantonato).",
     noMovements: "Ancora nessun movimento.",
     balanceAfter: "saldo {amount}",

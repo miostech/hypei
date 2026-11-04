@@ -903,6 +903,7 @@ const pt = {
     reservedHint: "Retido por disputas",
     tabs: { movements: "Movimentações", payouts: "Saques" },
     movementsTitle: "Movimentações",
+    showMore: "Ver mais",
     movementsDescription: "Saldo do produtor após cada lançamento (pendente + disponível + reservado).",
     noMovements: "Nenhuma movimentação financeira ainda.",
     balanceAfter: "saldo {amount}",

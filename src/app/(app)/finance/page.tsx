@@ -35,6 +35,22 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getAppDictionary(await appLocale())).finance.eyebrow };
 }
 
+/** Quantas movimentações entram por vez — a primeira página e cada "Ver mais". */
+const MOVEMENTS_PAGE = 10;
+
+/**
+ * Quantas movimentações mostrar, lido da URL.
+ *
+ * Fica na URL em vez de no cliente para o extrato nascer pronto no servidor: a página volta
+ * igual se ela recarregar ou mandar o link. Valor estranho cai na primeira página, e o teto
+ * existe para ninguém pedir dez mil lançamentos trocando o número à mão.
+ */
+function visibleMovements(value: string | string[] | undefined): number {
+  const parsed = Number(typeof value === "string" ? value : "");
+  if (!Number.isFinite(parsed)) return MOVEMENTS_PAGE;
+  return Math.min(Math.max(Math.trunc(parsed), MOVEMENTS_PAGE), 200);
+}
+
 /** Each journal type gets its own icon + tone, so a movement is readable at a glance. */
 const MOVEMENT_STYLE: Record<string, { icon: LucideIcon; className: string }> = {
   "payment.captured": { icon: ShoppingBagIcon, className: "bg-success/10 text-success" },
@@ -56,6 +72,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   const requested = typeof params.currency === "string" ? params.currency : undefined;
   const currency = requested && currencies.includes(requested) ? requested : currencies[0];
   const tab = resolveFinanceTab(typeof params.aba === "string" ? params.aba : undefined);
+  const shown = visibleMovements(params.mostrar);
 
   const dict = await getAppDictionary(await appLocale());
   const t = dict.finance;
@@ -65,10 +82,12 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
     services.finance.summary(organization.id, currency),
     services.finance.nextAvailableDate(organization.id, currency),
     services.merchantAccounts.getForOrganization(organization.id),
-    tab === "movimentacoes" ? services.finance.movements(organization.id, currency, 40) : [],
+    // Uma a mais do que cabe na tela: é assim que a página sabe se ainda há o que mostrar.
+    tab === "movimentacoes" ? services.finance.movements(organization.id, currency, shown + 1) : [],
     tab === "saques" ? services.payouts.list(organization.id) : [],
   ]);
 
+  const hasMoreMovements = movements.length > shown;
   const payoutFee = services.payouts.feeFor(currency);
   const ready = merchant ? isMerchantAccountReadyForPayouts(merchant) : false;
   const canRequest = hasPermission(membership.role, "payouts:request");
@@ -174,7 +193,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
                 <p className="py-10 text-center text-sm text-muted-foreground">{t.noMovements}</p>
               ) : (
                 <ul className="divide-y">
-                  {movements.map((row) => {
+                  {movements.slice(0, shown).map((row) => {
                     const style = MOVEMENT_STYLE[row.type] ?? { icon: ReceiptIcon, className: "bg-muted text-muted-foreground" };
                     const Icon = style.icon;
                     return (
@@ -205,6 +224,23 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
                     );
                   })}
                 </ul>
+              )}
+              {hasMoreMovements && (
+                <div className="px-5 pt-4">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    render={
+                      <Link
+                        href={`/finance?aba=movimentacoes&currency=${currency}&mostrar=${shown + MOVEMENTS_PAGE}`}
+                        // Sem pular para o topo: ela clicou no fim da lista e é lá que quer continuar.
+                        scroll={false}
+                      />
+                    }
+                  >
+                    {t.showMore}
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>

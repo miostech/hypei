@@ -891,6 +891,7 @@ const en: AppDictionary = {
     reservedHint: "Held back by disputes",
     tabs: { movements: "Movements", payouts: "Payouts" },
     movementsTitle: "Movements",
+    showMore: "Show more",
     movementsDescription: "The producer's balance after each entry (pending + available + reserved).",
     noMovements: "No financial movement yet.",
     balanceAfter: "balance {amount}",
