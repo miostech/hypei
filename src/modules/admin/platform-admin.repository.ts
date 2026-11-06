@@ -25,7 +25,8 @@ export interface PlatformAdminRepository {
   searchPayments(query: string | null, limit: number): Promise<PaymentRow[]>;
   listPayouts(status: PayoutStatus | null, limit: number): Promise<PayoutRow[]>;
   listDisputes(status: DisputeStatus[] | null, limit: number): Promise<DisputeRow[]>;
-  revenueByDay(since: Date): Promise<{ day: Date; currency: string; amount: bigint }[]>;
+  /** Sem `since` é o histórico inteiro, um ponto por dia e moeda. */
+  revenueByDay(since?: Date): Promise<{ day: Date; currency: string; amount: bigint }[]>;
 }
 
 /** As contas que o admin soma: a receita e o que a consome. */
@@ -376,13 +377,15 @@ export class PrismaPlatformAdminRepository implements PlatformAdminRepository {
     }));
   }
 
-  async revenueByDay(since: Date) {
+  async revenueByDay(since?: Date) {
+    // `since ?? '-infinity'` em vez de montar dois SQLs: o Postgres compara timestamp com
+    // -infinity sem reclamar, e a consulta continua sendo uma só, parametrizada.
     return this.db.$queryRaw<{ day: Date; currency: string; amount: bigint }[]>`
       SELECT date_trunc('day', "createdAt") AS day,
              currency,
              SUM(CASE WHEN direction = 'CREDIT' THEN amount ELSE -amount END)::bigint AS amount
       FROM "LedgerEntry"
-      WHERE account = 'PLATFORM_REVENUE' AND "createdAt" >= ${since}
+      WHERE account = 'PLATFORM_REVENUE' AND "createdAt" >= COALESCE(${since}::timestamptz, '-infinity')
       GROUP BY 1, 2
       ORDER BY 1 ASC`;
   }

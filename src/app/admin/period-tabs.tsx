@@ -6,7 +6,7 @@ import { ADMIN_PERIOD_LABEL, ADMIN_PERIODS, DEFAULT_ADMIN_PERIOD, type AdminPeri
  * hoje" por link, o botão de voltar funciona e a página continua inteira no servidor — sem
  * JavaScript para trocar quatro números.
  */
-export function AdminPeriodTabs({ active }: { active: AdminPeriod }) {
+export function AdminPeriodTabs({ active, basePath = "/admin" }: { active: AdminPeriod; basePath?: "/admin" | "/admin/revenue" }) {
   return (
     <nav aria-label="Período" className="flex w-fit items-center gap-1 rounded-xl border bg-muted/40 p-1">
       {ADMIN_PERIODS.map((period) => {
@@ -14,7 +14,7 @@ export function AdminPeriodTabs({ active }: { active: AdminPeriod }) {
         return (
           <Link
             key={period}
-            href={period === DEFAULT_ADMIN_PERIOD ? "/admin" : `/admin?periodo=${period}`}
+            href={period === DEFAULT_ADMIN_PERIOD ? basePath : `${basePath}?periodo=${period}`}
             aria-current={current ? "page" : undefined}
             className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
               current ? "bg-background font-medium shadow-sm" : "text-muted-foreground hover:text-foreground"

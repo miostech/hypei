@@ -36,9 +36,6 @@ export interface PlatformOverview {
   verificationPending: number;
 }
 
-/** Window used by the revenue chart. */
-export const ADMIN_WINDOW_DAYS = 30;
-
 /**
  * Read-only view of the whole platform for Kabrun staff.
  *
@@ -132,8 +129,8 @@ export class PlatformAdminService {
     return this.repository.listDisputes(onlyOpen ? open : null, 100);
   }
 
-  revenueByDay() {
-    return this.repository.revenueByDay(new Date(Date.now() - ADMIN_WINDOW_DAYS * 86_400_000));
+  revenueByDay(period: AdminPeriod = DEFAULT_ADMIN_PERIOD) {
+    return this.repository.revenueByDay(adminPeriodStart(period));
   }
 }
 
