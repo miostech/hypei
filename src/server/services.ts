@@ -22,6 +22,7 @@ import { PrismaAwardRepository } from "@/modules/awards/award.repository";
 import { AwardService } from "@/modules/awards/award.service";
 import { PrismaPlatformAdminRepository } from "@/modules/admin/platform-admin.repository";
 import { PlatformAdminService } from "@/modules/admin/platform-admin.service";
+import { PlatformFeeService } from "@/modules/fees/platform-fee.service";
 import { VerificationService } from "@/modules/compliance/verification.service";
 import { CouponService } from "@/modules/coupons/coupon.service";
 import { DisputeService } from "@/modules/disputes/dispute.service";
@@ -123,6 +124,7 @@ export function buildServices(deps: ServiceDependencies) {
   const verification = new VerificationService(uow, merchantAccounts);
   // Cross-tenant reads for Kabrun staff; never reachable from the producer app.
   const platformAdmin = new PlatformAdminService(new PrismaPlatformAdminRepository(deps.prisma));
+  const platformFees = new PlatformFeeService(uow);
   const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, subscriptions, deps.paymentProvider.type, taxes, deps.storageProvider);
   const outboxPublisher = new OutboxPublisher(uow.repos.outbox, deps.eventBus);
 
@@ -157,6 +159,7 @@ export function buildServices(deps: ServiceDependencies) {
     merchantAccounts,
     verification,
     platformAdmin,
+    platformFees,
     awards,
     subscriptions,
     organizations,

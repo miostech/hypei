@@ -12,17 +12,26 @@ import pt from "@/lib/i18n/app/pt";
 import { describeRequirements } from "@/modules/compliance/verification.requirements";
 import { getServices } from "@/server/container";
 import { PAYMENT_BADGE, VERIFICATION_BADGE } from "../../status-badges";
+import { PlatformFeeCard, type FeeRow } from "./fee-card";
 
 export const metadata = { title: "Organização · Admin" };
 
 export default async function AdminOrganizationPage({ params }: PageProps<"/admin/organizations/[organizationId]">) {
   const { organizationId } = await params;
-  const organization = await getServices()
-    .platformAdmin.organization(organizationId)
-    .catch((error) => {
-      if (error instanceof NotFoundError) notFound();
-      throw error;
-    });
+  const services = getServices();
+  const organization = await services.platformAdmin.organization(organizationId).catch((error) => {
+    if (error instanceof NotFoundError) notFound();
+    throw error;
+  });
+  // Serializado para o client component: bigint não atravessa a fronteira de servidor.
+  const fees: FeeRow[] = (await services.platformFees.effective(organizationId)).map((fee) => ({
+    currency: fee.currency,
+    percentageBps: fee.rule.percentageBps,
+    fixedAmount: fee.rule.fixedAmount.toString(),
+    publishedPercentageBps: fee.published.percentageBps,
+    publishedFixedAmount: fee.published.fixedAmount.toString(),
+    negotiated: fee.negotiated,
+  }));
 
   const badge = VERIFICATION_BADGE[organization.verificationStatus ?? "NOT_STARTED"];
   const requirements = // O admin é da equipe Kabrun e fica em português; só reaproveita as frases do dicionário.
@@ -80,6 +89,8 @@ export default async function AdminOrganizationPage({ params }: PageProps<"/admi
           </CardContent>
         </Card>
       </div>
+
+      <PlatformFeeCard organizationId={organizationId} rows={fees} />
 
       {requirements.length > 0 && (
         <Card className="border-warning/40">

@@ -72,6 +72,26 @@ chargeback, e o **lucro líquido**. É a conta que antes não existia em lugar n
 sabia quanto faturava e não sabia quanto sobrava. `/admin/organizations` ganhou quanto cada
 organização vendeu e quanta taxa gerou.
 
+### Taxa negociada
+
+O padrão é igual para todos, e é o que `PUBLISHED_PLATFORM_FEE` grava. Quando a Kabrun negocia
+condição com alguém — volume alto, parceria, produtor que ia embora —, a exceção é uma linha de
+`PlatformFeePolicy` da organização, gravada em `/admin/organizations/[id]` e resolvida pela
+precedência que já existia: **organização → país → moeda → padrão publicado**.
+
+A linha vai com `country: null` de propósito. A condição é da organização e vale onde ela
+vender; com país preenchido ela deixaria de casar numa venda feita de outro lugar, e o produtor
+voltaria à taxa geral sem ninguém ter mudado nada.
+
+Vale **da próxima venda em diante**. O pagamento já capturado guarda em `platformFeeAmount` o
+que foi cobrado nele, então mudar condição nunca reescreve o passado nem o ledger. A tela recusa
+porcentagem acima de 100% antes de gravar: ali `calculateFeeBreakdown` passaria a recusar toda
+venda daquele produtor, e um erro de digitação no admin fecharia a loja dele. Cada mudança
+registra `platform_fee.negotiated` ou `platform_fee.reset` no log de auditoria, com quem mexeu.
+
+O produtor vê a taxa dele no Financeiro sem nada a mais: a mesma resolução alimenta
+`FinanceTerms`, então a condição negociada aparece para ele no lugar da anunciada.
+
 ### Venda que dá prejuízo
 
 Se o adquirente custar mais do que a taxa — venda pequena, cartão internacional, parcelamento
@@ -92,8 +112,10 @@ dele e que ninguém na operação pediu para evitar.
 - `FinanceSummary.processorFees` foi removido: não é custo do produtor, então não entra no
   resumo dele. A `grossRevenue` passou a somar as duas pernas do débito (caixa + despesa),
   porque ler só o caixa mostrava 4% menos do que ele vendeu.
-- O produtor com condição negociada continua funcionando: a verdade final é a
-  `PlatformFeePolicy` no banco, e `PUBLISHED_PLATFORM_FEE` é só o padrão que o seed grava.
+- **Taxa negociada tem que caber na adquirência.** Antes a Kabrun ficava com os 100% da taxa
+  dela; agora um desconto grande pode deixar a venda no vermelho, e quem conceder precisa olhar
+  o lucro líquido, não só o percentual. Por isso o diálogo mostra o que o produtor passa a
+  receber, e `/admin/revenue` fecha a conta por moeda.
 
 ## Alternativas consideradas
 

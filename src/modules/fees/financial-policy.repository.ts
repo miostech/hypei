@@ -15,6 +15,13 @@ export interface PolicyScope {
  * Resolves configurable financial policies with precedence:
  * organization-specific → country → currency → payment method → global default.
  */
+/** Uma taxa negociada que existe para esta organização, numa moeda. */
+export interface OrganizationFeeRow {
+  currency: string;
+  percentageBps: number;
+  fixedAmount: bigint;
+}
+
 export interface FinancialPolicyRepository {
   findPlatformFeeRule(scope: PolicyScope): Promise<PlatformFeeRule | null>;
   findSettlementDelayDays(scope: PolicyScope): Promise<number | null>;
@@ -26,6 +33,12 @@ export interface FinancialPolicyRepository {
     method: PaymentMethodType;
     delayDays: number;
   }): Promise<void>;
+  /** Só as taxas negociadas desta organização — nunca as regras gerais que valem para todas. */
+  listOrganizationPlatformFees(organizationId: string): Promise<OrganizationFeeRow[]>;
+  /** Grava a taxa negociada desta organização nesta moeda, sobrescrevendo a anterior. */
+  setOrganizationPlatformFee(input: OrganizationFeeRow & { organizationId: string }): Promise<void>;
+  /** Apaga a condição negociada: a organização volta para a taxa que vale para todas. */
+  clearOrganizationPlatformFee(input: { organizationId: string; currency: string }): Promise<void>;
 }
 
 /**
@@ -83,6 +96,38 @@ export class PrismaFinancialPolicyRepository implements FinancialPolicyRepositor
       return;
     }
     await this.db.settlementPolicy.create({ data: { ...input, country: null } });
+  }
+
+  async listOrganizationPlatformFees(organizationId: string): Promise<OrganizationFeeRow[]> {
+    const rows = await this.db.platformFeePolicy.findMany({
+      where: { organizationId, active: true },
+      orderBy: { currency: "asc" },
+    });
+    return rows.map((row) => ({ currency: row.currency, percentageBps: row.percentageBps, fixedAmount: row.fixedAmount }));
+  }
+
+  /**
+   * `country: null` de propósito: a condição é da organização, e ela vale onde ela vender.
+   * Com país preenchido a linha deixaria de casar na venda feita de outro lugar, e a produtora
+   * voltaria para a taxa geral sem ninguém ter mudado nada.
+   */
+  async setOrganizationPlatformFee(input: OrganizationFeeRow & { organizationId: string }): Promise<void> {
+    const existing = await this.db.platformFeePolicy.findFirst({
+      where: { organizationId: input.organizationId, currency: input.currency },
+    });
+    const data = { percentageBps: input.percentageBps, fixedAmount: input.fixedAmount, active: true };
+    if (existing) {
+      await this.db.platformFeePolicy.update({ where: { id: existing.id }, data });
+      return;
+    }
+    await this.db.platformFeePolicy.create({
+      data: { ...data, organizationId: input.organizationId, currency: input.currency, country: null },
+    });
+  }
+
+  /** Apaga a linha em vez de desativar: condição que não vale mais não é histórico de nada. */
+  async clearOrganizationPlatformFee(input: { organizationId: string; currency: string }): Promise<void> {
+    await this.db.platformFeePolicy.deleteMany({ where: { organizationId: input.organizationId, currency: input.currency } });
   }
 
   async findSettlementDelayDays(scope: PolicyScope): Promise<number | null> {
