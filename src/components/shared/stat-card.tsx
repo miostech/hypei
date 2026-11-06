@@ -24,7 +24,8 @@ export function StatCard({
   className,
 }: {
   label: string;
-  value: string;
+  /** Uma lista vira uma linha por item: dinheiro em moedas diferentes não cabe na mesma linha. */
+  value: string | string[];
   hint?: string;
   icon?: LucideIcon;
   tone?: Tone;
@@ -45,7 +46,13 @@ export function StatCard({
             </span>
           )}
         </div>
-        <p className="tabular mt-3 font-heading text-2xl font-bold tracking-tight">{value}</p>
+        <div className="mt-3 space-y-0.5">
+          {(Array.isArray(value) ? value : [value]).map((line) => (
+            <p key={line} className="tabular font-heading text-2xl leading-tight font-bold tracking-tight">
+              {line}
+            </p>
+          ))}
+        </div>
         <div className="mt-1.5 flex items-center gap-2">
           {delta && (
             <span

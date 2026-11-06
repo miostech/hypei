@@ -35,10 +35,10 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
   const overview = await getServices().platformAdmin.overview(period);
   const phrase = ADMIN_PERIOD_PHRASE[period];
 
-  const sales = sumByCurrency(overview.volume.map((row) => ({ currency: row.currency, amount: row.total })));
-  const revenue = sumByCurrency(overview.revenue.map((row) => ({ currency: row.currency, amount: row.net })));
-  const profit = sumByCurrency(overview.profit.map((row) => ({ currency: row.currency, amount: row.net })));
-  const accumulated = sumByCurrency(overview.revenueAllTime.map((row) => ({ currency: row.currency, amount: row.net })));
+  const sales = byCurrency(overview.volume.map((row) => ({ currency: row.currency, amount: row.total })));
+  const revenue = byCurrency(overview.revenue.map((row) => ({ currency: row.currency, amount: row.net })));
+  const profit = byCurrency(overview.profit.map((row) => ({ currency: row.currency, amount: row.net })));
+  const accumulated = byCurrency(overview.revenueAllTime.map((row) => ({ currency: row.currency, amount: row.net })));
   const payments = overview.volume.reduce((total, row) => total + row.count, 0);
   const negative = overview.profit.some((row) => row.net < 0n);
 
@@ -184,16 +184,14 @@ function AttentionRow({
 }
 
 /**
- * Uma linha por moeda, lado a lado. Somar real com dólar daria um número que não existe, então
- * cada moeda aparece inteira — e `null` quando não houve nada, para quem chama mostrar o traço.
+ * Uma linha por moeda. Somar real com dólar daria um número que não existe, e empilhar as duas
+ * numa linha só — "R$ 15.971,60 · $200.00" — vira um texto que ninguém lê como dois valores.
+ * Devolve `null` quando não houve nada, para quem chama mostrar o traço.
  */
-function sumByCurrency(entries: { currency: string; amount: bigint }[]): string | null {
+function byCurrency(entries: { currency: string; amount: bigint }[]): string[] | null {
   const real = entries.filter((entry) => entry.amount !== 0n);
   if (real.length === 0) return null;
   // Ordem alfabética — BRL, EUR, USD — porque o `GROUP BY` não promete nenhuma, e o mesmo card
   // trocava as moedas de lugar quando a operação mudava o recorte.
-  return real
-    .sort((a, b) => a.currency.localeCompare(b.currency))
-    .map((entry) => formatAmount(entry.amount, entry.currency))
-    .join(" · ");
+  return real.sort((a, b) => a.currency.localeCompare(b.currency)).map((entry) => formatAmount(entry.amount, entry.currency));
 }
