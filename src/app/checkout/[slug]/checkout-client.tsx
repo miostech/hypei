@@ -147,7 +147,7 @@ export function CheckoutClient({
     // O &lang= vai na URL de retorno porque a página de obrigado é outra requisição: sem ele,
     // um comprador que chegou por ?lang= voltaria do provedor para uma tela em português.
     return (
-      <div className="space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
+      <div className="space-y-5 rounded-xl border bg-card p-6 shadow-soft">
         <h2 className="font-heading text-lg font-semibold">{dict.payment.title}</h2>
         {provider === "STRIPE" && publishableKey && payment.clientSecret ? (
           <StripePaymentPanel
@@ -170,7 +170,7 @@ export function CheckoutClient({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
+    <form action={handleSubmit} className="space-y-5 rounded-xl border bg-card p-6 shadow-soft">
       <h2 className="font-heading text-lg font-semibold">{dict.form.title}</h2>
 
       <div className="space-y-1.5">

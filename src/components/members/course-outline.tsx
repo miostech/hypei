@@ -32,7 +32,7 @@ export function CourseOutlineList({
   return (
     <div className={cn("space-y-3", compact && "space-y-2")}>
       {outline.modules.map((module, moduleIndex) => (
-        <section key={module.id} className="overflow-hidden rounded-2xl border bg-card shadow-soft">
+        <section key={module.id} className="overflow-hidden rounded-xl border bg-card shadow-soft">
           <header className="flex items-center gap-2.5 border-b px-4 py-3">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-accent font-heading text-[0.65rem] font-bold text-accent-foreground">
               {moduleIndex + 1}

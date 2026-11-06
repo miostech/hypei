@@ -209,7 +209,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="mt-12 overflow-hidden rounded-2xl border shadow-soft">
+          <div className="mt-12 overflow-hidden rounded-xl border shadow-soft">
             {/* Lado a lado só a partir do sm: em 375px duas colunas quebram o texto em uma
                 palavra por linha. Empilhado, o X apagado e o check em destaque já dizem qual é
                 qual, então os títulos das colunas somem junto. */}
@@ -254,7 +254,7 @@ export default function LandingPage() {
             {FEATURES.map((feature) => (
               <article
                 key={feature.title}
-                className="rounded-2xl border bg-card p-6 shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-card"
+                className="rounded-xl border bg-card p-6 shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-card"
               >
                 <span className="bg-brand-gradient flex size-11 items-center justify-center rounded-xl text-white shadow-soft">
                   <feature.icon className="size-5" aria-hidden />
@@ -275,7 +275,7 @@ export default function LandingPage() {
 
             <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {STEPS.map((step, index) => (
-                <li key={step.title} className="rounded-2xl border bg-card p-6 shadow-soft">
+                <li key={step.title} className="rounded-xl border bg-card p-6 shadow-soft">
                   <span className="bg-brand-gradient flex size-9 items-center justify-center rounded-xl font-heading text-sm font-bold text-white">
                     {index + 1}
                   </span>
@@ -368,7 +368,7 @@ export default function LandingPage() {
 function AppPreview() {
   return (
     <div aria-hidden className="relative rounded-3xl border bg-card p-2 shadow-lift">
-      <div className="overflow-hidden rounded-2xl border bg-background">
+      <div className="overflow-hidden rounded-xl border bg-background">
         <div className="flex items-center gap-1.5 border-b bg-muted/60 px-4 py-2.5">
           <span className="size-2.5 rounded-full bg-destructive/50" />
           <span className="size-2.5 rounded-full bg-warning/60" />

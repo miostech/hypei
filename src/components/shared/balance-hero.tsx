@@ -37,7 +37,7 @@ export function BalanceHero({
   return (
     <section
       className={cn(
-        "bg-brand-gradient relative isolate overflow-hidden rounded-2xl p-6 text-white shadow-lift sm:p-7",
+        "bg-brand-gradient relative isolate overflow-hidden rounded-xl p-6 text-white shadow-lift sm:p-7",
         className,
       )}
     >

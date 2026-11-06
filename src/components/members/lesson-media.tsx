@@ -54,7 +54,7 @@ export function LessonMedia({
 }) {
   if (type === "TEXT") {
     return (
-      <article className="rounded-2xl border bg-card p-6 text-sm leading-relaxed whitespace-pre-wrap shadow-soft sm:p-8">
+      <article className="rounded-xl border bg-card p-6 text-sm leading-relaxed whitespace-pre-wrap shadow-soft sm:p-8">
         {content || dict.lesson.empty}
       </article>
     );
@@ -63,7 +63,7 @@ export function LessonMedia({
   const url = safeUrl(externalUrl);
   if (!url) {
     return (
-      <div className="rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+      <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
         {dict.lesson.unpublished}
       </div>
     );
@@ -72,7 +72,7 @@ export function LessonMedia({
   const embed = embedUrl(url);
   if (type === "VIDEO" && embed) {
     return (
-      <div className="aspect-video overflow-hidden rounded-2xl border bg-black shadow-soft">
+      <div className="aspect-video overflow-hidden rounded-xl border bg-black shadow-soft">
         <iframe
           src={embed}
           title={dict.lesson.player}
@@ -90,13 +90,13 @@ export function LessonMedia({
 
   if (type === "VIDEO" && (uploadedVideo || VIDEO_FILE.test(url.pathname))) {
     return (
-      <video controls preload="metadata" src={url.toString()} className="aspect-video w-full rounded-2xl border bg-black shadow-soft" />
+      <video controls preload="metadata" src={url.toString()} className="aspect-video w-full rounded-xl border bg-black shadow-soft" />
     );
   }
 
   if (type === "AUDIO" && (uploadedAudio || AUDIO_FILE.test(url.pathname))) {
     return (
-      <div className="rounded-2xl border bg-card p-6 shadow-soft">
+      <div className="rounded-xl border bg-card p-6 shadow-soft">
         <audio controls preload="metadata" src={url.toString()} className="w-full" />
       </div>
     );
@@ -115,7 +115,7 @@ export function LessonMedia({
         : dict.lesson.externalHint;
 
   return (
-    <div className="flex flex-col items-center gap-4 rounded-2xl border bg-card p-10 text-center shadow-soft">
+    <div className="flex flex-col items-center gap-4 rounded-xl border bg-card p-10 text-center shadow-soft">
       <span className="bg-brand-gradient flex size-12 items-center justify-center rounded-2xl text-white">
         <Icon className="size-6" aria-hidden />
       </span>

@@ -87,7 +87,7 @@ export default async function PublicCheckoutPage({
             <SafeImage
               src={bannerUrl}
               alt=""
-              className="aspect-[16/5] w-full rounded-2xl border object-cover shadow-soft"
+              className="aspect-[16/5] w-full rounded-xl border object-cover shadow-soft"
             />
 
             <header className="space-y-3">
@@ -126,7 +126,7 @@ export default async function PublicCheckoutPage({
             ) : (
               /* O serviço recusa esta venda de qualquer jeito. Esconder o formulário é o que
                  evita o comprador digitar o cartão para só então levar erro. */
-              <div className="space-y-2 rounded-2xl border border-dashed bg-card p-8 text-center">
+              <div className="space-y-2 rounded-xl border border-dashed bg-card p-8 text-center">
                 <ClockIcon
                   className="mx-auto size-8 text-muted-foreground"
                   aria-hidden
@@ -143,7 +143,7 @@ export default async function PublicCheckoutPage({
           </section>
 
           <aside className="space-y-4 lg:sticky lg:top-8 lg:h-fit">
-            <div className="overflow-hidden rounded-2xl border bg-card shadow-soft">
+            <div className="overflow-hidden rounded-xl border bg-card shadow-soft">
               <p className="border-b px-5 py-3 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                 {dict.summary.title}
               </p>
@@ -175,7 +175,7 @@ export default async function PublicCheckoutPage({
               </div>
             </div>
 
-            <div className="space-y-2.5 rounded-2xl border bg-card p-5 text-sm text-muted-foreground shadow-soft">
+            <div className="space-y-2.5 rounded-xl border bg-card p-5 text-sm text-muted-foreground shadow-soft">
               <p className="flex items-center gap-2">
                 <LockIcon className="size-4 text-success" aria-hidden />{" "}
                 {dict.trust.secure}
