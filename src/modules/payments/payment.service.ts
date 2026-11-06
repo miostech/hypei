@@ -247,8 +247,25 @@ export class PaymentService {
         currency: gross.currency,
         description: "Venda confirmada",
         lines: [
-          { account: "PLATFORM_CASH", direction: "DEBIT", amount: fees.grossAmount.amount, description: "Valor bruto da venda" },
-          { account: "PROCESSOR_FEES", direction: "CREDIT", amount: fees.processorFeeAmount.amount, description: "Taxa de processamento" },
+          // O adquirente retém a taxa dele antes de o dinheiro chegar: entra em caixa o
+          // líquido, e o que ficou com ele vira despesa da Kabrun — não desconto do produtor.
+          {
+            account: "PLATFORM_CASH",
+            direction: "DEBIT",
+            amount: fees.grossAmount.amount - fees.processorFeeAmount.amount,
+            description: "Valor da venda, líquido do adquirente",
+          },
+          // Zero quando o provedor não cobra nada nesta venda — e lançamento de zero o ledger recusa.
+          ...(fees.processorFeeAmount.amount > 0n
+            ? [
+                {
+                  account: "PROCESSOR_FEES" as const,
+                  direction: "DEBIT" as const,
+                  amount: fees.processorFeeAmount.amount,
+                  description: "Taxa do adquirente",
+                },
+              ]
+            : []),
           { account: "PLATFORM_REVENUE", direction: "CREDIT", amount: fees.platformFeeAmount.amount, description: "Taxa Kabrun" },
           ...(fees.affiliateCommissionAmount.amount > 0n
             ? [

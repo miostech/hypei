@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { accountTotals, confirmPayment, createSeller, createTestApp, expectLedgerBalanced, startPurchase, type TestApp } from "../support/test-app";
 
 /**
- * Reference scenario: price 10000 BRL, processor fee 400, Kabrun fee 1000, producer net 8600.
+ * Reference scenario: price 10000 BRL, Kabrun fee 1000, producer net 9000.
+ *
+ * O adquirente cobra 400 e fica com eles antes de o dinheiro chegar: entra 9600 em caixa, e
+ * os 400 são despesa da Kabrun, paga com a taxa dela (ADR 011). O produtor não vê esse número.
+ *
  * Payment → Ledger → Balance → Settlement → Payout, checking that money is never created or lost.
  */
 describe("Financial flow: payment → ledger → balance → settlement → payout", () => {
@@ -27,24 +31,24 @@ describe("Financial flow: payment → ledger → balance → settlement → payo
     expect(paid.status).toBe("PAID");
     expect(paid.processorFeeAmount).toBe(400n);
     expect(paid.platformFeeAmount).toBe(1000n);
-    expect(paid.producerNetAmount).toBe(8600n);
+    expect(paid.producerNetAmount).toBe(9000n);
     expect((await app.prisma.order.findUniqueOrThrow({ where: { id: paid.orderId } })).status).toBe("PAID");
 
     let totals = await accountTotals(app.prisma, organization.id);
-    expect(totals.PLATFORM_CASH).toBe(10_000n); // gross payment
-    expect(-totals.PROCESSOR_FEES).toBe(400n); // processor fee
+    expect(totals.PLATFORM_CASH).toBe(9600n); // o que o adquirente repassou
+    expect(totals.PROCESSOR_FEES).toBe(400n); // despesa da Kabrun, não desconto do produtor
     expect(-totals.PLATFORM_REVENUE).toBe(1000n); // Kabrun revenue
-    expect(-totals.PRODUCER_PENDING).toBe(8600n); // producer pending
+    expect(-totals.PRODUCER_PENDING).toBe(9000n); // producer pending
     expect(totals.PRODUCER_AVAILABLE ?? 0n).toBe(0n);
     await expectLedgerBalanced(app.prisma);
 
     let balance = await app.prisma.balance.findUniqueOrThrow({ where: { organizationId_currency: { organizationId: organization.id, currency: "BRL" } } });
-    expect(balance.pendingAmount).toBe(8600n);
+    expect(balance.pendingAmount).toBe(9000n);
     expect(balance.availableAmount).toBe(0n);
 
     // ── Payout from pending is NOT allowed ───────────────────────
     await expect(
-      app.services.payouts.request({ organizationId: organization.id, amount: 8600n, currency: "BRL", idempotencyKey: "early" }),
+      app.services.payouts.request({ organizationId: organization.id, amount: 9000n, currency: "BRL", idempotencyKey: "early" }),
     ).rejects.toMatchObject({ code: "INSUFFICIENT_FUNDS" });
 
     // ── Settlement before the window does nothing ─────────────────
@@ -53,32 +57,35 @@ describe("Financial flow: payment → ledger → balance → settlement → payo
     // ── Settlement after D+7 ─────────────────────────────────────
     app.clock.advanceDays(8);
     const run = await app.services.settlements.releaseDue({ now: app.clock.now });
-    expect(run.released).toBe(8600n);
+    expect(run.released).toBe(9000n);
     totals = await accountTotals(app.prisma, organization.id);
-    expect(totals.PRODUCER_PENDING).toBe(0n); // pending decreased by 8600
-    expect(-totals.PRODUCER_AVAILABLE).toBe(8600n); // available increased by 8600
+    expect(totals.PRODUCER_PENDING).toBe(0n); // pending decreased by 9000
+    expect(-totals.PRODUCER_AVAILABLE).toBe(9000n); // available increased by 9000
     await expectLedgerBalanced(app.prisma);
 
     // Settlement is idempotent.
     expect((await app.services.settlements.releaseDue({ now: app.clock.now })).processed).toBe(0);
 
     // ── Payout ───────────────────────────────────────────────────
-    const payout = await app.services.payouts.request({ organizationId: organization.id, amount: 8600n, currency: "BRL", idempotencyKey: "payout-1" });
+    const payout = await app.services.payouts.request({ organizationId: organization.id, amount: 9000n, currency: "BRL", idempotencyKey: "payout-1" });
     expect(payout.status).toBe("PENDING"); // never PAID before the provider confirms
     totals = await accountTotals(app.prisma, organization.id);
-    expect(totals.PRODUCER_AVAILABLE).toBe(0n); // available decreased by 8600
-    expect(-totals.PAYOUTS).toBe(8600n - 367n); // in transit: the full amount left her balance, minus the payout fee
+    expect(totals.PRODUCER_AVAILABLE).toBe(0n); // available decreased by 9000
+    expect(-totals.PAYOUTS).toBe(9000n - 367n); // in transit: the full amount left her balance, minus the payout fee
 
     await app.deliver({ type: "payout.updated", providerPayoutId: payout.providerPayoutId!, payoutId: payout.id, status: "paid" });
     const paidPayout = await app.prisma.payout.findUniqueOrThrow({ where: { id: payout.id } });
     expect(paidPayout.status).toBe("PAID");
-    expect(paidPayout.amount).toBe(8600n);
+    expect(paidPayout.amount).toBe(9000n);
 
     totals = await accountTotals(app.prisma, organization.id);
     expect(totals.PAYOUTS).toBe(0n);
-    expect(totals.PLATFORM_CASH).toBe(1400n + 367n); // 10000 in − 8233 out (the payout fee never left)
-    // Accounting equation: cash = processor fees owed + Kabrun revenue + producer balances.
-    expect(totals.PLATFORM_CASH).toBe(-totals.PROCESSOR_FEES + -totals.PLATFORM_REVENUE + -(totals.PRODUCER_PENDING ?? 0n) + -(totals.PRODUCER_AVAILABLE ?? 0n));
+    expect(totals.PLATFORM_CASH).toBe(967n); // 9600 entraram, 8633 saíram (a taxa de saque não saiu)
+    // A equação ganhou a despesa, com o sinal de quem consome caixa: o que a Kabrun cobrou,
+    // menos o que ela pagou ao adquirente, mais o que ainda deve aos produtores.
+    expect(totals.PLATFORM_CASH).toBe(
+      -totals.PLATFORM_REVENUE - totals.PROCESSOR_FEES + -(totals.PRODUCER_PENDING ?? 0n) + -(totals.PRODUCER_AVAILABLE ?? 0n),
+    );
     await expectLedgerBalanced(app.prisma);
 
     balance = await app.prisma.balance.findUniqueOrThrow({ where: { organizationId_currency: { organizationId: organization.id, currency: "BRL" } } });
@@ -99,7 +106,7 @@ describe("Financial flow: payment → ledger → balance → settlement → payo
     const paid = await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
     // 8,99% de 10000 = 899, mais o fixo de 249.
     expect(paid.platformFeeAmount).toBe(1148n);
-    expect(paid.producerNetAmount).toBe(10_000n - 400n - 1148n);
+    expect(paid.producerNetAmount).toBe(10_000n - 1148n);
     await expectLedgerBalanced(app.prisma);
   });
 

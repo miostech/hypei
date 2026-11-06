@@ -43,15 +43,16 @@ describe("Affiliates", () => {
     await confirmPayment(app, payment);
 
     const paid = await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
-    // R$ 100,00: processor 4%, Kabrun 10%, affiliate 30% of the sale.
+    // R$ 100,00: Kabrun 10%, afiliada 30% da venda. Os 400 do adquirente são despesa da
+    // Kabrun, não da produtora: por isso 10000 − 1000 − 3000, e não menos 400 (ADR 011).
     expect(paid.processorFeeAmount).toBe(400n);
     expect(paid.platformFeeAmount).toBe(1000n);
     expect(paid.affiliateCommissionAmount).toBe(3000n);
-    expect(paid.producerNetAmount).toBe(5600n);
+    expect(paid.producerNetAmount).toBe(6000n);
 
     const totals = await accountTotals(app.prisma, seller.organization.id);
     expect(totals.AFFILIATE_PAYABLE).toBe(-3000n); // credit balance: owed to the affiliate
-    expect(totals.PRODUCER_PENDING).toBe(-5600n);
+    expect(totals.PRODUCER_PENDING).toBe(-6000n);
     await expectLedgerBalanced(app.prisma);
 
     const commission = await app.prisma.affiliateCommission.findFirstOrThrow();
@@ -65,7 +66,7 @@ describe("Affiliates", () => {
 
     const paid = await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
     expect(paid.affiliateCommissionAmount).toBe(0n);
-    expect(paid.producerNetAmount).toBe(8600n);
+    expect(paid.producerNetAmount).toBe(9000n);
     expect(await app.prisma.affiliateCommission.count()).toBe(0);
   });
 
@@ -117,8 +118,8 @@ describe("Affiliates", () => {
     await confirmPayment(app, payment);
 
     const paid = await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
-    // Processor (400) + Kabrun (1000) leave 8600; a 90% commission is capped there.
-    expect(paid.affiliateCommissionAmount).toBe(8600n);
+    // A taxa da Kabrun (1000) deixa 9000 para a produtora; a comissão de 90% para exatamente aí.
+    expect(paid.affiliateCommissionAmount).toBe(9000n);
     expect(paid.producerNetAmount).toBe(0n);
     await expectLedgerBalanced(app.prisma);
   });
@@ -471,7 +472,7 @@ describe("Programa aberto de afiliados", () => {
     // Na conta do produtor não sobrou dívida com ela, e o líquido dele continua sendo o dele.
     const producerTotals = await accountTotals(app.prisma, producer.organization.id);
     expect(producerTotals.AFFILIATE_PAYABLE).toBe(0n);
-    expect(-producerTotals.PRODUCER_AVAILABLE).toBe(5600n);
+    expect(-producerTotals.PRODUCER_AVAILABLE).toBe(6000n);
 
     // E na dela o dinheiro está disponível, no mesmo saldo das vendas dela.
     expect(-(await accountTotals(app.prisma, ana.organization.id)).PRODUCER_AVAILABLE).toBe(3000n);

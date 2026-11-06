@@ -1,5 +1,6 @@
 import type { DbClient } from "@/lib/database/postgres/client";
 import type { DisputeStatus, PayoutStatus } from "@/generated/prisma/enums";
+import { accountBalance } from "@/modules/ledger/ledger.accounts";
 
 /**
  * The only repository in Kabrun that reads ACROSS organizations.
@@ -11,7 +12,8 @@ import type { DisputeStatus, PayoutStatus } from "@/generated/prisma/enums";
 export interface PlatformAdminRepository {
   organizationCounts(): Promise<{ status: string; count: number }[]>;
   grossVolume(sinceDays: number): Promise<{ currency: string; total: bigint; count: number }[]>;
-  accountTotals(account: "PLATFORM_REVENUE" | "PROCESSOR_FEES" | "AFFILIATE_PAYABLE"): Promise<{ currency: string; net: bigint }[]>;
+  accountTotals(account: AdminAccount): Promise<{ currency: string; net: bigint }[]>;
+  organizationTotals(): Promise<OrganizationTotalsRow[]>;
   pendingPayouts(): Promise<{ currency: string; total: bigint; count: number }[]>;
   openDisputeCount(): Promise<number>;
   verificationPendingCount(): Promise<number>;
@@ -22,6 +24,17 @@ export interface PlatformAdminRepository {
   listPayouts(status: PayoutStatus | null, limit: number): Promise<PayoutRow[]>;
   listDisputes(status: DisputeStatus[] | null, limit: number): Promise<DisputeRow[]>;
   revenueByDay(sinceDays: number): Promise<{ day: Date; currency: string; amount: bigint }[]>;
+}
+
+/** As contas que o admin soma: a receita e o que a consome. */
+export type AdminAccount = "PLATFORM_REVENUE" | "PROCESSOR_FEES" | "AFFILIATE_PAYABLE" | "REFUNDS" | "CHARGEBACKS";
+
+export interface OrganizationTotalsRow {
+  organizationId: string;
+  currency: string;
+  volume: bigint;
+  sales: number;
+  revenue: bigint;
 }
 
 export interface OrganizationRow {
@@ -151,20 +164,46 @@ export class PrismaPlatformAdminRepository implements PlatformAdminRepository {
     return rows.map((row) => ({ currency: row.currency, total: row._sum.amount ?? 0n, count: row._count }));
   }
 
-  /** Net of the account across all organizations (credits minus debits). */
-  async accountTotals(account: "PLATFORM_REVENUE" | "PROCESSOR_FEES" | "AFFILIATE_PAYABLE") {
+  /**
+   * Saldo da conta em todas as organizações, no lado que a aumenta. Receita é crédito menos
+   * débito; despesa é o contrário — somar os dois do mesmo jeito daria o custo negativo.
+   */
+  async accountTotals(account: AdminAccount) {
     const rows = await this.db.ledgerEntry.groupBy({
       by: ["currency", "direction"],
       where: { account },
       _sum: { amount: true },
     });
 
-    const totals = new Map<string, bigint>();
+    const totals = new Map<string, { debit: bigint; credit: bigint }>();
     for (const row of rows) {
-      const signed = row.direction === "CREDIT" ? (row._sum.amount ?? 0n) : -(row._sum.amount ?? 0n);
-      totals.set(row.currency, (totals.get(row.currency) ?? 0n) + signed);
+      const entry = totals.get(row.currency) ?? { debit: 0n, credit: 0n };
+      entry[row.direction === "CREDIT" ? "credit" : "debit"] += row._sum.amount ?? 0n;
+      totals.set(row.currency, entry);
     }
-    return [...totals].map(([currency, net]) => ({ currency, net }));
+    return [...totals].map(([currency, sides]) => ({ currency, net: accountBalance(account, sides) }));
+  }
+
+  /**
+   * Quanto cada organização vendeu e quanto gerou de taxa, por moeda. Duas perguntas que o
+   * admin precisa responder lado a lado, então saem numa consulta só.
+   */
+  async organizationTotals(): Promise<OrganizationTotalsRow[]> {
+    return this.db.$queryRaw<OrganizationTotalsRow[]>`
+      SELECT p."organizationId",
+             p.currency,
+             COALESCE(SUM(p.amount), 0)::bigint AS volume,
+             COUNT(*)::int                      AS sales,
+             COALESCE((
+               SELECT SUM(CASE WHEN e.direction = 'CREDIT' THEN e.amount ELSE -e.amount END)
+               FROM "LedgerEntry" e
+               WHERE e."organizationId" = p."organizationId"
+                 AND e.currency = p.currency
+                 AND e.account = 'PLATFORM_REVENUE'
+             ), 0)::bigint                      AS revenue
+      FROM "Payment" p
+      WHERE p.status IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED', 'CHARGEBACK')
+      GROUP BY 1, 2`;
   }
 
   async pendingPayouts() {

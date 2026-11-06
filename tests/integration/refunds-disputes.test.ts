@@ -35,8 +35,10 @@ describe("Refunds", () => {
     const totals = await accountTotals(app.prisma, organization.id);
     expect(totals.PRODUCER_PENDING).toBe(0n);
     expect(totals.PLATFORM_REVENUE).toBe(0n);
-    expect(totals.REFUNDS).toBe(400n); // non-returned processor fee absorbed by the platform
-    expect(totals.PLATFORM_CASH).toBe(0n);
+    expect(totals.REFUNDS).toBe(400n); // a taxa que o adquirente não devolve: perda da Kabrun
+    // A Kabrun recebeu 9600 e devolveu 10000: o caixa fica 400 negativo, que é exatamente o
+    // que ela pagou de adquirência numa venda que não existe mais.
+    expect(totals.PLATFORM_CASH).toBe(-400n);
     expect((await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).status).toBe("REFUNDED");
     expect((await app.prisma.order.findUniqueOrThrow({ where: { id: payment.orderId } })).status).toBe("REFUNDED");
     await expectLedgerBalanced(app.prisma);
@@ -47,7 +49,7 @@ describe("Refunds", () => {
     const refund = await app.services.refunds.request({ organizationId: organization.id, paymentId: payment.id, amount: 5000n, idempotencyKey: "r-half" });
     await completeRefund(app, refund.id);
     const totals = await accountTotals(app.prisma, organization.id);
-    expect(-totals.PRODUCER_PENDING).toBe(4300n);
+    expect(-totals.PRODUCER_PENDING).toBe(4500n);
     expect(-totals.PLATFORM_REVENUE).toBe(500n);
     expect(totals.REFUNDS).toBe(200n);
     expect((await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).status).toBe("PARTIALLY_REFUNDED");
@@ -89,7 +91,7 @@ describe("Refunds", () => {
     await completeRefund(app, refund.id);
     app.clock.advanceDays(8);
     const run = await app.services.settlements.releaseDue({ now: app.clock.now });
-    expect(run.released).toBe(4300n);
+    expect(run.released).toBe(4500n);
     await expectLedgerBalanced(app.prisma);
   });
 });
@@ -114,7 +116,7 @@ describe("Disputes / chargebacks", () => {
     await app.deliver(dispute(payment, "open"));
     const balance = await app.prisma.balance.findFirstOrThrow({ where: { organizationId: organization.id } });
     expect(balance.pendingAmount).toBe(0n);
-    expect(balance.reservedAmount).toBe(8600n);
+    expect(balance.reservedAmount).toBe(9000n);
     expect((await app.prisma.dispute.findFirstOrThrow()).status).toBe("OPEN");
     await expectLedgerBalanced(app.prisma);
   });
@@ -126,7 +128,7 @@ describe("Disputes / chargebacks", () => {
     await app.deliver(dispute(payment, "won"));
     const balance = await app.prisma.balance.findFirstOrThrow({ where: { organizationId: organization.id } });
     expect(balance.reservedAmount).toBe(0n);
-    expect(balance.pendingAmount).toBe(8600n);
+    expect(balance.pendingAmount).toBe(9000n);
     await expectLedgerBalanced(app.prisma);
   });
 
@@ -137,7 +139,7 @@ describe("Disputes / chargebacks", () => {
     const totals = await accountTotals(app.prisma, organization.id);
     expect(totals.RESERVES).toBe(0n);
     expect(totals.PRODUCER_PENDING).toBe(0n);
-    expect(totals.PLATFORM_CASH).toBe(0n);
+    expect(totals.PLATFORM_CASH).toBe(-400n); // devolveu 10000 de uma venda que rendeu 9600
     expect(totals.CHARGEBACKS).toBe(400n);
     expect((await app.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).status).toBe("CHARGEBACK");
     expect(await app.prisma.ledgerJournal.count({ where: { type: "dispute.lost" } })).toBe(1);

@@ -60,9 +60,12 @@ export interface AffiliateShare {
 }
 
 /**
- * gross = processorFee + platformFee + affiliateCommission + producerNet — always
- * exact, never floats. The commission is charged against the producer's share, as
- * the producer is the one who hired the affiliate; the platform fee is untouched.
+ * gross = platformFee + affiliateCommission + producerNet — sempre exato, nunca float.
+ *
+ * A taxa do adquirente NÃO entra nesta divisão: ela é custo da Kabrun, pago com a taxa que a
+ * Kabrun cobra, e não sai do produtor. O produtor paga o que a página anuncia e nada além
+ * disso (ADR 011). Ela continua no resultado porque é registrada no ledger e é o que separa a
+ * receita da plataforma do lucro dela — só não desconta de quem vendeu.
  *
  * A comissão sai do `base` que quem chama informou, e é limitada ao que sobrou para o
  * produtor, de modo que a divisão nunca fique negativa.
@@ -76,11 +79,10 @@ export function calculateFeeBreakdown(
   if (gross.amount <= 0n) throw new ValidationError("Gross amount must be positive");
   if (processorFee.amount < 0n) throw new ValidationError("Processor fee cannot be negative");
   const platformFee = calculatePlatformFee(gross, rule);
-  const beforeCommission = subtractMoney(subtractMoney(gross, processorFee), platformFee);
+  const beforeCommission = subtractMoney(gross, platformFee);
   if (beforeCommission.amount < 0n) {
     throw new ValidationError("Fees exceed the gross amount", {
       gross: gross.amount.toString(),
-      processorFee: processorFee.amount.toString(),
       platformFee: platformFee.amount.toString(),
     });
   }

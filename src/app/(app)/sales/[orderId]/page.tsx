@@ -102,9 +102,10 @@ export default async function SaleDetailPage({ params }: PageProps<"/sales/[orde
                     <Badge variant={PAYMENT_STATUS_VARIANT[payment.status]}>{dict.status.payment[payment.status]}</Badge>
                   </Row>
                   <Row label={t.payment.charged}>{formatAmount(payment.amount, payment.currency)}</Row>
-                  {payment.processorFeeAmount !== null && (
-                    <Row label={t.payment.processorFee}>− {formatAmount(payment.processorFeeAmount, payment.currency)}</Row>
-                  )}
+                  {/*
+                    A taxa do adquirente não aparece porque não sai daqui: quem paga é a
+                    Kabrun, com a taxa dela. O produtor vê o que a página dele anuncia.
+                  */}
                   {payment.platformFeeAmount !== null && (
                     <Row label={t.payment.platformFee}>− {formatAmount(payment.platformFeeAmount, payment.currency)}</Row>
                   )}

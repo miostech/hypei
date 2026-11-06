@@ -22,7 +22,6 @@ export interface FinanceSummary {
   reserved: bigint;
   grossRevenue: bigint;
   platformFees: bigint;
-  processorFees: bigint;
   refunds: bigint;
   chargebacks: bigint;
 }
@@ -78,12 +77,18 @@ export class FinanceOverviewService {
       available: balance?.availableAmount ?? 0n,
       pending: balance?.pendingAmount ?? 0n,
       reserved: balance?.reservedAmount ?? 0n,
-      grossRevenue: sum(byType, "payment.captured", "PLATFORM_CASH", "DEBIT"),
+      // O que o comprador pagou, não o que o adquirente repassou: desde a ADR 011 entra em
+      // caixa o líquido, e a taxa dele vira despesa da Kabrun no mesmo lançamento. Somar as
+      // duas pernas reconstrói o bruto — ler só o caixa mostrava 4% menos do que foi vendido,
+      // e era isso que o produtor via como "receita bruta".
+      grossRevenue:
+        sum(byType, "payment.captured", "PLATFORM_CASH", "DEBIT") + sum(byType, "payment.captured", "PROCESSOR_FEES", "DEBIT"),
       platformFees:
         sum(byType, "payment.captured", "PLATFORM_REVENUE", "CREDIT") -
         sum(byType, "refund.completed", "PLATFORM_REVENUE", "DEBIT") -
         sum(byType, "dispute.lost", "PLATFORM_REVENUE", "DEBIT"),
-      processorFees: sum(byType, "payment.captured", "PROCESSOR_FEES", "CREDIT"),
+      // A taxa do adquirente não entra aqui: ela não é custo do produtor, e o resumo dele só
+      // mostra o que sai do bolso dele. Quem a vê é o admin, no lucro líquido da plataforma.
       refunds: sum(byType, "refund.completed", "PLATFORM_CASH", "CREDIT"),
       chargebacks: sum(byType, "dispute.lost", "PLATFORM_CASH", "CREDIT"),
     };

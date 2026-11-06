@@ -14,10 +14,11 @@ import {
 const RATE = 500_000_000n;
 
 /**
- * Venda de $100,00 com a taxa publicada do dólar (9,99% + $0,80) e 4% de processamento:
- * 10000 − 400 − (999 + 80) = 8521 para a produtora, que não tem reserva nestes testes.
+ * Venda de $100,00 com a taxa publicada do dólar (9,99% + $0,80):
+ * 10000 − (999 + 80) = 8921 para a produtora, que não tem reserva nestes testes. Os 4% do
+ * adquirente não entram: são despesa da Kabrun, não desconto dela (ADR 011).
  */
-const USD_NET = 8521n;
+const USD_NET = 8921n;
 
 /** Uma conta brasileira que vende em dólar: recebe em real, convertido no saque. */
 async function sellInDollars(app: TestApp) {

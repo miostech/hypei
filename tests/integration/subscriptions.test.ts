@@ -89,11 +89,11 @@ describe("Recurring subscriptions", () => {
     const renewal = payments[1];
     expect(renewal.status).toBe("PAID");
     expect(renewal.platformFeeAmount).toBe(1000n);
-    expect(renewal.producerNetAmount).toBe(8600n);
+    expect(renewal.producerNetAmount).toBe(9000n);
 
     // Two cycles collected, so the producer has two sales worth of balance.
     const balance = await app.prisma.balance.findFirstOrThrow({ where: { organizationId: seller.organization.id } });
-    expect(balance.pendingAmount).toBe(17_200n);
+    expect(balance.pendingAmount).toBe(18_000n);
     expect((await app.prisma.subscription.findUniqueOrThrow({ where: { id: subscription.id } })).billingCycles).toBe(1);
     await expectLedgerBalanced(app.prisma);
   });

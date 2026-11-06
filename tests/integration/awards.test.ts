@@ -16,18 +16,19 @@ describe("Revenue awards", () => {
   });
 
   it("grants the bronze plaque when net revenue crosses the milestone", async () => {
-    // Each sale nets the producer R$ 86,00 after fees; 117 of them pass R$ 10.000,00.
+    // Venda de R$ 10.000,00: a taxa da Kabrun (10%) deixa R$ 9.000,00 para a produtora, e é
+    // isso que a placa mede. A taxa do adquirente não entra: ela não sai do bolso dela.
     const seller = await createSeller(app, { amount: 1_000_000n });
     await sell(app, seller, "grande@example.com");
 
     const progress = await app.services.awards.progress(seller.organization.id);
-    expect(progress.netRevenue).toBe(860_000n);
+    expect(progress.netRevenue).toBe(900_000n);
     expect(progress.earnedCount).toBe(0);
     expect(progress.next?.tier).toBe("BRONZE");
 
     await sell(app, seller, "outra@example.com");
     const after = await app.services.awards.progress(seller.organization.id);
-    expect(after.netRevenue).toBe(1_720_000n);
+    expect(after.netRevenue).toBe(1_800_000n);
     expect(after.earnedCount).toBe(1);
     expect(after.awards.find((entry) => entry.tier === "BRONZE")?.award?.status).toBe("ACHIEVED");
     expect(after.next?.tier).toBe("SILVER");
@@ -53,7 +54,7 @@ describe("Revenue awards", () => {
     });
 
     // Half the sale came back, so half the producer's net went with it.
-    expect((await app.services.awards.progress(seller.organization.id)).netRevenue).toBe(430_000n);
+    expect((await app.services.awards.progress(seller.organization.id)).netRevenue).toBe(450_000n);
   });
 
   it("counts a charged back sale as nothing", async () => {
@@ -90,7 +91,7 @@ describe("Revenue awards", () => {
     await sell(app, seller, "gigante@example.com");
 
     const progress = await app.services.awards.progress(seller.organization.id);
-    expect(progress.netRevenue).toBe(17_200_000n);
+    expect(progress.netRevenue).toBe(18_000_000n);
     expect(progress.earnedCount).toBe(2); // bronze and silver
     expect(progress.next?.tier).toBe("GOLD");
   });
@@ -100,9 +101,9 @@ describe("Revenue awards", () => {
     await sell(app, seller, "progresso@example.com");
 
     const progress = await app.services.awards.progress(seller.organization.id);
-    // R$ 4.300,00 of the R$ 10.000,00 milestone.
-    expect(progress.netRevenue).toBe(430_000n);
-    expect(progress.percentage).toBe(43);
+    // R$ 4.500,00 of the R$ 10.000,00 milestone.
+    expect(progress.netRevenue).toBe(450_000n);
+    expect(progress.percentage).toBe(45);
   });
 
   it("registers the shipping once and refuses to repeat it", async () => {

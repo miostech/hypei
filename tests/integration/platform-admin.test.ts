@@ -100,7 +100,7 @@ describe("Platform admin", () => {
     const detail = await app.services.platformAdmin.organization(seller.organization.id);
     expect(detail.members[0]).toMatchObject({ email: seller.user.email, role: "OWNER" });
     expect(detail.taxIdentities[0].type).toBe("CPF");
-    expect(detail.balances[0]).toMatchObject({ currency: "BRL", pending: 8600n });
+    expect(detail.balances[0]).toMatchObject({ currency: "BRL", pending: 9000n });
     expect(detail.recentPayments[0]).toMatchObject({ customerEmail: "detalhe@example.com", status: "PAID" });
   });
 

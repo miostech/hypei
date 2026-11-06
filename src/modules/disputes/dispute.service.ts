@@ -25,7 +25,8 @@ const STATUS_MAP: Record<DisputeEvent["status"], DisputeStatus> = {
  * Chargebacks:
  * - opened → producer share of the disputed amount is moved to RESERVES (held);
  * - won    → held amount returns to the producer;
- * - lost   → held amount + platform/processor shares leave platform cash (CHARGEBACKS expense).
+ * - lost   → held amount + platform share leave platform cash; o custo de adquirência da
+ *            venda perdida é reclassificado de PROCESSOR_FEES para CHARGEBACKS.
  * Events may arrive out of order; each ledger step has its own idempotency key.
  */
 export class DisputeService {
@@ -124,7 +125,14 @@ export class DisputeService {
       lines: [
         { account: "RESERVES", direction: "DEBIT", amount: dispute.heldAmount },
         { account: "PLATFORM_REVENUE", direction: "DEBIT", amount: shares.platform },
-        { account: "CHARGEBACKS", direction: "DEBIT", amount: shares.processor },
+        // Mesma reclassificação do reembolso: o que foi pago ao adquirente numa venda perdida
+        // é perda, não custo de receita. Par equilibrado, não mexe no fecho do lançamento.
+        ...(shares.processor > 0n
+          ? [
+              { account: "CHARGEBACKS" as const, direction: "DEBIT" as const, amount: shares.processor },
+              { account: "PROCESSOR_FEES" as const, direction: "CREDIT" as const, amount: shares.processor },
+            ]
+          : []),
         ...(shares.affiliate > 0n
           ? [{ account: "AFFILIATE_PAYABLE" as const, direction: "DEBIT" as const, amount: shares.affiliate }]
           : []),

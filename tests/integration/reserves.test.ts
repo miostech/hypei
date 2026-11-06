@@ -10,12 +10,13 @@ import {
 } from "../support/test-app";
 
 /**
- * Venda de 100,00 com 10% de taxa, 4% de processamento e 4% de reserva:
- * 10000 bruto − 400 processamento − 1000 Kabrun = 8600 do produtor,
- * dos quais 400 (4% do bruto) ficam retidos e 8200 vão para o pendente.
+ * Venda de 100,00 com 10% de taxa da Kabrun e 4% de reserva:
+ * 10000 bruto − 1000 Kabrun = 9000 do produtor, dos quais 400 (4% do bruto)
+ * ficam retidos e 8600 vão para o pendente. Os 4% que o adquirente cobra são
+ * despesa da Kabrun e não encostam nesta conta (ADR 011).
  */
 const SALE = 10_000n;
-const PRODUCER_NET = 8600n;
+const PRODUCER_NET = 9000n;
 const RESERVED = 400n;
 
 async function sellWithReserve(app: TestApp) {

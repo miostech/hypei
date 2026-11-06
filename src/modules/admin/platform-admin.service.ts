@@ -1,6 +1,22 @@
 import { NotFoundError } from "@/lib/errors";
 import type { DisputeStatus, PayoutStatus } from "@/generated/prisma/enums";
-import type { PlatformAdminRepository } from "./platform-admin.repository";
+import type { OrganizationTotalsRow, PlatformAdminRepository } from "./platform-admin.repository";
+
+/**
+ * O resultado da Kabrun numa moeda. O produtor paga a taxa anunciada e nada além; o que a
+ * Kabrun paga ao adquirente sai dessa taxa, e o lucro é a diferença (ADR 011).
+ */
+export interface PlatformProfit {
+  currency: string;
+  /** Taxa cobrada dos produtores, já líquida de estorno e chargeback. */
+  revenue: bigint;
+  /** O que a Stripe (e amanhã a Asaas) cobrou nas vendas que ficaram de pé. */
+  processorFees: bigint;
+  /** Taxa de adquirente perdida: venda devolvida ou perdida no chargeback. */
+  acquirerLosses: bigint;
+  /** revenue − processorFees − acquirerLosses. */
+  net: bigint;
+}
 
 export interface PlatformOverview {
   organizations: { total: number; byStatus: { status: string; count: number }[] };
@@ -9,6 +25,7 @@ export interface PlatformOverview {
   processorFees: { currency: string; net: bigint }[];
   affiliatePayable: { currency: string; net: bigint }[];
   pendingPayouts: { currency: string; total: bigint; count: number }[];
+  profit: PlatformProfit[];
   openDisputes: number;
   verificationPending: number;
 }
@@ -27,7 +44,7 @@ export class PlatformAdminService {
   constructor(private readonly repository: PlatformAdminRepository) {}
 
   async overview(): Promise<PlatformOverview> {
-    const [byStatus, volume, revenue, processorFees, affiliatePayable, pendingPayouts, openDisputes, verificationPending] =
+    const [byStatus, volume, revenue, processorFees, affiliatePayable, pendingPayouts, refunds, chargebacks, openDisputes, verificationPending] =
       await Promise.all([
         this.repository.organizationCounts(),
         this.repository.grossVolume(ADMIN_WINDOW_DAYS),
@@ -35,6 +52,8 @@ export class PlatformAdminService {
         this.repository.accountTotals("PROCESSOR_FEES"),
         this.repository.accountTotals("AFFILIATE_PAYABLE"),
         this.repository.pendingPayouts(),
+        this.repository.accountTotals("REFUNDS"),
+        this.repository.accountTotals("CHARGEBACKS"),
         this.repository.openDisputeCount(),
         this.repository.verificationPendingCount(),
       ]);
@@ -46,9 +65,20 @@ export class PlatformAdminService {
       processorFees,
       affiliatePayable,
       pendingPayouts,
+      profit: buildProfit(revenue, processorFees, refunds, chargebacks),
       openDisputes,
       verificationPending,
     };
+  }
+
+  /** Quanto cada produtor vendeu e quanto gerou de taxa, indexado por organização. */
+  async organizationTotals(): Promise<Map<string, OrganizationTotalsRow[]>> {
+    const rows = await this.repository.organizationTotals();
+    const byOrganization = new Map<string, OrganizationTotalsRow[]>();
+    for (const row of rows) {
+      byOrganization.set(row.organizationId, [...(byOrganization.get(row.organizationId) ?? []), row]);
+    }
+    return byOrganization;
   }
 
   listOrganizations(query?: string) {
@@ -77,4 +107,21 @@ export class PlatformAdminService {
   revenueByDay() {
     return this.repository.revenueByDay(ADMIN_WINDOW_DAYS);
   }
+}
+
+type Totals = { currency: string; net: bigint }[];
+
+/** Junta as contas por moeda: uma venda em dólar não abate custo em real. */
+function buildProfit(revenue: Totals, processorFees: Totals, refunds: Totals, chargebacks: Totals): PlatformProfit[] {
+  const pick = (rows: Totals, currency: string) => rows.find((row) => row.currency === currency)?.net ?? 0n;
+  const currencies = [...new Set([revenue, processorFees, refunds, chargebacks].flat().map((row) => row.currency))];
+
+  return currencies
+    .map((currency) => {
+      const net = pick(revenue, currency);
+      const fees = pick(processorFees, currency);
+      const losses = pick(refunds, currency) + pick(chargebacks, currency);
+      return { currency, revenue: net, processorFees: fees, acquirerLosses: losses, net: net - fees - losses };
+    })
+    .sort((a, b) => (b.revenue > a.revenue ? 1 : -1));
 }

@@ -81,6 +81,6 @@ describe("Tenant isolation", () => {
     const { payment } = await startPurchase(app, b.checkout.slug);
     await confirmPayment(app, payment);
     expect(await app.prisma.balance.findFirst({ where: { organizationId: a.organization.id } })).toBeNull();
-    expect((await app.prisma.balance.findFirstOrThrow({ where: { organizationId: b.organization.id } })).pendingAmount).toBe(8600n);
+    expect((await app.prisma.balance.findFirstOrThrow({ where: { organizationId: b.organization.id } })).pendingAmount).toBe(9000n);
   });
 });

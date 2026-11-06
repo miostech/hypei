@@ -7,7 +7,7 @@ async function sellerWithAvailable(app: TestApp) {
   await confirmPayment(app, payment);
   app.clock.advanceDays(8);
   await app.services.settlements.releaseDue({ now: app.clock.now });
-  return seller; // 8600 available
+  return seller; // 9000 disponíveis
 }
 
 describe("Payout safety", () => {
@@ -19,7 +19,7 @@ describe("Payout safety", () => {
   it("never pays out more than the available balance", async () => {
     const { organization } = await sellerWithAvailable(app);
     await expect(
-      app.services.payouts.request({ organizationId: organization.id, amount: 8601n, currency: "BRL", idempotencyKey: "too-much" }),
+      app.services.payouts.request({ organizationId: organization.id, amount: 9001n, currency: "BRL", idempotencyKey: "too-much" }),
     ).rejects.toMatchObject({ code: "INSUFFICIENT_FUNDS" });
     expect(await app.prisma.payout.count()).toBe(0);
   });
@@ -42,7 +42,7 @@ describe("Payout safety", () => {
     ]);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const totals = await accountTotals(app.prisma, organization.id);
-    expect(-totals.PRODUCER_AVAILABLE).toBe(2600n);
+    expect(-totals.PRODUCER_AVAILABLE).toBe(3000n);
     await expectLedgerBalanced(app.prisma);
   });
 
@@ -63,21 +63,21 @@ describe("Payout safety", () => {
 
   it("a failed payout returns the funds to AVAILABLE via a compensating journal", async () => {
     const { organization } = await sellerWithAvailable(app);
-    const payout = await app.services.payouts.request({ organizationId: organization.id, amount: 8600n, currency: "BRL", idempotencyKey: "will-fail" });
+    const payout = await app.services.payouts.request({ organizationId: organization.id, amount: 9000n, currency: "BRL", idempotencyKey: "will-fail" });
     await app.deliver({ type: "payout.updated", providerPayoutId: payout.providerPayoutId!, payoutId: payout.id, status: "failed", failureReason: "account_closed" });
     await app.deliver({ type: "payout.updated", providerPayoutId: payout.providerPayoutId!, payoutId: payout.id, status: "paid" }); // late/invalid
 
     const final = await app.prisma.payout.findUniqueOrThrow({ where: { id: payout.id } });
     expect(final.status).toBe("FAILED");
     const totals = await accountTotals(app.prisma, organization.id);
-    expect(-totals.PRODUCER_AVAILABLE).toBe(8600n);
+    expect(-totals.PRODUCER_AVAILABLE).toBe(9000n);
     expect(totals.PAYOUTS).toBe(0n);
     await expectLedgerBalanced(app.prisma);
   });
 
   it("payout PAID webhook delivered twice settles once", async () => {
     const { organization } = await sellerWithAvailable(app);
-    const payout = await app.services.payouts.request({ organizationId: organization.id, amount: 8600n, currency: "BRL", idempotencyKey: "paid-twice" });
+    const payout = await app.services.payouts.request({ organizationId: organization.id, amount: 9000n, currency: "BRL", idempotencyKey: "paid-twice" });
     const event = { type: "payout.updated" as const, providerPayoutId: payout.providerPayoutId!, payoutId: payout.id, status: "paid" as const };
     await app.deliver(event, "evt_po_1");
     await app.deliver(event, "evt_po_2");
@@ -107,7 +107,7 @@ describe("Payout fee", () => {
     expect(app.mock.transferredAmount(payout.providerPayoutId!)).toBe(4633n); // o que o banco recebe
 
     const totals = await accountTotals(app.prisma, organization.id);
-    expect(-totals.PRODUCER_AVAILABLE).toBe(3600n); // 8600 − 5000
+    expect(-totals.PRODUCER_AVAILABLE).toBe(4000n); // 9000 − 5000
     expect(-totals.PAYOUTS).toBe(4633n);
     expect(-((totals.PLATFORM_REVENUE ?? 0n) - before)).toBe(367n);
     await expectLedgerBalanced(app.prisma);
@@ -120,7 +120,7 @@ describe("Payout fee", () => {
     await app.deliver({ type: "payout.updated", providerPayoutId: payout.providerPayoutId!, payoutId: payout.id, status: "failed", failureReason: "account_closed" });
 
     const totals = await accountTotals(app.prisma, organization.id);
-    expect(-totals.PRODUCER_AVAILABLE).toBe(8600n); // volta inteiro: saque que não aconteceu não cobra taxa
+    expect(-totals.PRODUCER_AVAILABLE).toBe(9000n); // volta inteiro: saque que não aconteceu não cobra taxa
     expect(totals.PAYOUTS).toBe(0n);
     expect(totals.PLATFORM_REVENUE ?? 0n).toBe(before);
     await expectLedgerBalanced(app.prisma);

@@ -40,7 +40,7 @@ export default async function AdminHomePage() {
         description={`Números de toda a Kabrun. Volume e vendas consideram os últimos ${ADMIN_WINDOW_DAYS} dias; os saldos são acumulados.`}
       />
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
           label={`Volume (${ADMIN_WINDOW_DAYS} dias)`}
           value={primary ? formatAmount(primary.total, primary.currency) : "—"}
@@ -51,6 +51,12 @@ export default async function AdminHomePage() {
           value={overview.revenue[0] ? formatAmount(overview.revenue[0].net, overview.revenue[0].currency) : "—"}
           hint="Taxas acumuladas, já descontados estornos"
           tone="positive"
+        />
+        <StatCard
+          label="Lucro líquido"
+          value={overview.profit[0] ? formatAmount(overview.profit[0].net, overview.profit[0].currency) : "—"}
+          hint="Depois do que pagamos ao adquirente"
+          tone={overview.profit[0] && overview.profit[0].net < 0n ? "warning" : "positive"}
         />
         <StatCard label="Organizações" value={String(overview.organizations.total)} hint="Produtores cadastrados" />
         <StatCard
@@ -78,10 +84,7 @@ export default async function AdminHomePage() {
               <span className="text-muted-foreground">Comissões a pagar</span>
               <MoneyList entries={overview.affiliatePayable.map((row) => ({ currency: row.currency, amount: row.net }))} empty="Nenhuma" />
             </p>
-            <p className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Taxas do processador</span>
-              <MoneyList entries={overview.processorFees.map((row) => ({ currency: row.currency, amount: row.net }))} empty="—" />
-            </p>
+
           </CardContent>
         </Card>
 

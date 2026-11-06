@@ -21,11 +21,11 @@ export default async function AdminRevenuePage() {
     <>
       <PageHeader
         title="Receita da plataforma"
-        description="Taxas da Kabrun lançadas no ledger, já descontados os estornos de reembolso e chargeback."
+        description="O que a Kabrun cobrou dos produtores, o que pagou ao adquirente e o que sobrou."
       />
 
       <section className="grid gap-4 sm:grid-cols-3">
-        <StatCard label={`Últimos ${ADMIN_WINDOW_DAYS} dias`} value={formatAmount(windowTotal, currency)} tone="positive" />
+        <StatCard label={`Taxas em ${ADMIN_WINDOW_DAYS} dias`} value={formatAmount(windowTotal, currency)} tone="positive" />
         <StatCard
           label="Acumulado"
           value={overview.revenue[0] ? formatAmount(overview.revenue[0].net, overview.revenue[0].currency) : "—"}
@@ -37,6 +37,49 @@ export default async function AdminRevenuePage() {
           hint={`Pagamentos confirmados em ${ADMIN_WINDOW_DAYS} dias`}
         />
       </section>
+
+      {/*
+        O resultado, por moeda: a taxa que o produtor pagou menos o que a Kabrun pagou ao
+        adquirente. Uma venda em dólar não abate custo em real, então cada moeda fecha sozinha.
+      */}
+      <Card>
+        <CardHeader className="border-b pb-4">
+          <CardTitle>Lucro líquido</CardTitle>
+          <CardDescription>
+            O produtor paga só a taxa anunciada. O custo da Stripe sai dessa taxa, e o que sobra é o lucro da Kabrun.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {overview.profit.length === 0 ? (
+            <EmptyState icon={ReceiptIcon} title="Sem resultado ainda" description="Nenhuma taxa foi lançada até agora." />
+          ) : (
+            overview.profit.map((row) => (
+              <dl key={row.currency} className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">Taxas cobradas ({row.currency})</dt>
+                  <dd className="tabular font-medium">{formatAmount(row.revenue, row.currency)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">Pago ao adquirente</dt>
+                  <Cost amount={row.processorFees} currency={row.currency} />
+                </div>
+                {row.acquirerLosses > 0n && (
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground">Perdido em devolução e chargeback</dt>
+                    <Cost amount={row.acquirerLosses} currency={row.currency} />
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-3 border-t pt-2">
+                  <dt className="font-medium">Lucro líquido</dt>
+                  <dd className={`tabular text-base font-semibold ${row.net < 0n ? "text-destructive" : "text-success"}`}>
+                    {formatAmount(row.net, row.currency)}
+                  </dd>
+                </div>
+              </dl>
+            ))
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="border-b pb-4">
@@ -67,5 +110,19 @@ export default async function AdminRevenuePage() {
         </CardContent>
       </Card>
     </>
+  );
+}
+
+/**
+ * Uma linha de custo. O "−" vem do sinal do valor, não colado na mão: custo negativo é dinheiro
+ * que voltou, e "− -R$ 6,58" não é número que alguém leia. Acontece com lançamento antigo, de
+ * antes de `PROCESSOR_FEES` virar despesa (ADR 011).
+ */
+function Cost({ amount, currency }: { amount: bigint; currency: string }) {
+  const negative = amount < 0n;
+  return (
+    <dd className={`tabular ${negative ? "text-success" : "text-destructive"}`}>
+      {negative ? "+" : "−"} {formatAmount(negative ? -amount : amount, currency)}
+    </dd>
   );
 }
