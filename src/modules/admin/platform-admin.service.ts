@@ -1,6 +1,7 @@
 import { NotFoundError } from "@/lib/errors";
 import type { DisputeStatus, PayoutStatus } from "@/generated/prisma/enums";
 import type { OrganizationTotalsRow, PlatformAdminRepository } from "./platform-admin.repository";
+import { adminPeriodStart, DEFAULT_ADMIN_PERIOD, type AdminPeriod } from "./admin-period";
 
 /**
  * O resultado da Kabrun numa moeda. O produtor paga a taxa anunciada e nada além; o que a
@@ -19,10 +20,15 @@ export interface PlatformProfit {
 }
 
 export interface PlatformOverview {
+  /** O recorte que estes números respeitam. Os de saldo não dependem dele. */
+  period: AdminPeriod;
   organizations: { total: number; byStatus: { status: string; count: number }[] };
+  /** Vendido no período, bruto, antes de qualquer taxa. */
   volume: { currency: string; total: bigint; count: number }[];
   revenue: { currency: string; net: bigint }[];
   processorFees: { currency: string; net: bigint }[];
+  /** Taxas de sempre, independente do recorte: serve para o período não parecer o total. */
+  revenueAllTime: { currency: string; net: bigint }[];
   affiliatePayable: { currency: string; net: bigint }[];
   pendingPayouts: { currency: string; total: bigint; count: number }[];
   profit: PlatformProfit[];
@@ -30,7 +36,7 @@ export interface PlatformOverview {
   verificationPending: number;
 }
 
-/** Window used by the overview and the revenue chart. */
+/** Window used by the revenue chart. */
 export const ADMIN_WINDOW_DAYS = 30;
 
 /**
@@ -43,26 +49,48 @@ export const ADMIN_WINDOW_DAYS = 30;
 export class PlatformAdminService {
   constructor(private readonly repository: PlatformAdminRepository) {}
 
-  async overview(): Promise<PlatformOverview> {
-    const [byStatus, volume, revenue, processorFees, affiliatePayable, pendingPayouts, refunds, chargebacks, openDisputes, verificationPending] =
-      await Promise.all([
-        this.repository.organizationCounts(),
-        this.repository.grossVolume(ADMIN_WINDOW_DAYS),
-        this.repository.accountTotals("PLATFORM_REVENUE"),
-        this.repository.accountTotals("PROCESSOR_FEES"),
-        this.repository.accountTotals("AFFILIATE_PAYABLE"),
-        this.repository.pendingPayouts(),
-        this.repository.accountTotals("REFUNDS"),
-        this.repository.accountTotals("CHARGEBACKS"),
-        this.repository.openDisputeCount(),
-        this.repository.verificationPendingCount(),
-      ]);
+  /**
+   * Fluxo (vendido, taxa cobrada, custo, lucro) respeita o recorte; saldo não.
+   *
+   * Comissão a pagar e saque na fila são o que a plataforma **deve agora**: filtrar por data
+   * mostraria só o pedaço da dívida que nasceu no período, e uma dívida pela metade é pior do
+   * que nenhum número.
+   */
+  async overview(period: AdminPeriod = DEFAULT_ADMIN_PERIOD): Promise<PlatformOverview> {
+    const since = adminPeriodStart(period);
+    const [
+      byStatus,
+      volume,
+      revenue,
+      processorFees,
+      revenueAllTime,
+      affiliatePayable,
+      pendingPayouts,
+      refunds,
+      chargebacks,
+      openDisputes,
+      verificationPending,
+    ] = await Promise.all([
+      this.repository.organizationCounts(),
+      this.repository.grossVolume(since),
+      this.repository.accountTotals("PLATFORM_REVENUE", since),
+      this.repository.accountTotals("PROCESSOR_FEES", since),
+      this.repository.accountTotals("PLATFORM_REVENUE"),
+      this.repository.accountTotals("AFFILIATE_PAYABLE"),
+      this.repository.pendingPayouts(),
+      this.repository.accountTotals("REFUNDS", since),
+      this.repository.accountTotals("CHARGEBACKS", since),
+      this.repository.openDisputeCount(),
+      this.repository.verificationPendingCount(),
+    ]);
 
     return {
+      period,
       organizations: { total: byStatus.reduce((total, row) => total + row.count, 0), byStatus },
       volume,
       revenue,
       processorFees,
+      revenueAllTime,
       affiliatePayable,
       pendingPayouts,
       profit: buildProfit(revenue, processorFees, refunds, chargebacks),
@@ -105,7 +133,7 @@ export class PlatformAdminService {
   }
 
   revenueByDay() {
-    return this.repository.revenueByDay(ADMIN_WINDOW_DAYS);
+    return this.repository.revenueByDay(new Date(Date.now() - ADMIN_WINDOW_DAYS * 86_400_000));
   }
 }
 

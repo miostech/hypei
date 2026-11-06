@@ -11,8 +11,9 @@ import { accountBalance } from "@/modules/ledger/ledger.accounts";
  */
 export interface PlatformAdminRepository {
   organizationCounts(): Promise<{ status: string; count: number }[]>;
-  grossVolume(sinceDays: number): Promise<{ currency: string; total: bigint; count: number }[]>;
-  accountTotals(account: AdminAccount): Promise<{ currency: string; net: bigint }[]>;
+  grossVolume(since: Date): Promise<{ currency: string; total: bigint; count: number }[]>;
+  /** Sem `since` é o acumulado de sempre — o que vale para saldo, não para fluxo do período. */
+  accountTotals(account: AdminAccount, since?: Date): Promise<{ currency: string; net: bigint }[]>;
   organizationTotals(): Promise<OrganizationTotalsRow[]>;
   pendingPayouts(): Promise<{ currency: string; total: bigint; count: number }[]>;
   openDisputeCount(): Promise<number>;
@@ -23,7 +24,7 @@ export interface PlatformAdminRepository {
   searchPayments(query: string | null, limit: number): Promise<PaymentRow[]>;
   listPayouts(status: PayoutStatus | null, limit: number): Promise<PayoutRow[]>;
   listDisputes(status: DisputeStatus[] | null, limit: number): Promise<DisputeRow[]>;
-  revenueByDay(sinceDays: number): Promise<{ day: Date; currency: string; amount: bigint }[]>;
+  revenueByDay(since: Date): Promise<{ day: Date; currency: string; amount: bigint }[]>;
 }
 
 /** As contas que o admin soma: a receita e o que a consome. */
@@ -153,8 +154,7 @@ export class PrismaPlatformAdminRepository implements PlatformAdminRepository {
     return rows.map((row) => ({ status: row.status, count: row._count }));
   }
 
-  async grossVolume(sinceDays: number) {
-    const since = new Date(Date.now() - sinceDays * 86_400_000);
+  async grossVolume(since: Date) {
     const rows = await this.db.payment.groupBy({
       by: ["currency"],
       where: { status: { in: ["PAID", "PARTIALLY_REFUNDED"] }, paidAt: { gte: since } },
@@ -168,10 +168,10 @@ export class PrismaPlatformAdminRepository implements PlatformAdminRepository {
    * Saldo da conta em todas as organizações, no lado que a aumenta. Receita é crédito menos
    * débito; despesa é o contrário — somar os dois do mesmo jeito daria o custo negativo.
    */
-  async accountTotals(account: AdminAccount) {
+  async accountTotals(account: AdminAccount, since?: Date) {
     const rows = await this.db.ledgerEntry.groupBy({
       by: ["currency", "direction"],
-      where: { account },
+      where: { account, ...(since ? { createdAt: { gte: since } } : {}) },
       _sum: { amount: true },
     });
 
@@ -375,8 +375,7 @@ export class PrismaPlatformAdminRepository implements PlatformAdminRepository {
     }));
   }
 
-  async revenueByDay(sinceDays: number) {
-    const since = new Date(Date.now() - sinceDays * 86_400_000);
+  async revenueByDay(since: Date) {
     return this.db.$queryRaw<{ day: Date; currency: string; amount: bigint }[]>`
       SELECT date_trunc('day', "createdAt") AS day,
              currency,
