@@ -7,7 +7,7 @@ import { startOfDayIn, timezoneForCountry } from "@/lib/time/day-window";
  * e porque um número de 30 dias não muda quando algo acontece agora, então não serve para
  * acompanhar nada.
  */
-export const ADMIN_PERIODS = ["hoje", "7d", "30d", "mes"] as const;
+export const ADMIN_PERIODS = ["hoje", "7d", "30d", "mes", "tudo"] as const;
 export type AdminPeriod = (typeof ADMIN_PERIODS)[number];
 
 export const DEFAULT_ADMIN_PERIOD: AdminPeriod = "hoje";
@@ -17,6 +17,7 @@ export const ADMIN_PERIOD_LABEL: Record<AdminPeriod, string> = {
   "7d": "7 dias",
   "30d": "30 dias",
   mes: "Este mês",
+  tudo: "Todo o tempo",
 };
 
 /** Como a descrição da tela fala do recorte, para a frase ler natural. */
@@ -25,6 +26,7 @@ export const ADMIN_PERIOD_PHRASE: Record<AdminPeriod, string> = {
   "7d": "nos últimos 7 dias",
   "30d": "nos últimos 30 dias",
   mes: "neste mês",
+  tudo: "desde o início",
 };
 
 /**
@@ -44,13 +46,18 @@ export function parseAdminPeriod(raw: string | string[] | undefined): AdminPerio
 }
 
 /**
- * De quando o período começa. Sempre da meia-noite de um dia inteiro: "7 dias" é hoje e os seis
- * anteriores, não as últimas 168 horas — contar por hora faria o número de hoje cair de manhã,
- * quando a janela larga o começo do primeiro dia.
+ * De quando o período começa, ou `undefined` em "todo o tempo" — que não tem começo, e por isso
+ * vira consulta sem filtro de data em vez de uma data antiga qualquer.
+ *
+ * Sempre da meia-noite de um dia inteiro: "7 dias" é hoje e os seis anteriores, não as últimas
+ * 168 horas — contar por hora faria o número de hoje cair de manhã, quando a janela larga o
+ * começo do primeiro dia.
  */
-export function adminPeriodStart(period: AdminPeriod, now = new Date()): Date {
+export function adminPeriodStart(period: AdminPeriod, now = new Date()): Date | undefined {
   const today = startOfDayIn(ADMIN_TIMEZONE, now);
   switch (period) {
+    case "tudo":
+      return undefined;
     case "hoje":
       return today;
     case "7d":
@@ -67,9 +74,3 @@ export function adminPeriodStart(period: AdminPeriod, now = new Date()): Date {
   }
 }
 
-/** Quantos dias o período cobre, para a tela do gráfico que pensa em dias. */
-export function adminPeriodDays(period: AdminPeriod, now = new Date()): number {
-  const start = adminPeriodStart(period, now);
-  const today = startOfDayIn(ADMIN_TIMEZONE, now);
-  return Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1;
-}

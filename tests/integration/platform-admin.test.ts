@@ -182,6 +182,23 @@ describe("Recorte da visão geral", () => {
     expect((await app.services.platformAdmin.overview("30d")).volume[0]).toMatchObject({ total: 20_000n, count: 2 });
   });
 
+  it("em 'todo o tempo' conta a venda antiga que nenhuma janela pegaria", async () => {
+    const seller = await createSeller(app, { amount: 10_000n });
+    const { payment } = await startPurchase(app, seller.checkout.slug, "antiga@example.com");
+    await confirmPayment(app, payment);
+    await backdate(400);
+
+    // Fora de todos os recortes com janela, inclusive o mais largo.
+    expect((await app.services.platformAdmin.overview("30d")).volume).toHaveLength(0);
+
+    const tudo = await app.services.platformAdmin.overview("tudo");
+    expect(tudo.volume[0]).toMatchObject({ currency: "BRL", total: 10_000n, count: 1 });
+    expect(tudo.revenue[0]).toMatchObject({ currency: "BRL", net: 1000n });
+    expect(tudo.profit[0]).toMatchObject({ currency: "BRL", net: 600n });
+    // O acumulado bate com o recorte, que é o que "todo o tempo" quer dizer.
+    expect(tudo.revenueAllTime).toEqual(tudo.revenue);
+  });
+
   it("não recorta o que a plataforma deve: a dívida é a de agora", async () => {
     const { seller, code } = await sellerWithAffiliate(app);
     const { payment } = await startPurchase(app, seller.checkout.slug, "indicada@example.com", { referralCode: code });

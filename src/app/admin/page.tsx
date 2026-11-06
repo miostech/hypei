@@ -55,7 +55,7 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
         Três números na ordem em que a pergunta é feita: quanto entrou de venda, quanto disso é
         taxa nossa e quanto sobrou depois do adquirente.
       */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <section className={`grid gap-4 sm:grid-cols-2 ${period === "tudo" ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
         <StatCard
           label="Vendas (bruto)"
           value={sales ?? "—"}
@@ -73,7 +73,10 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
           hint="Depois do que pagamos ao adquirente"
           tone={negative ? "warning" : "positive"}
         />
-        <StatCard label="Taxas desde o início" value={accumulated ?? "—"} hint="Acumulado, fora do recorte" tone="muted" />
+        {/* Em "todo o tempo" o acumulado É o recorte: dois cards com o mesmo número parecem erro. */}
+        {period !== "tudo" && (
+          <StatCard label="Taxas desde o início" value={accumulated ?? "—"} hint="Acumulado, fora do recorte" tone="muted" />
+        )}
         <StatCard
           label="Disputas abertas"
           value={String(overview.openDisputes)}

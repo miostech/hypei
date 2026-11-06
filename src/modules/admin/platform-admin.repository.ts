@@ -11,7 +11,8 @@ import { accountBalance } from "@/modules/ledger/ledger.accounts";
  */
 export interface PlatformAdminRepository {
   organizationCounts(): Promise<{ status: string; count: number }[]>;
-  grossVolume(since: Date): Promise<{ currency: string; total: bigint; count: number }[]>;
+  /** Sem `since` é tudo o que já foi vendido. */
+  grossVolume(since?: Date): Promise<{ currency: string; total: bigint; count: number }[]>;
   /** Sem `since` é o acumulado de sempre — o que vale para saldo, não para fluxo do período. */
   accountTotals(account: AdminAccount, since?: Date): Promise<{ currency: string; net: bigint }[]>;
   organizationTotals(): Promise<OrganizationTotalsRow[]>;
@@ -154,10 +155,10 @@ export class PrismaPlatformAdminRepository implements PlatformAdminRepository {
     return rows.map((row) => ({ status: row.status, count: row._count }));
   }
 
-  async grossVolume(since: Date) {
+  async grossVolume(since?: Date) {
     const rows = await this.db.payment.groupBy({
       by: ["currency"],
-      where: { status: { in: ["PAID", "PARTIALLY_REFUNDED"] }, paidAt: { gte: since } },
+      where: { status: { in: ["PAID", "PARTIALLY_REFUNDED"] }, ...(since ? { paidAt: { gte: since } } : {}) },
       _sum: { amount: true },
       _count: true,
     });
