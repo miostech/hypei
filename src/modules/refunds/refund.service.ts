@@ -7,6 +7,7 @@ import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import { revokeOrderAccess } from "@/modules/members/access";
 import { producerAccountFor, splitByOriginalShares } from "@/modules/payments/payment-shares";
+import { ReserveService } from "@/modules/reserves/reserve.service";
 import type { Repositories } from "@/server/repositories";
 import type { UnitOfWork } from "@/server/unit-of-work";
 
@@ -25,7 +26,8 @@ export interface RequestRefundInput {
 /**
  * Refund policy (explicit, documented in ADR 005):
  * - producer share and Kabrun fee are reversed proportionally;
- * - the processor fee the PSP does not return is absorbed by the platform (REFUNDS expense);
+ * - the processor fee the PSP does not return is reclassified from PROCESSOR_FEES to REFUNDS:
+ *   a plataforma já a tinha pago na venda, e agora ela é perda, não custo de receita;
  * - producer balance may go negative ONLY through reversals (refund/chargeback), never through payouts.
  */
 export class RefundService {
@@ -159,6 +161,9 @@ export class RefundService {
   ) {
     const shares = splitByOriginalShares(payment, amount);
     await this.affiliates.reverseCommission(repos, payment.orderId, shares.affiliate);
+    // A reserva de segurança existe para esta hora: ela paga antes do saldo dela ser tocado.
+    const fromReserve = await ReserveService.consume(repos, payment.id, shares.producer);
+    const fromBalance = shares.producer - fromReserve;
     await this.ledger.post(repos, {
       organizationId: payment.organizationId,
       idempotencyKey: `refund:${refundId}`,
@@ -169,9 +174,20 @@ export class RefundService {
       currency: assertSupportedCurrency(payment.currency),
       description: "Reembolso ao comprador",
       lines: [
-        { account: producerAccountFor(payment), direction: "DEBIT", amount: shares.producer, description: "Estorno da parte do produtor" },
+        ...(fromReserve > 0n
+          ? [{ account: "RESERVES" as const, direction: "DEBIT" as const, amount: fromReserve, description: "Coberto pela reserva de segurança" }]
+          : []),
+        { account: producerAccountFor(payment), direction: "DEBIT", amount: fromBalance, description: "Estorno da parte do produtor" },
         { account: "PLATFORM_REVENUE", direction: "DEBIT", amount: shares.platform, description: "Estorno da taxa Kabrun" },
-        { account: "REFUNDS", direction: "DEBIT", amount: shares.processor, description: "Taxa de processamento não recuperada" },
+        // A taxa do adquirente fica com ele mesmo na venda devolvida, e a receita que a cobria
+        // acabou de ser estornada: o custo deixa de ser custo de venda e vira perda. O par
+        // fecha sozinho, então não desequilibra o lançamento.
+        ...(shares.processor > 0n
+          ? [
+              { account: "REFUNDS" as const, direction: "DEBIT" as const, amount: shares.processor, description: "Taxa do adquirente perdida" },
+              { account: "PROCESSOR_FEES" as const, direction: "CREDIT" as const, amount: shares.processor, description: "Reclassificada como perda" },
+            ]
+          : []),
         // The affiliate does not keep a commission on a sale that was given back.
         ...(shares.affiliate > 0n
           ? [

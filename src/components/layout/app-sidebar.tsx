@@ -44,7 +44,8 @@ export function AppSidebar({ allowedHrefs, testEnvironment }: { allowedHrefs: st
               <SidebarGroupContent>
                 <SidebarMenu className="gap-0.5">
                   {items.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    const at = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+                    const isActive = at(item.href) || (item.tabs?.some(at) ?? false);
                     return (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton

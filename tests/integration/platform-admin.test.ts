@@ -100,7 +100,7 @@ describe("Platform admin", () => {
     const detail = await app.services.platformAdmin.organization(seller.organization.id);
     expect(detail.members[0]).toMatchObject({ email: seller.user.email, role: "OWNER" });
     expect(detail.taxIdentities[0].type).toBe("CPF");
-    expect(detail.balances[0]).toMatchObject({ currency: "BRL", pending: 8600n });
+    expect(detail.balances[0]).toMatchObject({ currency: "BRL", pending: 9000n });
     expect(detail.recentPayments[0]).toMatchObject({ customerEmail: "detalhe@example.com", status: "PAID" });
   });
 
@@ -130,3 +130,100 @@ describe("Platform admin", () => {
     expect(await app.services.platformAdmin.listDisputes()).toHaveLength(1);
   });
 });
+
+/**
+ * O recorte da visão geral. Vale para fluxo — vendeu, cobrou, lucrou — e não vale para dívida:
+ * comissão a pagar e saque na fila são o que a plataforma deve agora, e metade de uma dívida é
+ * pior do que nenhum número.
+ */
+describe("Recorte da visão geral", () => {
+  let app: TestApp;
+
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  /** Joga a venda e os lançamentos dela para `days` dias atrás, como se fossem antigos. */
+  async function backdate(days: number) {
+    const when = new Date(Date.now() - days * 86_400_000);
+    await app.prisma.payment.updateMany({ data: { paidAt: when, createdAt: when } });
+    await app.prisma.ledgerEntry.updateMany({ data: { createdAt: when } });
+  }
+
+  it("por padrão mostra o dia, e a venda de ontem não entra nele", async () => {
+    const seller = await createSeller(app, { amount: 10_000n });
+    const { payment } = await startPurchase(app, seller.checkout.slug, "ontem@example.com");
+    await confirmPayment(app, payment);
+    await backdate(2);
+
+    const hoje = await app.services.platformAdmin.overview();
+    expect(hoje.period).toBe("hoje");
+    expect(hoje.volume).toHaveLength(0);
+    expect(hoje.revenue).toHaveLength(0);
+    expect(hoje.profit).toHaveLength(0);
+
+    const semana = await app.services.platformAdmin.overview("7d");
+    expect(semana.volume[0]).toMatchObject({ currency: "BRL", total: 10_000n, count: 1 });
+    expect(semana.revenue[0]).toMatchObject({ currency: "BRL", net: 1000n });
+    // 1000 de taxa menos os 400 que o adquirente cobrou.
+    expect(semana.profit[0]).toMatchObject({ currency: "BRL", net: 600n });
+  });
+
+  it("separa o que entrou hoje do que entrou no mês", async () => {
+    const seller = await createSeller(app, { amount: 10_000n });
+    const antiga = await startPurchase(app, seller.checkout.slug, "antiga@example.com");
+    await confirmPayment(app, antiga.payment);
+    await backdate(3);
+
+    const nova = await startPurchase(app, seller.checkout.slug, "nova@example.com");
+    await confirmPayment(app, nova.payment);
+
+    expect((await app.services.platformAdmin.overview("hoje")).volume[0]).toMatchObject({ total: 10_000n, count: 1 });
+    expect((await app.services.platformAdmin.overview("30d")).volume[0]).toMatchObject({ total: 20_000n, count: 2 });
+  });
+
+  it("em 'todo o tempo' conta a venda antiga que nenhuma janela pegaria", async () => {
+    const seller = await createSeller(app, { amount: 10_000n });
+    const { payment } = await startPurchase(app, seller.checkout.slug, "antiga@example.com");
+    await confirmPayment(app, payment);
+    await backdate(400);
+
+    // Fora de todos os recortes com janela, inclusive o mais largo.
+    expect((await app.services.platformAdmin.overview("30d")).volume).toHaveLength(0);
+
+    const tudo = await app.services.platformAdmin.overview("tudo");
+    expect(tudo.volume[0]).toMatchObject({ currency: "BRL", total: 10_000n, count: 1 });
+    expect(tudo.revenue[0]).toMatchObject({ currency: "BRL", net: 1000n });
+    expect(tudo.profit[0]).toMatchObject({ currency: "BRL", net: 600n });
+    // O acumulado bate com o recorte, que é o que "todo o tempo" quer dizer.
+    expect(tudo.revenueAllTime).toEqual(tudo.revenue);
+  });
+
+  it("não recorta o que a plataforma deve: a dívida é a de agora", async () => {
+    const { seller, code } = await sellerWithAffiliate(app);
+    const { payment } = await startPurchase(app, seller.checkout.slug, "indicada@example.com", { referralCode: code });
+    await confirmPayment(app, payment);
+    await backdate(10);
+
+    const hoje = await app.services.platformAdmin.overview("hoje");
+    // A venda saiu do recorte, mas a comissão continua devida.
+    expect(hoje.volume).toHaveLength(0);
+    expect(hoje.affiliatePayable[0]).toMatchObject({ currency: "BRL", net: 3000n });
+    // E o acumulado de taxas também não depende do recorte.
+    expect(hoje.revenueAllTime[0]).toMatchObject({ currency: "BRL", net: 1000n });
+  });
+});
+
+/** Uma produtora com uma afiliada em 30% e o código de indicação dela. */
+async function sellerWithAffiliate(app: TestApp) {
+  const seller = await createSeller(app, { amount: 10_000n });
+  const affiliate = await app.services.affiliates.create(seller.organization.id, seller.user.id, {
+    name: "Parceira Ana",
+    email: "ana@example.com",
+    commissionBps: 3000,
+    active: true,
+    productId: seller.product.id,
+  });
+  const detail = await app.services.affiliates.get(seller.organization.id, affiliate.id);
+  return { seller, code: detail.affiliations[0].code };
+}

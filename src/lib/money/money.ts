@@ -71,6 +71,28 @@ function divideRounded(numerator: bigint, denominator: bigint, mode: RoundingMod
   return negative ? -result : result;
 }
 
+/** Casas decimais da cotação, para a conversão continuar em inteiros. 1 unidade = 1e-8. */
+export const RATE_SCALE = 100_000_000n;
+
+/**
+ * Converte um valor para outra moeda a uma cotação dada.
+ *
+ * A cotação é inteira na escala de `RATE_SCALE` (USD→BRL 5,43210000 vira 543_210_000n) porque
+ * ponto flutuante em dinheiro erra centavos, e aqui o erro ficaria no extrato de alguém.
+ *
+ * Só vale entre moedas com o mesmo número de casas: as três que a Kabrun aceita têm duas, e
+ * uma moeda sem centavos exigiria ajustar a escala — melhor falhar do que converter errado.
+ */
+export function convertMoney(m: Money, rate: bigint, to: string, mode: RoundingMode = "HALF_UP"): Money {
+  if (rate <= 0n) throw new MoneyError(`Exchange rate must be positive, received ${rate}`);
+  const from = assertSupportedCurrency(m.currency);
+  const target = assertSupportedCurrency(to);
+  if (currencyExponent(from) !== currencyExponent(target)) {
+    throw new MoneyError(`Cannot convert between ${from} and ${target}: different exponents`);
+  }
+  return money(divideRounded(m.amount * rate, RATE_SCALE, mode), target);
+}
+
 /**
  * Percentage expressed in basis points (1% = 100 bps) to stay in integer math.
  * calculatePercentage(R$100,00, 1000) → R$10,00

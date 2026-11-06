@@ -7,7 +7,7 @@ import { ValidationError } from "@/lib/errors";
 import { getCheckoutDictionary, type CheckoutDictionary } from "@/lib/i18n/checkout";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/lib/i18n/locale";
 import { logger } from "@/lib/logger";
-import { InMemoryRateLimiter, RedisRateLimiter, type RateLimiter } from "@/lib/security/rate-limit";
+import { InMemoryRateLimiter, RedisRateLimiter, ResilientRateLimiter, type RateLimiter } from "@/lib/security/rate-limit";
 import { startCheckoutSchema, trackingSchema } from "@/modules/checkout/checkout.schemas";
 import { CouponNotUsableError } from "@/modules/coupons/coupon.service";
 import { CHECKOUT_EVENT_TYPES } from "@/modules/analytics/analytics-event.repository";
@@ -65,11 +65,17 @@ function buyerMessage(error: unknown, dict: CheckoutDictionary, fallback: string
 let limiter: RateLimiter | undefined;
 function rateLimiter(): RateLimiter {
   if (!limiter) {
+    // A memória é o chão nos dois casos: Redis não configurado, e Redis configurado que cai
+    // depois. O segundo é o que importa — o construtor do ioredis não lança quando o host
+    // está fora, então sem o wrapper a falha só aparecia no `consume`, já dentro da venda.
+    const memory = new InMemoryRateLimiter();
     try {
-      limiter = new RedisRateLimiter(getRedis());
+      limiter = new ResilientRateLimiter(new RedisRateLimiter(getRedis()), memory, (err) =>
+        logger.warn({ err }, "redis rate limiting failed; using in-memory limits for this request"),
+      );
     } catch (err) {
       logger.warn({ err }, "redis unavailable; falling back to in-memory rate limiting");
-      limiter = new InMemoryRateLimiter();
+      limiter = memory;
     }
   }
   return limiter;

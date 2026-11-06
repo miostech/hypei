@@ -16,7 +16,7 @@ function parseInput(formData: FormData) {
     name: formData.get("name"),
     email: formData.get("email"),
     commissionBps: formData.get("commissionBps"),
-    checkoutId: formData.get("checkoutId") || undefined,
+    productId: formData.get("productId") || undefined,
     active: formData.get("active") !== "false",
   });
 }

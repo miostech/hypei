@@ -13,7 +13,7 @@ export interface CreateOrderRecord {
   couponId?: string | null;
   couponCode?: string | null;
   affiliateId?: string | null;
-  affiliateLinkId?: string | null;
+  affiliationId?: string | null;
   taxAmount: bigint;
   taxRegime?: TaxRegime;
   totalAmount: bigint;
@@ -36,6 +36,14 @@ export interface OrderRepository {
   findDetail(organizationId: string, id: string): Promise<OrderDetail | null>;
   setStatus(id: string, status: OrderStatus): Promise<void>;
   productIds(orderId: string): Promise<string[]>;
+  /**
+   * Quanto deste pedido foi cobrado pelos itens de UM produto.
+   *
+   * A comissão de afiliado precisa disto: a afiliação é por produto, e o order bump de
+   * outro produto entra no mesmo pedido. Sem separar, o afiliado receberia sobre a venda
+   * de alguém que não indicou.
+   */
+  productItemsTotal(orderId: string, productId: string): Promise<bigint>;
   /**
    * Os produtos desta venda, com o nome que o comprador viu, na ordem em que foram cobrados.
    *
@@ -102,6 +110,14 @@ export class PrismaOrderRepository implements OrderRepository {
   async productIds(orderId: string) {
     const items = await this.db.orderItem.findMany({ where: { orderId }, select: { offer: { select: { productId: true } } } });
     return [...new Set(items.map((i) => i.offer.productId))];
+  }
+
+  async productItemsTotal(orderId: string, productId: string) {
+    const result = await this.db.orderItem.aggregate({
+      where: { orderId, offer: { productId } },
+      _sum: { totalAmount: true },
+    });
+    return result._sum.totalAmount ?? 0n;
   }
 
   async itemProducts(orderId: string) {

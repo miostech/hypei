@@ -1,4 +1,4 @@
-import { CheckCircle2Icon, CircleAlertIcon, CreditCardIcon, DatabaseIcon, MailIcon, WebhookIcon } from "lucide-react";
+import { CheckCircle2Icon, CircleAlertIcon, CreditCardIcon, DatabaseIcon, ShoppingCartIcon, WebhookIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -90,7 +90,7 @@ export default async function IntegrationsPage() {
           description={fill(t.webhooksDescription, { provider: provider.toLowerCase() })}
         />
         <InfoCard icon={DatabaseIcon} title={t.apiKeysTitle} description={t.apiKeysDescription} />
-        <InfoCard icon={MailIcon} title={t.emailTitle} description={t.emailDescription} />
+        <InfoCard icon={ShoppingCartIcon} title={t.recoveryTitle} description={t.recoveryDescription} />
       </div>
     </>
   );

@@ -17,13 +17,18 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: dict.checkoutForm.newTitle };
 }
 
-export default async function NewCheckoutPage() {
+export default async function NewCheckoutPage({ searchParams }: PageProps<"/checkouts/new">) {
   const { organization } = await requirePagePermission("checkout:write");
   const services = getServices();
+  const params = await searchParams;
   const offers = (await services.offers.list(organization.id)).filter((offer) => offer.active);
   if (offers.length === 0) redirect("/offers/new");
 
-  const bumpOffers = await services.checkouts.bumpCandidates(organization.id, offers[0].id);
+  // Quem chega pela aba de links de um produto já disse qual produto é; o seletor continua aí,
+  // só não começa em outro produto qualquer.
+  const selected =
+    (typeof params.productId === "string" ? offers.find((offer) => offer.productId === params.productId) : undefined) ?? offers[0];
+  const bumpOffers = await services.checkouts.bumpCandidates(organization.id, selected.id);
 
   const t = (await getAppDictionary(await appLocale())).checkoutForm;
   const availableMethods = resolvePaymentMethods({
@@ -42,10 +47,10 @@ export default async function NewCheckoutPage() {
         availableMethods={availableMethods}
         submitLabel={t.createSubmit}
         defaultValues={{
-          offerId: offers[0].id,
-          name: offers[0].product.name,
-          slug: offers[0].product.slug,
-          headline: fill(t.headlineDefault, { product: offers[0].product.name }),
+          offerId: selected.id,
+          name: selected.product.name,
+          slug: selected.product.slug,
+          headline: fill(t.headlineDefault, { product: selected.product.name }),
           description: "",
           accentColor: "#5B3DF5",
           logoKey: "",

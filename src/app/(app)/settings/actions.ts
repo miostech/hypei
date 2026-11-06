@@ -4,25 +4,22 @@ import { revalidatePath } from "next/cache";
 import { getAppDictionary } from "@/lib/i18n/app";
 import { appLocale } from "@/lib/i18n/app/server";
 import { requirePermission } from "@/modules/organizations/current-organization";
-import { taxSettingsSchema } from "@/modules/taxes/tax.schemas";
 import { runAction, type ActionState } from "@/server/actions/action-state";
 import { getServices } from "@/server/container";
 
-export async function saveTaxSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
+export async function savePixKey(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const { organization } = await requirePermission("organization:manage");
-    const input = taxSettingsSchema.parse({
-      regime: formData.get("regime"),
-      rate: formData.get("rate") || undefined,
-      jurisdiction: formData.get("jurisdiction") || undefined,
+    const { organization, userId } = await requirePermission("organization:manage");
+
+    await getServices().payoutDestinations.savePix({
+      organizationId: organization.id,
+      country: organization.country,
+      currency: organization.defaultCurrency,
+      rawKey: String(formData.get("pixKey") ?? ""),
+      userId,
     });
 
-    await getServices().taxSettings.save(organization.id, input);
     revalidatePath("/settings");
-    const { settings } = await getAppDictionary(await appLocale());
-    return {
-      status: "success",
-      message: input.regime === "NONE" ? settings.regimeCleared : settings.regimeSaved,
-    };
+    return { status: "success", message: (await getAppDictionary(await appLocale())).settings.pixSaved };
   });
 }

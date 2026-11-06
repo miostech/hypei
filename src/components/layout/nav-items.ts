@@ -1,8 +1,6 @@
 import {
   BarChart3Icon,
-  BanknoteIcon,
   BookOpenIcon,
-  CreditCardIcon,
   type LucideIcon,
   LayoutDashboardIcon,
   LinkIcon,
@@ -14,7 +12,6 @@ import {
   SettingsIcon,
   ShieldCheckIcon,
   ShoppingBagIcon,
-  TagIcon,
   TicketIcon,
   UsersIcon,
   WalletIcon,
@@ -35,6 +32,8 @@ export interface NavItem {
   key: keyof AppDictionary["nav"]["items"];
   icon: LucideIcon;
   permission: Permission;
+  /** Rotas que são abas desta tela: continuam acendendo o item do menu. */
+  tabs?: string[];
 }
 
 export interface NavGroup {
@@ -55,9 +54,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     key: "catalog",
     items: [
-      { href: "/products", key: "products", icon: PackageIcon, permission: "products:read" },
-      { href: "/offers", key: "offers", icon: TagIcon, permission: "products:read" },
-      { href: "/checkouts", key: "checkouts", icon: CreditCardIcon, permission: "products:read" },
+      { href: "/products", key: "products", icon: PackageIcon, permission: "products:read", tabs: ["/affiliations"] },
+      // Preço e checkout agora são abas do produto. As telas /offers e /checkouts continuam de pé
+      // — a aba leva para elas —, mas não competem mais com o produto no menu.
       { href: "/coupons", key: "coupons", icon: TicketIcon, permission: "products:read" },
     ],
   },
@@ -68,13 +67,15 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/subscriptions", key: "subscriptions", icon: RepeatIcon, permission: "sales:read" },
       { href: "/members-area", key: "membersArea", icon: BookOpenIcon, permission: "products:read" },
       { href: "/affiliates", key: "affiliates", icon: LinkIcon, permission: "sales:read" },
+      // "Minhas afiliações" — o que a pessoa divulga de outros produtores — virou aba de Produtos,
+      // ao lado dos produtos dela. É a mesma pergunta: de que produtos eu tiro dinheiro?
     ],
   },
   {
     key: "finance",
     items: [
-      { href: "/finance", key: "finance", icon: ReceiptIcon, permission: "finance:read" },
-      { href: "/payouts", key: "payouts", icon: BanknoteIcon, permission: "finance:read" },
+      // Saques é aba do Financeiro: é o mesmo dinheiro visto de outro ângulo.
+      { href: "/finance", key: "finance", icon: ReceiptIcon, permission: "finance:read", tabs: ["/payouts"] },
     ],
   },
   {

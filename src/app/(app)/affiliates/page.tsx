@@ -1,5 +1,6 @@
-import { LinkIcon, PowerIcon, UsersIcon } from "lucide-react";
+import { LinkIcon, PackageIcon, PowerIcon, UsersIcon } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -16,7 +17,13 @@ import { requirePagePermission } from "@/modules/organizations/current-organizat
 import { hasPermission } from "@/modules/organizations/permissions";
 import { getServices } from "@/server/container";
 import { setAffiliateActive } from "./actions";
-import { AffiliateDialog, type AffiliateValues } from "./affiliate-dialog";
+// Cadastro e edição à mão saíram do ar: quem se afilia é a pessoa, pelo link de convite do
+// produto, e a comissão é a que o produto anuncia. Cadastrar alguém aqui criava um afiliado
+// sem conta na Kabrun — comissão que o produtor tem de pagar por fora, no braço — e editar a
+// comissão nesta tela não mexia no que a venda paga, que sai da afiliação, não da pessoa.
+// Para voltar atrás: descomentar isto, buscar `services.products.list` de novo no Promise.all
+// e devolver os dois usos do diálogo (cabeçalho/estado vazio e a linha da tabela).
+// import { AffiliateDialog, type AffiliateValues } from "./affiliate-dialog";
 import { CopyLink } from "./copy-link";
 import { PayAffiliateButton } from "./pay-affiliate-button";
 
@@ -27,11 +34,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AffiliatesPage() {
   const { organization, membership } = await requirePagePermission("sales:read");
   const services = getServices();
-  const [affiliates, totals, commissions, checkouts] = await Promise.all([
+  const [affiliates, totals, commissions] = await Promise.all([
     services.affiliates.list(organization.id),
     services.affiliates.totals(organization.id),
     services.affiliates.listCommissions(organization.id, 50),
-    services.checkouts.list(organization.id),
   ]);
   const dict = await getAppDictionary(await appLocale());
   const t = dict.affiliates;
@@ -43,15 +49,10 @@ export default async function AffiliatesPage() {
   const byAffiliate = new Map(totals.map((entry) => [entry.affiliateId, entry]));
 
   const sum = (key: "pending" | "available" | "paid") => totals.reduce((total, entry) => total + entry[key], 0n);
-  const checkoutOptions = checkouts.map((checkout) => ({ id: checkout.id, name: checkout.name }));
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        description={t.description}
-        actions={canEdit && <AffiliateDialog checkouts={checkoutOptions} />}
-      />
+      <PageHeader title={t.title} description={t.description} />
 
       <section className="grid gap-4 sm:grid-cols-3">
         <StatCard label={t.pendingCommission} value={formatAmount(sum("pending"), currency)} hint={t.pendingHint} />
@@ -64,7 +65,14 @@ export default async function AffiliatesPage() {
           icon={UsersIcon}
           title={t.emptyTitle}
           description={t.emptyBody}
-          action={canEdit ? <AffiliateDialog checkouts={checkoutOptions} /> : undefined}
+          action={
+            canEdit ? (
+              <Button render={<Link href="/products" />}>
+                <PackageIcon />
+                {dict.nav.items.products}
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <Card className="py-0">
@@ -84,17 +92,10 @@ export default async function AffiliatesPage() {
               <TableBody>
                 {affiliates.map((affiliate) => {
                   const entry = byAffiliate.get(affiliate.id);
-                  const link = affiliate.links[0];
-                  const url = link?.checkout
-                    ? `${appUrl}/checkout/${link.checkout.slug}?ref=${link.code}`
-                    : null;
-                  const values: AffiliateValues = {
-                    id: affiliate.id,
-                    name: affiliate.name,
-                    email: affiliate.email,
-                    commission: (affiliate.commissionBps / 100).toString().replace(".", ","),
-                  };
-
+                  // Uma pessoa pode estar afiliada a vários produtos; a tabela mostra o
+                  // primeiro e o contador diz quantos são, para a linha não virar uma lista.
+                  const affiliation = affiliate.affiliations[0];
+                  const url = affiliation ? `${appUrl}/r/${affiliation.code}` : null;
                   return (
                     <TableRow key={affiliate.id}>
                       <TableCell className="max-w-[46vw] sm:max-w-none">
@@ -114,7 +115,7 @@ export default async function AffiliatesPage() {
                         ) : (
                           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <LinkIcon className="size-3.5" aria-hidden />
-                            {fill(t.code, { code: link?.code ?? "—" })}
+                            {fill(t.code, { code: affiliation?.code ?? "—" })}
                           </span>
                         )}
                       </TableCell>
@@ -134,7 +135,7 @@ export default async function AffiliatesPage() {
                           )}
                           {canEdit && (
                             <>
-                              <AffiliateDialog affiliate={values} checkouts={checkoutOptions} />
+                              {/* <AffiliateDialog affiliate={values} products={productOptions} /> */}
                               <form action={setAffiliateActive}>
                                 <input type="hidden" name="affiliateId" value={affiliate.id} />
                                 <input type="hidden" name="active" value={affiliate.active ? "false" : "true"} />

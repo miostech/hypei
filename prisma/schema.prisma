@@ -185,6 +185,8 @@ enum LedgerAccount {
   AFFILIATE_PAYABLE
   TAXES
   PAYOUTS
+  /// Contrapartida da conversão de moeda: um saldo em dólar sai por aqui e entra em real.
+  FX_CONVERSION
 }
 
 enum LedgerDirection {
@@ -237,10 +239,26 @@ enum PayoutDestinationType {
   OTHER
 }
 
+/// Os cinco tipos que o DICT aceita. EVP é a chave aleatória, a que o banco gera.
+enum PixKeyType {
+  CPF
+  CNPJ
+  EMAIL
+  PHONE
+  EVP
+}
+
 enum PayoutDestinationStatus {
   PENDING
   ACTIVE
   DISABLED
+}
+
+enum AffiliationStatus {
+  ACTIVE
+  /// Encerrada pelo produtor ou pela própria pessoa. O link para de atribuir, e as
+  /// comissões já ganhas continuam a caminho: desligar não apaga o que foi vendido.
+  REVOKED
 }
 
 enum AffiliateCommissionStatus {
@@ -304,6 +322,7 @@ model User {
 
   memberships OrganizationMember[]
   auditLogs   AuditLog[]
+  affiliates  Affiliate[]          @relation("AffiliateUser")
 }
 
 model Organization {
@@ -320,37 +339,40 @@ model Organization {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
-  members            OrganizationMember[]
-  taxIdentities      TaxIdentity[]
-  verifications      OrganizationVerification[]
-  merchantAccounts   MerchantAccount[]
-  payoutDestinations PayoutDestination[]
-  products           Product[]
-  emailDeliveries    EmailDelivery[]
-  awards             OrganizationAward[]
-  offers             Offer[]
-  checkouts          Checkout[]
-  customers          Customer[]
-  orders             Order[]
-  payments           Payment[]
-  transactions       Transaction[]
-  ledgerJournals     LedgerJournal[]
-  ledgerEntries      LedgerEntry[]
-  balances           Balance[]
-  reserves           Reserve[]
-  payouts            Payout[]
-  refunds            Refund[]
-  disputes           Dispute[]
-  subscriptions      Subscription[]
-  settlementPolicies SettlementPolicy[]
+  members             OrganizationMember[]
+  taxIdentities       TaxIdentity[]
+  verifications       OrganizationVerification[]
+  merchantAccounts    MerchantAccount[]
+  payoutDestinations  PayoutDestination[]
+  products            Product[]
+  emailDeliveries     EmailDelivery[]
+  awards              OrganizationAward[]
+  offers              Offer[]
+  checkouts           Checkout[]
+  customers           Customer[]
+  orders              Order[]
+  payments            Payment[]
+  transactions        Transaction[]
+  ledgerJournals      LedgerJournal[]
+  ledgerEntries       LedgerEntry[]
+  balances            Balance[]
+  reserves            Reserve[]
+  payouts             Payout[]
+  refunds             Refund[]
+  disputes            Dispute[]
+  subscriptions       Subscription[]
+  settlementPolicies  SettlementPolicy[]
   platformFeePolicies PlatformFeePolicy[]
-  taxPolicies        TaxPolicy[]
-  affiliates         Affiliate[]
-  coupons            Coupon[]
-  courses            Course[]
-  apiKeys            ApiKey[]
-  webhookEndpoints   WebhookEndpoint[]
-  auditLogs          AuditLog[]
+  taxPolicies         TaxPolicy[]
+  affiliates          Affiliate[]
+  /// Afiliações cuja comissão é paga NESTA organização (ela é a afiliada, não a vendedora).
+  affiliateEarnings   Affiliate[]                @relation("AffiliatePayee")
+  coupons             Coupon[]
+  courses             Course[]
+  apiKeys             ApiKey[]
+  webhookEndpoints    WebhookEndpoint[]
+  auditLogs           AuditLog[]
+  reservePolicies     ReservePolicy[]
 }
 
 model OrganizationMember {
@@ -429,24 +451,31 @@ model MerchantAccount {
 // ─────────────────────────── Catalog ─────────────────────────────
 
 model Product {
-  id             String        @id @default(cuid())
-  organizationId String
-  name           String
-  slug           String
-  description    String?
-  type           ProductType
-  status         ProductStatus @default(DRAFT)
-  thumbnailKey   String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id                     String        @id @default(cuid())
+  organizationId         String
+  name                   String
+  slug                   String
+  description            String?
+  type                   ProductType
+  status                 ProductStatus @default(DRAFT)
+  thumbnailKey           String?
+  /// Aceita afiliados. Desligar não desfaz as afiliações existentes: só fecha o convite.
+  affiliationEnabled     Boolean       @default(false)
+  /// Comissão oferecida a quem se afiliar, em basis points (3000 = 30%).
+  affiliateCommissionBps Int?
+  /// Código do link de convite que o produtor distribui. Único na plataforma.
+  affiliateInviteCode    String?       @unique
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   offers       Offer[]
   course       Course?
+  affiliations Affiliation[]
+  coupons      Coupon[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
-  coupons Coupon[]
 }
 
 /// The official price of anything sold on Kabrun. Checkout presentation (MongoDB) never overrides it.
@@ -507,7 +536,6 @@ model Checkout {
   orders       Order[]
 
   @@index([organizationId])
-  affiliateLinks AffiliateLink[]
 }
 
 // ─────────────────────────── Commerce ────────────────────────────
@@ -533,9 +561,9 @@ model Customer {
   payments          Payment[]
   subscriptions     Subscription[]
   enrollments       Enrollment[]
+  couponRedemptions CouponRedemption[]
 
   @@unique([organizationId, email])
-  couponRedemptions CouponRedemption[]
 }
 
 model ProviderCustomer {
@@ -565,7 +593,7 @@ model Order {
   /// Snapshot of the code typed by the buyer, kept even if the coupon is deleted.
   couponCode      String?
   affiliateId     String?
-  affiliateLinkId String?
+  affiliationId   String?
   taxAmount       BigInt      @default(0)
   /// Regime aplicado no momento da venda; mudar a política depois não reescreve o passado.
   taxRegime       TaxRegime   @default(NONE)
@@ -575,13 +603,14 @@ model Order {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  checkout     Checkout?    @relation(fields: [checkoutId], references: [id], onDelete: SetNull)
-  items        OrderItem[]
-  payments     Payment[]
-  commissions  AffiliateCommission[]
-  affiliate    Affiliate? @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer         Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  checkout         Checkout?             @relation(fields: [checkoutId], references: [id], onDelete: SetNull)
+  items            OrderItem[]
+  payments         Payment[]
+  commissions      AffiliateCommission[]
+  affiliate        Affiliate?            @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
+  affiliation      Affiliation?          @relation(fields: [affiliationId], references: [id], onDelete: SetNull)
   couponRedemption CouponRedemption?
 
   @@index([organizationId, createdAt])
@@ -609,36 +638,36 @@ model OrderItem {
 
 /// Money movement from the buyer. Fee breakdown is fixed when the payment is confirmed.
 model Payment {
-  id                 String              @id @default(cuid())
-  organizationId     String
-  orderId            String
-  customerId         String
+  id                        String              @id @default(cuid())
+  organizationId            String
+  orderId                   String
+  customerId                String
   /// Set on the first charge and on every renewal of a subscription.
-  subscriptionId     String?
-  provider           PaymentProviderType
-  providerPaymentId  String?
-  providerCustomerId String?
-  providerChargeId   String?
-  amount             BigInt
-  currency           String              @db.Char(3)
-  status             PaymentStatus       @default(CREATED)
-  paymentMethod      PaymentMethodType?
-  processorFeeAmount BigInt?
-  platformFeeAmount  BigInt?
+  subscriptionId            String?
+  provider                  PaymentProviderType
+  providerPaymentId         String?
+  providerCustomerId        String?
+  providerChargeId          String?
+  amount                    BigInt
+  currency                  String              @db.Char(3)
+  status                    PaymentStatus       @default(CREATED)
+  paymentMethod             PaymentMethodType?
+  processorFeeAmount        BigInt?
+  platformFeeAmount         BigInt?
   /// Slice of this sale owed to the affiliate; already taken out of producerNetAmount.
   affiliateCommissionAmount BigInt?
-  producerNetAmount  BigInt?
-  refundedAmount     BigInt              @default(0)
-  settleAt           DateTime?
-  settledAt          DateTime?
-  authorizedAt       DateTime?
-  paidAt             DateTime?
-  failedAt           DateTime?
-  canceledAt         DateTime?
-  failureReason      String?
-  metadata           Json?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  producerNetAmount         BigInt?
+  refundedAmount            BigInt              @default(0)
+  settleAt                  DateTime?
+  settledAt                 DateTime?
+  authorizedAt              DateTime?
+  paidAt                    DateTime?
+  failedAt                  DateTime?
+  canceledAt                DateTime?
+  failureReason             String?
+  metadata                  Json?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
 
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   order        Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
@@ -813,7 +842,10 @@ model Balance {
 model Reserve {
   id             String        @id @default(cuid())
   organizationId String
+  /// Quanto foi retido na venda. Não muda: o que já foi usado fica em `consumedAmount`.
   amount         BigInt
+  /// Quanto desta reserva já cobriu um estorno ou chargeback. O resto é o que ainda volta.
+  consumedAmount BigInt        @default(0)
   currency       String        @db.Char(3)
   reason         String
   referenceType  String?
@@ -826,6 +858,28 @@ model Reserve {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, status])
+  @@index([status, releaseAt])
+  @@index([referenceId])
+}
+
+/// Reserva de segurança: parte de cada venda que fica retida para cobrir estorno e chargeback.
+/// Resolvida como as demais políticas: organização → país → moeda → padrão.
+model ReservePolicy {
+  id             String   @id @default(cuid())
+  organizationId String?
+  country        String?  @db.Char(2)
+  currency       String?  @db.Char(3)
+  /// Percentual da venda retido, em pontos-base (400 = 4%).
+  percentageBps  Int      @default(0)
+  /// Por quantos dias fica retido, contados da aprovação do pagamento.
+  holdDays       Int
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, currency])
 }
 
 /// How long producer funds stay pending. Resolution: organization → country → global default.
@@ -851,14 +905,17 @@ model TaxPolicy {
 }
 
 model SettlementPolicy {
-  id             String        @id @default(cuid())
+  id             String             @id @default(cuid())
   organizationId String?
-  country        String?       @db.Char(2)
-  currency       String?       @db.Char(3)
+  country        String?            @db.Char(2)
+  currency       String?            @db.Char(3)
+  /// O meio de pagamento a que o prazo se aplica. Nulo vale para todos: cartão compensa
+  /// devagar, Pix e boleto caem na conta em dois dias, e o prazo precisa saber disso.
+  method         PaymentMethodType?
   delayDays      Int
-  active         Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  active         Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -868,15 +925,15 @@ model SettlementPolicy {
 
 /// Kabrun platform fee (percentage in basis points and/or fixed amount).
 model PlatformFeePolicy {
-  id             String        @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String?
-  country        String?       @db.Char(2)
-  currency       String        @db.Char(3)
-  percentageBps  Int           @default(0)
-  fixedAmount    BigInt        @default(0)
-  active         Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  country        String?  @db.Char(2)
+  currency       String   @db.Char(3)
+  percentageBps  Int      @default(0)
+  fixedAmount    BigInt   @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -885,12 +942,21 @@ model PlatformFeePolicy {
 
 // ──────────────────────────── Payouts ────────────────────────────
 
+/// Para onde o dinheiro do saque vai. Fora do Brasil é a conta bancária que a produtora
+/// cadastrou dentro do onboarding da Stripe, e aí o destino é a própria conta conectada.
+/// No Brasil não: quem paga é a Kabrun, por Pix, e a chave precisa estar aqui.
 model PayoutDestination {
   id                    String                  @id @default(cuid())
   organizationId        String
   type                  PayoutDestinationType
   provider              PaymentProviderType
-  providerDestinationId String
+  /// Conta externa do provedor. Nulo numa chave Pix, que é endereço da produtora e não
+  /// objeto criado pela Stripe.
+  providerDestinationId String?
+  pixKeyType            PixKeyType?
+  /// Guardada inteira, ao contrário do documento em TaxIdentity: aquele só precisamos
+  /// conferir, este é para onde o dinheiro vai — sem ele não há como pagar.
+  pixKey                String?
   currency              String                  @db.Char(3)
   country               String                  @db.Char(2)
   label                 String?
@@ -901,14 +967,26 @@ model PayoutDestination {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   payouts      Payout[]
 
+  @@unique([organizationId, type])
   @@unique([provider, providerDestinationId])
 }
 
 model Payout {
   id               String              @id @default(cuid())
   organizationId   String
+  /// O que sai do saldo disponível dela. O provedor transfere `amount - feeAmount`.
   amount           BigInt
+  /// A taxa de saque cobrada nesta solicitação, congelada aqui: a tabela de preços muda,
+  /// o que foi cobrado neste saque não.
+  feeAmount        BigInt              @default(0)
   currency         String              @db.Char(3)
+  /// Quando o saldo sacado estava em outra moeda, o que saiu do saldo e a que cotação.
+  /// Nulos quando o saque já era na moeda da conta de recebimento — a maioria deles.
+  sourceAmount     BigInt?
+  sourceCurrency   String?             @db.Char(3)
+  /// Cotação usada, inteira na escala de `RATE_SCALE` (1e8), congelada no saque.
+  exchangeRate     BigInt?
+  exchangeRateSource String?
   provider         PaymentProviderType
   providerPayoutId String?
   destinationId    String?
@@ -932,35 +1010,56 @@ model Payout {
 
 // ─────────────────────────── Growth ──────────────────────────────
 
+/// Uma pessoa que vende para esta organização. Pode ter chegado por autoafiliação (userId
+/// preenchido) ou ter sido cadastrada à mão pelo produtor, que então paga por fora.
 model Affiliate {
-  id             String   @id @default(cuid())
-  organizationId String
-  name           String
-  email          String
-  /// Commission over the sale value, in basis points (3000 = 30%).
-  commissionBps  Int
-  active         Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt @default(now())
+  id                  String   @id @default(cuid())
+  organizationId      String
+  name                String
+  email               String
+  /// Comissão padrão herdada por novas afiliações quando o produto não define uma.
+  commissionBps       Int
+  active              Boolean  @default(true)
+  /// Conta Kabrun de quem se afiliou. Null = cadastro manual, sem conta na plataforma.
+  userId              String?
+  /// Organização que recebe a comissão. Null = o produtor repassa por fora.
+  payeeOrganizationId String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @default(now()) @updatedAt
 
   organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  links        AffiliateLink[]
+  user         User?                 @relation("AffiliateUser", fields: [userId], references: [id], onDelete: SetNull)
+  payee        Organization?         @relation("AffiliatePayee", fields: [payeeOrganizationId], references: [id], onDelete: SetNull)
+  affiliations Affiliation[]
   commissions  AffiliateCommission[]
   orders       Order[]
 
   @@unique([organizationId, email])
+  @@index([userId])
 }
 
-model AffiliateLink {
-  id          String   @id @default(cuid())
-  affiliateId String
-  code        String   @unique
-  checkoutId  String?
-  clicks      Int      @default(0)
-  createdAt   DateTime @default(now())
+/// A afiliação de uma pessoa a UM produto: é ela que carrega o link e a comissão.
+///
+/// A comissão é congelada aqui no momento em que a pessoa aceita. O produtor pode baixar
+/// a oferta do produto depois, e isso não reduz o que já foi prometido a quem se afiliou —
+/// mudar o combinado de alguém que já está vendendo seria calote, não ajuste de preço.
+model Affiliation {
+  id            String            @id @default(cuid())
+  productId     String
+  affiliateId   String
+  commissionBps Int
+  /// Código do link pessoal desta afiliação. Único na plataforma.
+  code          String            @unique
+  clicks        Int               @default(0)
+  status        AffiliationStatus @default(ACTIVE)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
-  checkout  Checkout? @relation(fields: [checkoutId], references: [id], onDelete: Cascade)
+  orders    Order[]
+
+  @@unique([productId, affiliateId])
 }
 
 /// Commissions only become AVAILABLE after the sale leaves the refund/chargeback risk window.
@@ -986,29 +1085,29 @@ model AffiliateCommission {
 }
 
 model Coupon {
-  id             String     @id @default(cuid())
-  organizationId String
-  code           String
-  type           CouponType
-  percentageBps  Int?
-  amount         BigInt?
-  currency       String?    @db.Char(3)
-  maxRedemptions Int?
+  id              String     @id @default(cuid())
+  organizationId  String
+  code            String
+  type            CouponType
+  percentageBps   Int?
+  amount          BigInt?
+  currency        String?    @db.Char(3)
+  maxRedemptions  Int?
   /// Counter kept in step with the redemption rows by a conditional update.
-  redemptions    Int        @default(0)
+  redemptions     Int        @default(0)
   /// Smallest order value the coupon applies to.
-  minAmount      BigInt?
+  minAmount       BigInt?
   /// When set, the coupon only works for this product.
-  productId      String?
+  productId       String?
   /// Blocks a second use by the same customer.
-  oncePerCustomer Boolean  @default(false)
-  expiresAt      DateTime?
-  active         Boolean    @default(true)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt @default(now())
+  oncePerCustomer Boolean    @default(false)
+  expiresAt       DateTime?
+  active          Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @default(now()) @updatedAt
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  product      Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product         Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
   redemptionsList CouponRedemption[]
 
   @@unique([organizationId, code])
@@ -1083,7 +1182,7 @@ model Lesson {
   externalUrl     String?
   content         String?
   createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt @default(now())
+  updatedAt       DateTime   @default(now()) @updatedAt
 
   module   Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   progress LessonProgress[]

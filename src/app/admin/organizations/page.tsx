@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatDate } from "@/lib/ui/format";
+import { formatAmount, formatDate } from "@/lib/ui/format";
+import type { OrganizationTotalsRow } from "@/modules/admin/platform-admin.repository";
 import { getServices } from "@/server/container";
 import { VERIFICATION_BADGE } from "../status-badges";
 
@@ -16,7 +17,11 @@ export const metadata = { title: "Organizações · Admin" };
 export default async function AdminOrganizationsPage({ searchParams }: PageProps<"/admin/organizations">) {
   const { q } = await searchParams;
   const query = typeof q === "string" ? q : undefined;
-  const organizations = await getServices().platformAdmin.listOrganizations(query);
+  const services = getServices();
+  const [organizations, totals] = await Promise.all([
+    services.platformAdmin.listOrganizations(query),
+    services.platformAdmin.organizationTotals(),
+  ]);
 
   return (
     <>
@@ -44,16 +49,18 @@ export default async function AdminOrganizationsPage({ searchParams }: PageProps
                 <TableRow>
                   <TableHead>Organização</TableHead>
                   <TableHead className="hidden lg:table-cell">País</TableHead>
-                  <TableHead>Verificação</TableHead>
-                  <TableHead className="hidden md:table-cell">Saques</TableHead>
+                  <TableHead className="text-right">Vendeu</TableHead>
+                  <TableHead className="hidden text-right sm:table-cell">Taxa gerada</TableHead>
+                  <TableHead className="hidden md:table-cell">Verificação</TableHead>
+                  <TableHead className="hidden lg:table-cell">Saques</TableHead>
                   <TableHead className="hidden text-right xl:table-cell">Produtos</TableHead>
-                  <TableHead className="hidden text-right xl:table-cell">Pedidos</TableHead>
                   <TableHead className="hidden lg:table-cell">Desde</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {organizations.map((organization) => {
                   const badge = VERIFICATION_BADGE[organization.verificationStatus ?? "NOT_STARTED"];
+                  const rows = totals.get(organization.id) ?? [];
                   return (
                     <TableRow key={organization.id}>
                       <TableCell className="max-w-[52vw] sm:max-w-none">
@@ -66,16 +73,21 @@ export default async function AdminOrganizationsPage({ searchParams }: PageProps
                         </span>
                       </TableCell>
                       <TableCell className="hidden text-muted-foreground lg:table-cell">{organization.country}</TableCell>
-                      <TableCell>
-                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                      <TableCell className="tabular text-right whitespace-nowrap">
+                        <Money rows={rows} pick={(row) => row.volume} />
+                      </TableCell>
+                      <TableCell className="tabular hidden text-right whitespace-nowrap text-muted-foreground sm:table-cell">
+                        <Money rows={rows} pick={(row) => row.revenue} />
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
+                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <Badge variant={organization.payoutsEnabled ? "success" : "outline"}>
                           {organization.payoutsEnabled ? "Liberados" : "Bloqueados"}
                         </Badge>
                       </TableCell>
                       <TableCell className="tabular hidden text-right text-muted-foreground xl:table-cell">{organization.products}</TableCell>
-                      <TableCell className="tabular hidden text-right text-muted-foreground xl:table-cell">{organization.orders}</TableCell>
                       <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">
                         {formatDate(organization.createdAt)}
                       </TableCell>
@@ -88,5 +100,20 @@ export default async function AdminOrganizationsPage({ searchParams }: PageProps
         </Card>
       )}
     </>
+  );
+}
+
+/**
+ * Um produtor pode vender em mais de uma moeda, e somar real com dólar daria um número que não
+ * existe. Cada moeda sai na sua linha; sem venda nenhuma, um traço.
+ */
+function Money({ rows, pick }: { rows: OrganizationTotalsRow[]; pick: (row: OrganizationTotalsRow) => bigint }) {
+  if (rows.length === 0) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span className="flex flex-col items-end">
+      {rows.map((row) => (
+        <span key={row.currency}>{formatAmount(pick(row), row.currency)}</span>
+      ))}
+    </span>
   );
 }

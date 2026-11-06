@@ -275,7 +275,7 @@ export class CheckoutService {
         couponId: applied?.coupon.id ?? null,
         couponCode: applied?.coupon.code ?? null,
         affiliateId: attribution?.affiliateId ?? null,
-        affiliateLinkId: attribution?.linkId ?? null,
+        affiliationId: attribution?.affiliationId ?? null,
         taxAmount: tax.taxAmount.amount,
         taxRegime: tax.regime,
         totalAmount: total,

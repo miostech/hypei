@@ -9,6 +9,10 @@ export interface ProductWriteRecord {
   type: ProductType;
   status: ProductStatus;
   thumbnailKey?: string | null;
+  /** O programa de afiliados deste produto. Escrito pelo serviço de afiliados, não pelo formulário. */
+  affiliationEnabled?: boolean;
+  affiliateCommissionBps?: number | null;
+  affiliateInviteCode?: string | null;
 }
 
 export type ProductWithOfferCount = Product & { _count: { offers: number } };

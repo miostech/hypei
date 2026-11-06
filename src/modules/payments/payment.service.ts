@@ -3,12 +3,14 @@ import { addDays, type Clock } from "@/lib/clock";
 import { NotFoundError, ProviderError } from "@/lib/errors";
 import { createDomainEvent } from "@/lib/events/domain-event";
 import { logger } from "@/lib/logger";
-import { assertSupportedCurrency, money } from "@/lib/money";
+import { assertSupportedCurrency, money, type Money } from "@/lib/money";
 import type { NormalizedProviderEvent, PaymentProvider } from "@/lib/providers/payment/types";
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
-import { calculateFeeBreakdown, NO_PLATFORM_FEE } from "@/modules/fees/fee.calculator";
+import { calculateFeeBreakdown, publishedPlatformFee, type AffiliateShare } from "@/modules/fees/fee.calculator";
+import { publishedReserve, reserveAmountFor } from "@/modules/reserves/reserve.calculator";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import { grantOrderAccess } from "@/modules/members/access";
+import type { Repositories } from "@/server/repositories";
 import type { UnitOfWork } from "@/server/unit-of-work";
 import { canTransition, isCaptured } from "./payment-status";
 
@@ -116,6 +118,29 @@ export class PaymentService {
   }
 
   /**
+   * Quanto o afiliado ganha nesta venda, e sobre qual parte dela.
+   *
+   * A afiliação é por produto, então a base é só a fatia do produto afiliado — não o pedido
+   * inteiro. Sem isto, um order bump de outro produto pagaria comissão a quem não o indicou.
+   *
+   * A afiliação é relida aqui, e não copiada da que valia no checkout, porque a comissão
+   * congelada é a da afiliação; e `status` ou `active` podem ter mudado entre a criação do
+   * pedido e a confirmação do pagamento. Quem foi desligado nesse intervalo não ganha.
+   */
+  private async affiliateShare(
+    repos: Repositories,
+    order: { id: string; affiliationId: string | null } | null,
+    gross: Money,
+  ): Promise<AffiliateShare | undefined> {
+    if (!order?.affiliationId) return undefined;
+    const affiliation = await repos.affiliates.findAffiliationById(order.affiliationId);
+    if (!affiliation) return undefined;
+
+    const affiliated = await repos.orders.productItemsTotal(order.id, affiliation.productId);
+    return { bps: affiliation.commissionBps, base: money(affiliated, gross.currency) };
+  }
+
+  /**
    * Applies a confirmed capture atomically:
    * Payment PAID + Order PAID + Transactions + ledger journal + balance projection + outbox.
    * Idempotent: a duplicate/late event for an already captured payment is a no-op.
@@ -140,29 +165,34 @@ export class PaymentService {
 
       const organization = await repos.organizations.findById(payment.organizationId);
       if (!organization) throw new NotFoundError("Organization", payment.organizationId);
-      const scope = { organizationId: organization.id, country: organization.country, currency: payment.currency };
-      const feeRule = (await repos.policies.findPlatformFeeRule(scope)) ?? NO_PLATFORM_FEE;
+      // O meio de pagamento entra na conta do prazo: cartão demora a compensar, Pix e boleto não.
+      const method = event.paymentMethod ?? payment.paymentMethod;
+      const scope = { organizationId: organization.id, country: organization.country, currency: payment.currency, method };
+      // Sem política cadastrada vale a taxa anunciada, não zero. O default anterior era
+      // `NO_PLATFORM_FEE`, e faltar uma linha no banco não dava erro: dava venda de graça,
+      // em silêncio, para sempre. Errar para o lado da taxa publicada é recuperável — o
+      // produtor reclama e o valor se devolve. Errar para zero não aparece em lugar nenhum.
+      const feeRule = (await repos.policies.findPlatformFeeRule(scope)) ?? publishedPlatformFee(payment.currency);
+      const reserveRule = (await repos.policies.findReserveRule(scope)) ?? publishedReserve(payment.currency);
       const delayDays = (await repos.policies.findSettlementDelayDays(scope)) ?? this.config.defaultSettlementDelayDays;
 
       const gross = money(payment.amount, payment.currency);
       // A referred sale pays the affiliate out of the producer's share, so the
       // commission has to be known before the split is written anywhere.
       const order = await repos.orders.findById(payment.organizationId, payment.orderId);
-      const affiliate = order?.affiliateId
-        ? await repos.affiliates.findById(payment.organizationId, order.affiliateId)
-        : null;
       const fees = calculateFeeBreakdown(
         gross,
         money(event.processorFeeAmount, payment.currency),
         feeRule,
-        affiliate?.active ? affiliate.commissionBps : 0,
+        await this.affiliateShare(repos, order, gross),
       );
       const paidAt = event.occurredAt;
+      const reserved = reserveAmountFor(gross, fees.producerNetAmount, reserveRule);
 
       await repos.payments.update(payment.id, {
         status: "PAID",
         paidAt,
-        paymentMethod: event.paymentMethod ?? payment.paymentMethod,
+        paymentMethod: method,
         providerChargeId: event.providerChargeId,
         processorFeeAmount: fees.processorFeeAmount.amount,
         platformFeeAmount: fees.platformFeeAmount.amount,
@@ -217,8 +247,25 @@ export class PaymentService {
         currency: gross.currency,
         description: "Venda confirmada",
         lines: [
-          { account: "PLATFORM_CASH", direction: "DEBIT", amount: fees.grossAmount.amount, description: "Valor bruto da venda" },
-          { account: "PROCESSOR_FEES", direction: "CREDIT", amount: fees.processorFeeAmount.amount, description: "Taxa de processamento" },
+          // O adquirente retém a taxa dele antes de o dinheiro chegar: entra em caixa o
+          // líquido, e o que ficou com ele vira despesa da Kabrun — não desconto do produtor.
+          {
+            account: "PLATFORM_CASH",
+            direction: "DEBIT",
+            amount: fees.grossAmount.amount - fees.processorFeeAmount.amount,
+            description: "Valor da venda, líquido do adquirente",
+          },
+          // Zero quando o provedor não cobra nada nesta venda — e lançamento de zero o ledger recusa.
+          ...(fees.processorFeeAmount.amount > 0n
+            ? [
+                {
+                  account: "PROCESSOR_FEES" as const,
+                  direction: "DEBIT" as const,
+                  amount: fees.processorFeeAmount.amount,
+                  description: "Taxa do adquirente",
+                },
+              ]
+            : []),
           { account: "PLATFORM_REVENUE", direction: "CREDIT", amount: fees.platformFeeAmount.amount, description: "Taxa Kabrun" },
           ...(fees.affiliateCommissionAmount.amount > 0n
             ? [
@@ -230,9 +277,31 @@ export class PaymentService {
                 },
               ]
             : []),
-          { account: "PRODUCER_PENDING", direction: "CREDIT", amount: fees.producerNetAmount.amount, description: "Saldo pendente do produtor" },
+          {
+            account: "PRODUCER_PENDING",
+            direction: "CREDIT",
+            amount: fees.producerNetAmount.amount - reserved,
+            description: "Saldo pendente do produtor",
+          },
+          // A reserva nasce fora do saldo dela: é dinheiro do produtor, mas que só passa a ser
+          // sacável depois da janela de contestação.
+          ...(reserved > 0n
+            ? [{ account: "RESERVES" as const, direction: "CREDIT" as const, amount: reserved, description: "Reserva de segurança" }]
+            : []),
         ],
       });
+
+      if (reserved > 0n) {
+        await repos.reserves.create({
+          organizationId: payment.organizationId,
+          amount: reserved,
+          currency: payment.currency,
+          reason: "security",
+          referenceType: "Payment",
+          referenceId: payment.id,
+          releaseAt: addDays(paidAt, reserveRule.holdDays),
+        });
+      }
 
       if (order?.affiliateId && fees.affiliateCommissionAmount.amount > 0n) {
         await this.affiliates.recordCommission(repos, payment, {

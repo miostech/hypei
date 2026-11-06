@@ -11,6 +11,7 @@ import { BillingInterval, BillingType } from "@/generated/prisma/enums";
 import { SUPPORTED_CURRENCIES } from "@/lib/money/currency";
 import { idleState, type ActionState } from "@/lib/actions/action-state";
 import { useAppDictionary } from "@/lib/i18n/app/provider";
+import { fill } from "@/lib/i18n/locale";
 
 export interface OfferFormValues {
   id?: string;
@@ -30,16 +31,20 @@ export function OfferForm({
   products,
   defaultValues,
   submitLabel,
+  settlesIn,
 }: {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   products: { id: string; name: string }[];
   defaultValues: OfferFormValues;
   submitLabel: string;
+  /** A moeda que a conta de recebimento recebe, para avisar quando a oferta é em outra. */
+  settlesIn: string | null;
 }) {
   const dict = useAppDictionary();
   const t = dict.offerForm;
   const [state, formAction] = useActionState(action, idleState);
   const [billingType, setBillingType] = useState(defaultValues.billingType);
+  const [currency, setCurrency] = useState(defaultValues.currency);
   const fieldError = (field: string) => (state.status === "error" ? state.fieldErrors?.[field] : undefined);
 
   useEffect(() => {
@@ -75,7 +80,16 @@ export function OfferForm({
               hint={t.priceHint}
               error={fieldError("price")}
             />
-            <SelectField label={t.currency} name="currency" defaultValue={defaultValues.currency} error={fieldError("currency")}>
+            <SelectField
+              label={t.currency}
+              name="currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              // O saldo nasce na moeda da venda e o saque sai nela: vender em dólar com conta
+              // em real é saldo que ela não consegue sacar. Melhor saber antes de publicar.
+              hint={settlesIn && settlesIn !== currency ? fill(t.currencySettlement, { currency, account: settlesIn }) : undefined}
+              error={fieldError("currency")}
+            >
               {SUPPORTED_CURRENCIES.map((currency) => (
                 <option key={currency} value={currency}>
                   {currency}

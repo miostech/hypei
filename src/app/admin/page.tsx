@@ -5,8 +5,9 @@ import { StatCard } from "@/components/shared/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatAmount } from "@/lib/ui/format";
-import { ADMIN_WINDOW_DAYS } from "@/modules/admin/platform-admin.service";
+import { ADMIN_PERIOD_PHRASE, parseAdminPeriod } from "@/modules/admin/admin-period";
 import { getServices } from "@/server/container";
+import { AdminPeriodTabs } from "./period-tabs";
 
 export const metadata = { title: "Admin" };
 
@@ -29,33 +30,57 @@ function MoneyList({ entries, empty }: { entries: { currency: string; amount: bi
   );
 }
 
-export default async function AdminHomePage() {
-  const overview = await getServices().platformAdmin.overview();
-  const primary = overview.volume[0];
+export default async function AdminHomePage({ searchParams }: PageProps<"/admin">) {
+  const period = parseAdminPeriod((await searchParams).periodo);
+  const overview = await getServices().platformAdmin.overview(period);
+  const phrase = ADMIN_PERIOD_PHRASE[period];
+
+  const sales = byCurrency(overview.volume.map((row) => ({ currency: row.currency, amount: row.total })));
+  const revenue = byCurrency(overview.revenue.map((row) => ({ currency: row.currency, amount: row.net })));
+  const profit = byCurrency(overview.profit.map((row) => ({ currency: row.currency, amount: row.net })));
+  const accumulated = byCurrency(overview.revenueAllTime.map((row) => ({ currency: row.currency, amount: row.net })));
+  const payments = overview.volume.reduce((total, row) => total + row.count, 0);
+  const negative = overview.profit.some((row) => row.net < 0n);
 
   return (
     <>
       <PageHeader
         title="Visão da plataforma"
-        description={`Números de toda a Kabrun. Volume e vendas consideram os últimos ${ADMIN_WINDOW_DAYS} dias; os saldos são acumulados.`}
+        description={`Números de toda a Kabrun. Vendas, taxa e lucro são ${phrase}; dívidas e cadastros são a posição de agora.`}
       />
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <AdminPeriodTabs active={period} />
+
+      {/*
+        Três números na ordem em que a pergunta é feita: quanto entrou de venda, quanto disso é
+        taxa nossa e quanto sobrou depois do adquirente.
+      */}
+      <section className={`grid gap-4 sm:grid-cols-2 ${period === "tudo" ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
         <StatCard
-          label={`Volume (${ADMIN_WINDOW_DAYS} dias)`}
-          value={primary ? formatAmount(primary.total, primary.currency) : "—"}
-          hint={primary ? `${primary.count} pagamento(s)` : "Nenhum pagamento no período"}
+          label="Vendas (bruto)"
+          value={sales ?? "—"}
+          hint={payments > 0 ? `${payments} pagamento(s) ${phrase}` : "Nenhum pagamento no período"}
         />
         <StatCard
           label="Receita Kabrun"
-          value={overview.revenue[0] ? formatAmount(overview.revenue[0].net, overview.revenue[0].currency) : "—"}
-          hint="Taxas acumuladas, já descontados estornos"
+          value={revenue ?? "—"}
+          hint="Taxa cobrada, já descontados estornos"
           tone="positive"
         />
-        <StatCard label="Organizações" value={String(overview.organizations.total)} hint="Produtores cadastrados" />
+        <StatCard
+          label="Lucro líquido"
+          value={profit ?? "—"}
+          hint="Depois do que pagamos ao adquirente"
+          tone={negative ? "warning" : "positive"}
+        />
+        {/* Em "todo o tempo" o acumulado É o recorte: dois cards com o mesmo número parecem erro. */}
+        {period !== "tudo" && (
+          <StatCard label="Taxas desde o início" value={accumulated ?? "—"} hint="Acumulado, fora do recorte" tone="muted" />
+        )}
         <StatCard
           label="Disputas abertas"
           value={String(overview.openDisputes)}
+          hint={`${overview.organizations.total} produtor(es) cadastrado(s)`}
           tone={overview.openDisputes > 0 ? "warning" : "muted"}
         />
       </section>
@@ -78,10 +103,7 @@ export default async function AdminHomePage() {
               <span className="text-muted-foreground">Comissões a pagar</span>
               <MoneyList entries={overview.affiliatePayable.map((row) => ({ currency: row.currency, amount: row.net }))} empty="Nenhuma" />
             </p>
-            <p className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Taxas do processador</span>
-              <MoneyList entries={overview.processorFees.map((row) => ({ currency: row.currency, amount: row.net }))} empty="—" />
-            </p>
+
           </CardContent>
         </Card>
 
@@ -159,4 +181,17 @@ function AttentionRow({
       <span className="tabular font-semibold">{value}</span>
     </Link>
   );
+}
+
+/**
+ * Uma linha por moeda. Somar real com dólar daria um número que não existe, e empilhar as duas
+ * numa linha só — "R$ 15.971,60 · $200.00" — vira um texto que ninguém lê como dois valores.
+ * Devolve `null` quando não houve nada, para quem chama mostrar o traço.
+ */
+function byCurrency(entries: { currency: string; amount: bigint }[]): string[] | null {
+  const real = entries.filter((entry) => entry.amount !== 0n);
+  if (real.length === 0) return null;
+  // Ordem alfabética — BRL, EUR, USD — porque o `GROUP BY` não promete nenhuma, e o mesmo card
+  // trocava as moedas de lugar quando a operação mudava o recorte.
+  return real.sort((a, b) => a.currency.localeCompare(b.currency)).map((entry) => formatAmount(entry.amount, entry.currency));
 }

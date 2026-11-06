@@ -43,7 +43,7 @@ export function TodaySalesHero({
 
   return (
     <section
-      className={cn("bg-brand-gradient relative isolate overflow-hidden rounded-2xl p-6 text-white shadow-lift sm:p-7", className)}
+      className={cn("bg-brand-gradient relative isolate overflow-hidden rounded-xl p-6 text-white shadow-lift sm:p-7", className)}
     >
       <span aria-hidden className="bg-dot-grid pointer-events-none absolute inset-0 text-white/15 opacity-40" />
       <span

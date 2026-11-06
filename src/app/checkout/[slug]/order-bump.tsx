@@ -29,7 +29,7 @@ export function OrderBumps({ dict, accentColor }: { dict: CheckoutDictionary; ac
             type="button"
             onClick={() => toggleBump(bump.offerId)}
             aria-pressed={added}
-            className="flex w-full items-start gap-3 rounded-2xl border-2 border-dashed bg-card p-4 text-left transition-colors hover:bg-muted/40"
+            className="flex w-full items-start gap-3 rounded-xl border-2 border-dashed bg-card p-4 text-left transition-colors hover:bg-muted/40"
             style={added ? { borderColor: accentColor, borderStyle: "solid" } : undefined}
           >
             <span

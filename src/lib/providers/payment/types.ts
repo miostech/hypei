@@ -2,6 +2,7 @@ import type {
   MerchantAccountStatus,
   PaymentMethodType,
   PaymentProviderType,
+  PixKeyType,
 } from "@/generated/prisma/enums";
 import type { CurrencyCode } from "@/lib/money";
 
@@ -81,10 +82,23 @@ export interface MerchantOnboardingLinkInput {
   mode: "onboarding" | "update";
 }
 
+/**
+ * Para onde o dinheiro vai quando não é a conta conectada do provedor. Hoje só o Pix: a
+ * conta bancária de fora do Brasil fica dentro da própria conta conectada, e o provedor já
+ * sabe dela.
+ */
+export interface PayoutDestinationInput {
+  type: "PIX";
+  keyType: PixKeyType;
+  key: string;
+}
+
 export interface CreatePayoutInput {
   providerAccountId: string;
   amount: bigint;
   currency: CurrencyCode;
+  /** Ausente quando o destino é a conta conectada. */
+  destination?: PayoutDestinationInput;
   metadata: ProviderMetadata;
   idempotencyKey: string;
 }

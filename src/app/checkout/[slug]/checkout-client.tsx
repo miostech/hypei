@@ -12,6 +12,7 @@ import type { CheckoutDictionary } from "@/lib/i18n/checkout";
 import { fill, type Locale } from "@/lib/i18n/locale";
 import type { CountryCode } from "@/modules/organizations/countries";
 import type { TrackingInput } from "@/modules/checkout/checkout.schemas";
+import { REFERRAL_COOKIE, REFERRAL_MAX_AGE_SECONDS, normalizeReferralCode } from "@/modules/affiliates/referral";
 import { applyCouponAction, registerAffiliateClick, startCheckoutAction, trackCheckoutEvent } from "./actions";
 import { useCheckoutState } from "./checkout-state";
 import { MockPaymentPanel } from "./mock-payment-panel";
@@ -70,13 +71,13 @@ export function CheckoutClient({
   const attemptId = useMemo(() => crypto.randomUUID(), []);
   const payLabel = format(total);
 
-  // A referral survives for 30 days: people rarely buy on the first visit, and the
-  // affiliate who sent them should still get the credit when they come back.
+  // Quem chega por `/r/<code>` já vem com o cookie gravado pelo servidor. Isto cobre o resto:
+  // um `?ref=` colado à mão, ou um link antigo que aponta direto para o checkout.
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("ref");
     if (!fromUrl) return;
-    const code = fromUrl.trim().toUpperCase();
-    document.cookie = `kabrun_ref=${encodeURIComponent(code)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+    const code = normalizeReferralCode(fromUrl);
+    document.cookie = `${REFERRAL_COOKIE}=${encodeURIComponent(code)}; path=/; max-age=${REFERRAL_MAX_AGE_SECONDS}; SameSite=Lax`;
     void registerAffiliateClick(code);
   }, []);
 
@@ -109,8 +110,8 @@ export function CheckoutClient({
   /** Read at submit time: the code lives in the URL or in the cookie, never in state. */
   function currentReferral(): string | undefined {
     const fromUrl = new URLSearchParams(window.location.search).get("ref");
-    if (fromUrl) return fromUrl.trim().toUpperCase();
-    const stored = document.cookie.match(/(?:^|;\s*)kabrun_ref=([^;]+)/)?.[1];
+    if (fromUrl) return normalizeReferralCode(fromUrl);
+    const stored = document.cookie.match(new RegExp(`(?:^|;\\s*)${REFERRAL_COOKIE}=([^;]+)`))?.[1];
     return stored ? decodeURIComponent(stored) : undefined;
   }
 
@@ -146,7 +147,7 @@ export function CheckoutClient({
     // O &lang= vai na URL de retorno porque a página de obrigado é outra requisição: sem ele,
     // um comprador que chegou por ?lang= voltaria do provedor para uma tela em português.
     return (
-      <div className="space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
+      <div className="space-y-5 rounded-xl border bg-card p-6 shadow-soft">
         <h2 className="font-heading text-lg font-semibold">{dict.payment.title}</h2>
         {provider === "STRIPE" && publishableKey && payment.clientSecret ? (
           <StripePaymentPanel
@@ -169,7 +170,7 @@ export function CheckoutClient({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
+    <form action={handleSubmit} className="space-y-5 rounded-xl border bg-card p-6 shadow-soft">
       <h2 className="font-heading text-lg font-semibold">{dict.form.title}</h2>
 
       <div className="space-y-1.5">

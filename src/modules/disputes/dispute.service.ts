@@ -7,6 +7,7 @@ import type { NormalizedProviderEvent } from "@/lib/providers/payment/types";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import { revokeOrderAccess } from "@/modules/members/access";
 import { producerAccountFor, splitByOriginalShares } from "@/modules/payments/payment-shares";
+import { ReserveService } from "@/modules/reserves/reserve.service";
 import type { Repositories } from "@/server/repositories";
 import type { AffiliateService } from "@/modules/affiliates/affiliate.service";
 import type { UnitOfWork } from "@/server/unit-of-work";
@@ -24,7 +25,8 @@ const STATUS_MAP: Record<DisputeEvent["status"], DisputeStatus> = {
  * Chargebacks:
  * - opened → producer share of the disputed amount is moved to RESERVES (held);
  * - won    → held amount returns to the producer;
- * - lost   → held amount + platform/processor shares leave platform cash (CHARGEBACKS expense).
+ * - lost   → held amount + platform share leave platform cash; o custo de adquirência da
+ *            venda perdida é reclassificado de PROCESSOR_FEES para CHARGEBACKS.
  * Events may arrive out of order; each ledger step has its own idempotency key.
  */
 export class DisputeService {
@@ -65,20 +67,27 @@ export class DisputeService {
       status: "OPEN",
       evidenceDueAt: event.evidenceDueAt,
     });
-    await this.ledger.post(repos, {
-      organizationId: payment.organizationId,
-      idempotencyKey: `dispute:${dispute.id}:hold`,
-      type: "dispute.hold",
-      referenceType: "Dispute",
-      referenceId: dispute.id,
-      paymentId: payment.id,
-      currency: assertSupportedCurrency(payment.currency),
-      description: "Reserva por disputa/chargeback",
-      lines: [
-        { account: producerAccountFor(payment), direction: "DEBIT", amount: shares.producer },
-        { account: "RESERVES", direction: "CREDIT", amount: shares.producer },
-      ],
-    });
+    // O que a reserva de segurança já segurava desta venda não precisa ser segurado de novo:
+    // o dinheiro já está em RESERVES. Só o que falta sai do saldo dela — e a reserva passa a
+    // responder por esta disputa, em vez de vencer sozinha no prazo dela.
+    const fromReserve = await ReserveService.consume(repos, payment.id, shares.producer);
+    const toHold = shares.producer - fromReserve;
+    if (toHold > 0n) {
+      await this.ledger.post(repos, {
+        organizationId: payment.organizationId,
+        idempotencyKey: `dispute:${dispute.id}:hold`,
+        type: "dispute.hold",
+        referenceType: "Dispute",
+        referenceId: dispute.id,
+        paymentId: payment.id,
+        currency: assertSupportedCurrency(payment.currency),
+        description: "Reserva por disputa/chargeback",
+        lines: [
+          { account: producerAccountFor(payment), direction: "DEBIT", amount: toHold },
+          { account: "RESERVES", direction: "CREDIT", amount: toHold },
+        ],
+      });
+    }
     await repos.outbox.add(createDomainEvent("dispute.created", dispute.id, payment.organizationId, { paymentId: payment.id, amount: event.amount }));
     return dispute;
   }
@@ -116,7 +125,14 @@ export class DisputeService {
       lines: [
         { account: "RESERVES", direction: "DEBIT", amount: dispute.heldAmount },
         { account: "PLATFORM_REVENUE", direction: "DEBIT", amount: shares.platform },
-        { account: "CHARGEBACKS", direction: "DEBIT", amount: shares.processor },
+        // Mesma reclassificação do reembolso: o que foi pago ao adquirente numa venda perdida
+        // é perda, não custo de receita. Par equilibrado, não mexe no fecho do lançamento.
+        ...(shares.processor > 0n
+          ? [
+              { account: "CHARGEBACKS" as const, direction: "DEBIT" as const, amount: shares.processor },
+              { account: "PROCESSOR_FEES" as const, direction: "CREDIT" as const, amount: shares.processor },
+            ]
+          : []),
         ...(shares.affiliate > 0n
           ? [{ account: "AFFILIATE_PAYABLE" as const, direction: "DEBIT" as const, amount: shares.affiliate }]
           : []),

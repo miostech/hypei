@@ -1,7 +1,16 @@
 import type { DbClient } from "@/lib/database/postgres/client";
-import type { Affiliate, AffiliateCommission, AffiliateLink, Prisma } from "@/generated/prisma/client";
+import type { Affiliate, AffiliateCommission, Affiliation, Prisma } from "@/generated/prisma/client";
 
-export type AffiliateWithLinks = Affiliate & { links: (AffiliateLink & { checkout: { slug: string; name: string } | null })[] };
+export type ProductSummary = { id: string; name: string; slug: string };
+
+export type AffiliateWithAffiliations = Affiliate & {
+  affiliations: (Affiliation & { product: ProductSummary })[];
+};
+
+/** Uma afiliação vista pelo lado de quem vende: o produto e de quem é o produto. */
+export type AffiliationWithProduct = Affiliation & {
+  product: ProductSummary & { organization: { name: string; slug: string } };
+};
 
 export interface AffiliateTotals {
   affiliateId: string;
@@ -18,34 +27,80 @@ export type CommissionListItem = AffiliateCommission & {
   order: { id: string; customer: { name: string; email: string }; items: { productName: string }[] };
 };
 
-/** What a referral code resolves to at checkout time. */
+/**
+ * O que um código de indicação resolve na hora do checkout.
+ *
+ * O `productId` vem junto porque a comissão é por produto: o pedido pode levar um order bump
+ * de outro produto, e pagar comissão sobre ele seria pagar por uma venda que não foi dela.
+ */
 export interface AttributionTarget {
   affiliateId: string;
-  linkId: string;
+  affiliationId: string;
+  productId: string;
   commissionBps: number;
   organizationId: string;
+}
+
+/** O produto que um link de convite abre, com a oferta de comissão que ele anuncia. */
+export type InviteTarget = {
+  id: string;
+  name: string;
+  slug: string;
+  organizationId: string;
+  affiliateCommissionBps: number | null;
+  organization: { name: string; slug: string };
+};
+
+/** Uma comissão vista do lado do pagamento: quanto, e para qual conta vai. */
+export type TransferableCommission = AffiliateCommission & {
+  affiliate: { id: string; name: string; payeeOrganizationId: string | null };
+};
+
+/** Quantas vendas indicadas, e quanto de comissão, numa moeda. */
+export interface ReferredSummary {
+  currency: string;
+  count: number;
+  total: bigint;
 }
 
 export interface AffiliateRepository {
   create(input: Prisma.AffiliateUncheckedCreateInput): Promise<Affiliate>;
   update(organizationId: string, id: string, data: Prisma.AffiliateUncheckedUpdateInput): Promise<Affiliate>;
-  findById(organizationId: string, id: string): Promise<AffiliateWithLinks | null>;
+  findById(organizationId: string, id: string): Promise<AffiliateWithAffiliations | null>;
   findByEmail(organizationId: string, email: string): Promise<Affiliate | null>;
-  list(organizationId: string): Promise<AffiliateWithLinks[]>;
+  findByUser(organizationId: string, userId: string): Promise<Affiliate | null>;
+  list(organizationId: string): Promise<AffiliateWithAffiliations[]>;
   totals(organizationId: string): Promise<AffiliateTotals[]>;
 
-  createLink(input: { affiliateId: string; code: string; checkoutId: string | null }): Promise<AffiliateLink>;
-  findLinkByCode(code: string): Promise<AttributionTarget | null>;
+  createAffiliation(input: { productId: string; affiliateId: string; commissionBps: number; code: string }): Promise<Affiliation>;
+  findAffiliation(productId: string, affiliateId: string): Promise<Affiliation | null>;
+  findAffiliationById(id: string): Promise<Affiliation | null>;
+  findAffiliationByCode(code: string): Promise<AttributionTarget | null>;
+  setAffiliationStatus(id: string, status: Affiliation["status"]): Promise<void>;
   registerClick(code: string): Promise<void>;
+  /** As afiliações de uma pessoa, em todos os produtores. A área dela é montada daqui. */
+  listAffiliationsForUser(userId: string): Promise<AffiliationWithProduct[]>;
+
+  /** O produto por trás de um link de convite, se ele ainda aceita afiliados. */
+  findProductByInviteCode(code: string): Promise<InviteTarget | null>;
 
   createCommission(input: Prisma.AffiliateCommissionUncheckedCreateInput): Promise<AffiliateCommission>;
   findCommissionByOrder(orderId: string): Promise<AffiliateCommission | null>;
   updateCommission(id: string, data: Prisma.AffiliateCommissionUncheckedUpdateInput): Promise<AffiliateCommission>;
   /** Commissions of payments whose settlement window has closed. */
   markSettledCommissions(paymentIds: string[]): Promise<number>;
+  /** Comissões liberadas de um pedido cujo afiliado tem conta na Kabrun para receber. */
+  listTransferableByOrder(orderId: string): Promise<TransferableCommission[]>;
+  findCommissionWithPayee(orderId: string): Promise<TransferableCommission | null>;
   listCommissions(organizationId: string, limit: number): Promise<CommissionListItem[]>;
   listPayable(organizationId: string, affiliateId: string): Promise<AffiliateCommission[]>;
+  /** As comissões de uma pessoa, olhando pela conta que recebe — não pela que paga. */
+  listCommissionsForPayee(payeeOrganizationId: string, limit: number): Promise<CommissionListItem[]>;
+  /** As vendas que ela trouxe numa janela, e o que elas renderam. */
+  referredSummary(payeeOrganizationId: string, since: Date): Promise<ReferredSummary[]>;
 }
+
+const AFFILIATION_INCLUDE = { product: { select: { id: true, name: true, slug: true } } } as const;
 
 export class PrismaAffiliateRepository implements AffiliateRepository {
   constructor(private readonly db: DbClient) {}
@@ -63,7 +118,7 @@ export class PrismaAffiliateRepository implements AffiliateRepository {
   findById(organizationId: string, id: string) {
     return this.db.affiliate.findFirst({
       where: { id, organizationId },
-      include: { links: { include: { checkout: { select: { slug: true, name: true } } } } },
+      include: { affiliations: { include: AFFILIATION_INCLUDE } },
     });
   }
 
@@ -71,10 +126,14 @@ export class PrismaAffiliateRepository implements AffiliateRepository {
     return this.db.affiliate.findFirst({ where: { organizationId, email: email.toLowerCase() } });
   }
 
+  findByUser(organizationId: string, userId: string) {
+    return this.db.affiliate.findFirst({ where: { organizationId, userId } });
+  }
+
   list(organizationId: string) {
     return this.db.affiliate.findMany({
       where: { organizationId },
-      include: { links: { include: { checkout: { select: { slug: true, name: true } } } } },
+      include: { affiliations: { include: AFFILIATION_INCLUDE } },
       orderBy: [{ active: "desc" }, { createdAt: "desc" }],
     });
   }
@@ -100,26 +159,72 @@ export class PrismaAffiliateRepository implements AffiliateRepository {
     return [...totals.values()];
   }
 
-  createLink(input: { affiliateId: string; code: string; checkoutId: string | null }) {
-    return this.db.affiliateLink.create({ data: input });
+  createAffiliation(input: { productId: string; affiliateId: string; commissionBps: number; code: string }) {
+    return this.db.affiliation.create({ data: input });
   }
 
-  async findLinkByCode(code: string): Promise<AttributionTarget | null> {
-    const link = await this.db.affiliateLink.findUnique({
-      where: { code },
-      include: { affiliate: { select: { id: true, commissionBps: true, active: true, organizationId: true } } },
+  findAffiliation(productId: string, affiliateId: string) {
+    return this.db.affiliation.findUnique({ where: { productId_affiliateId: { productId, affiliateId } } });
+  }
+
+  /**
+   * A afiliação ativa, pelo id. Devolve null quando ela foi encerrada ou a pessoa foi
+   * desativada: quem chama na hora de pagar precisa do estado de agora, não do da venda.
+   */
+  async findAffiliationById(id: string) {
+    const affiliation = await this.db.affiliation.findFirst({
+      where: { id, status: "ACTIVE", affiliate: { active: true } },
     });
-    if (!link || !link.affiliate.active) return null;
+    return affiliation;
+  }
+
+  async findAffiliationByCode(code: string): Promise<AttributionTarget | null> {
+    const affiliation = await this.db.affiliation.findUnique({
+      where: { code },
+      include: { affiliate: { select: { id: true, active: true, organizationId: true } } },
+    });
+    // As duas condições importam: o produtor pode desativar a pessoa inteira, ou encerrar
+    // apenas a afiliação a um produto. Qualquer das duas para de atribuir vendas novas.
+    if (!affiliation || affiliation.status !== "ACTIVE" || !affiliation.affiliate.active) return null;
     return {
-      affiliateId: link.affiliate.id,
-      linkId: link.id,
-      commissionBps: link.affiliate.commissionBps,
-      organizationId: link.affiliate.organizationId,
+      affiliateId: affiliation.affiliate.id,
+      affiliationId: affiliation.id,
+      productId: affiliation.productId,
+      commissionBps: affiliation.commissionBps,
+      organizationId: affiliation.affiliate.organizationId,
     };
   }
 
+  async setAffiliationStatus(id: string, status: Affiliation["status"]) {
+    await this.db.affiliation.update({ where: { id }, data: { status } });
+  }
+
   async registerClick(code: string) {
-    await this.db.affiliateLink.updateMany({ where: { code }, data: { clicks: { increment: 1 } } });
+    await this.db.affiliation.updateMany({ where: { code }, data: { clicks: { increment: 1 } } });
+  }
+
+  listAffiliationsForUser(userId: string) {
+    return this.db.affiliation.findMany({
+      where: { affiliate: { userId } },
+      include: {
+        product: { select: { id: true, name: true, slug: true, organization: { select: { name: true, slug: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  findProductByInviteCode(code: string) {
+    return this.db.product.findFirst({
+      where: { affiliateInviteCode: code, affiliationEnabled: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        organizationId: true,
+        affiliateCommissionBps: true,
+        organization: { select: { name: true, slug: true } },
+      },
+    });
   }
 
   createCommission(input: Prisma.AffiliateCommissionUncheckedCreateInput) {
@@ -144,6 +249,20 @@ export class PrismaAffiliateRepository implements AffiliateRepository {
     return result.count;
   }
 
+  listTransferableByOrder(orderId: string) {
+    return this.db.affiliateCommission.findMany({
+      where: { orderId, status: { in: ["AVAILABLE", "APPROVED"] }, affiliate: { payeeOrganizationId: { not: null } } },
+      include: { affiliate: { select: { id: true, name: true, payeeOrganizationId: true } } },
+    });
+  }
+
+  findCommissionWithPayee(orderId: string) {
+    return this.db.affiliateCommission.findFirst({
+      where: { orderId },
+      include: { affiliate: { select: { id: true, name: true, payeeOrganizationId: true } } },
+    });
+  }
+
   listCommissions(organizationId: string, limit: number) {
     return this.db.affiliateCommission.findMany({
       where: { organizationId },
@@ -161,6 +280,36 @@ export class PrismaAffiliateRepository implements AffiliateRepository {
   listPayable(organizationId: string, affiliateId: string) {
     return this.db.affiliateCommission.findMany({
       where: { organizationId, affiliateId, status: { in: ["AVAILABLE", "APPROVED"] } },
+    });
+  }
+
+  async referredSummary(payeeOrganizationId: string, since: Date): Promise<ReferredSummary[]> {
+    const rows = await this.db.affiliateCommission.groupBy({
+      by: ["currency"],
+      // Cancelada é venda desfeita: ela não entra na conta de quem indicou, como não entra
+      // na de quem vendeu.
+      where: { affiliate: { payeeOrganizationId }, createdAt: { gte: since }, status: { not: "CANCELED" } },
+      _sum: { amount: true, reversedAmount: true },
+      _count: true,
+    });
+    return rows.map((row) => ({
+      currency: row.currency,
+      count: row._count,
+      total: (row._sum.amount ?? 0n) - (row._sum.reversedAmount ?? 0n),
+    }));
+  }
+
+  listCommissionsForPayee(payeeOrganizationId: string, limit: number) {
+    return this.db.affiliateCommission.findMany({
+      where: { affiliate: { payeeOrganizationId } },
+      include: {
+        affiliate: { select: { id: true, name: true, email: true } },
+        order: {
+          select: { id: true, customer: { select: { name: true, email: true } }, items: { select: { productName: true }, take: 1 } },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
     });
   }
 }

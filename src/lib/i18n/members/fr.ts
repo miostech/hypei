@@ -19,6 +19,14 @@ const fr: MembersDictionary = {
     start: "Commencer",
   },
 
+  student: {
+    title: "Espace élève",
+    subtitle: "Tout ce que vous avez acheté, chez tous les vendeurs.",
+    emptyTitle: "Vous n'avez encore rien acheté",
+    emptyBody: "Ce que vous achetez apparaît ici, prêt à être regardé.",
+    producerPanel: "Espace vendeur",
+  },
+
   course: {
     title: "Contenu",
     teamPreview: "Aperçu de l'équipe",

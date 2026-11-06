@@ -21,10 +21,10 @@ export interface AffiliateValues {
 
 export function AffiliateDialog({
   affiliate,
-  checkouts,
+  products,
 }: {
   affiliate?: AffiliateValues;
-  checkouts: { id: string; name: string }[];
+  products: { id: string; name: string }[];
 }) {
   const dict = useAppDictionary();
   const t = dict.affiliates.dialog;
@@ -83,11 +83,12 @@ export function AffiliateDialog({
             error={error("commissionBps")}
           />
 
-          {!affiliate && checkouts.length > 0 && (
-            <SelectField label={t.checkout} name="checkoutId" error={error("checkoutId")}>
-              {checkouts.map((checkout) => (
-                <option key={checkout.id} value={checkout.id}>
-                  {checkout.name}
+          {/* A afiliação é por produto: sem escolher um, a pessoa fica cadastrada sem ter o que divulgar. */}
+          {!affiliate && products.length > 0 && (
+            <SelectField label={t.product} name="productId" error={error("productId")}>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
                 </option>
               ))}
             </SelectField>

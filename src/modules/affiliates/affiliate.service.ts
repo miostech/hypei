@@ -5,7 +5,9 @@ import { assertSupportedCurrency } from "@/lib/money";
 import type { LedgerService } from "@/modules/ledger/ledger.service";
 import type { Repositories } from "@/server/repositories";
 import type { UnitOfWork } from "@/server/unit-of-work";
+import type { TransferableCommission } from "./affiliate.repository";
 import type { AffiliateInput } from "./affiliate.schemas";
+import { normalizeReferralCode } from "./referral";
 
 /** Short, unambiguous code for referral links (no vowels: never spells a word). */
 function generateCode(): string {
@@ -58,8 +60,17 @@ export class AffiliateService {
         commissionBps: input.commissionBps,
         active: input.active,
       });
-      // Every affiliate starts with one link, otherwise they have nothing to share.
-      await repos.affiliates.createLink({ affiliateId: affiliate.id, code: generateCode(), checkoutId: input.checkoutId || null });
+      // Sem afiliação a pessoa não tem o que divulgar. O produto escolhido manda a comissão
+      // quando oferece uma; senão vale a que o produtor digitou para esta pessoa.
+      if (input.productId) {
+        const product = await repos.products.findById(organizationId, input.productId);
+        await repos.affiliates.createAffiliation({
+          productId: input.productId,
+          affiliateId: affiliate.id,
+          commissionBps: product?.affiliateCommissionBps ?? input.commissionBps,
+          code: generateCode(),
+        });
+      }
       await repos.audit.record({
         organizationId,
         userId,
@@ -105,25 +116,187 @@ export class AffiliateService {
     });
   }
 
-  async addLink(organizationId: string, id: string, checkoutId: string | null) {
-    await this.get(organizationId, id);
-    return this.uow.repos.affiliates.createLink({ affiliateId: id, code: generateCode(), checkoutId });
+  /**
+   * Liga afiliação no produto e devolve o código do convite.
+   *
+   * O código é gerado uma vez e fica: o produtor manda esse link para muita gente, e trocá-lo
+   * a cada edição invalidaria convites que já estão circulando. Desligar a afiliação não o
+   * apaga — só fecha a porta, e religar volta a aceitar pelo mesmo link.
+   */
+  async enableAffiliation(organizationId: string, userId: string, productId: string, commissionBps: number) {
+    return this.uow.transaction(async (repos) => {
+      const product = await repos.products.findById(organizationId, productId);
+      if (!product) throw new NotFoundError("Product", productId);
+
+      const inviteCode = product.affiliateInviteCode ?? generateCode();
+      await repos.products.update(organizationId, productId, {
+        affiliationEnabled: true,
+        affiliateCommissionBps: commissionBps,
+        affiliateInviteCode: inviteCode,
+      });
+      await repos.audit.record({
+        organizationId,
+        userId,
+        action: "product.affiliation_enabled",
+        entity: "Product",
+        entityId: productId,
+        metadata: { commissionBps },
+      });
+      return { inviteCode };
+    });
+  }
+
+  /** Fecha o convite. As afiliações que já existem continuam valendo e vendendo. */
+  async disableAffiliation(organizationId: string, userId: string, productId: string) {
+    await this.uow.transaction(async (repos) => {
+      await repos.products.update(organizationId, productId, { affiliationEnabled: false });
+      await repos.audit.record({
+        organizationId,
+        userId,
+        action: "product.affiliation_disabled",
+        entity: "Product",
+        entityId: productId,
+      });
+    });
+  }
+
+  /** O produto que um convite abre, para a página de confirmação mostrar o que está sendo oferecido. */
+  invitation(code: string) {
+    return this.uow.repos.affiliates.findProductByInviteCode(normalizeReferralCode(code));
+  }
+
+  /**
+   * A pessoa aceita o convite e passa a ter o link dela para aquele produto.
+   *
+   * O `payeeOrganizationId` é a conta que vai receber: se ela já vende na Kabrun, a comissão
+   * cai no mesmo saldo das vendas dela. Quem nunca vendeu chega aqui sem organização, e a
+   * afiliação é criada sem conta de destino — o dinheiro fica devido até ela ter uma.
+   *
+   * Idempotente de propósito: clicar duas vezes no convite devolve a mesma afiliação, em vez
+   * de criar um segundo código para a mesma pessoa no mesmo produto.
+   */
+  async acceptInvitation(input: { code: string; user: { id: string; name: string | null; email: string }; payeeOrganizationId: string | null }) {
+    return this.uow.transaction(async (repos) => {
+      const product = await repos.affiliates.findProductByInviteCode(normalizeReferralCode(input.code));
+      if (!product) throw new NotFoundError("Convite", input.code);
+      if (product.organizationId === input.payeeOrganizationId) {
+        throw new ValidationError("Você não pode se afiliar a um produto da sua própria conta");
+      }
+
+      const email = input.user.email.toLowerCase();
+      const existing =
+        (await repos.affiliates.findByUser(product.organizationId, input.user.id)) ??
+        (await repos.affiliates.findByEmail(product.organizationId, email));
+
+      const affiliate =
+        existing ??
+        (await repos.affiliates.create({
+          organizationId: product.organizationId,
+          name: input.user.name ?? email,
+          email,
+          commissionBps: product.affiliateCommissionBps ?? 0,
+          active: true,
+          userId: input.user.id,
+          payeeOrganizationId: input.payeeOrganizationId,
+        }));
+
+      // Cadastro manual que depois virou conta: liga os dois, senão o dinheiro não tem destino.
+      if (existing && (!existing.userId || !existing.payeeOrganizationId)) {
+        await repos.affiliates.update(product.organizationId, existing.id, {
+          userId: existing.userId ?? input.user.id,
+          payeeOrganizationId: existing.payeeOrganizationId ?? input.payeeOrganizationId,
+        });
+        // O que o produtor já devia a ela por fora passa a cair no saldo, aqui. Sem isto a
+        // comissão ficaria presa: a transferência automática só acontece em venda nova, e o
+        // pagamento manual passa a ser recusado justamente porque ela agora recebe pelo saldo.
+        if (!existing.payeeOrganizationId && input.payeeOrganizationId) {
+          await this.transferPayableToBalance(repos, product.organizationId, existing.id);
+        }
+      }
+
+      const already = await repos.affiliates.findAffiliation(product.id, affiliate.id);
+      if (already) return { affiliation: already, product };
+
+      const affiliation = await repos.affiliates.createAffiliation({
+        productId: product.id,
+        affiliateId: affiliate.id,
+        commissionBps: product.affiliateCommissionBps ?? affiliate.commissionBps,
+        code: generateCode(),
+      });
+      await repos.audit.record({
+        organizationId: product.organizationId,
+        userId: input.user.id,
+        action: "affiliation.accepted",
+        entity: "Affiliation",
+        entityId: affiliation.id,
+        metadata: { productId: product.id, commissionBps: affiliation.commissionBps },
+      });
+      return { affiliation, product };
+    });
+  }
+
+  /** Leva para o saldo dela a comissão já liberada que ainda estava para ser paga por fora. */
+  private async transferPayableToBalance(repos: Repositories, organizationId: string, affiliateId: string): Promise<void> {
+    const payable = await repos.affiliates.listPayable(organizationId, affiliateId);
+    const now = new Date();
+    for (const row of payable) {
+      const commission = await repos.affiliates.findCommissionWithPayee(row.orderId);
+      if (!commission) continue;
+      const { net } = await this.transferToPayee(repos, commission, "PRODUCER_AVAILABLE");
+      if (net > 0n) await repos.affiliates.updateCommission(commission.id, { status: "PAID", paidAt: now });
+    }
+  }
+
+  /** As afiliações de quem está logado, para a área dela. */
+  listForUser(userId: string) {
+    return this.uow.repos.affiliates.listAffiliationsForUser(userId);
+  }
+
+  /** O que as indicações dela renderam na janela — a venda do afiliado é venda dela também. */
+  referredSummary(payeeOrganizationId: string, since: Date) {
+    return this.uow.repos.affiliates.referredSummary(payeeOrganizationId, since);
+  }
+
+  earningsForUser(payeeOrganizationId: string, limit = 100) {
+    return this.uow.repos.affiliates.listCommissionsForPayee(payeeOrganizationId, limit);
+  }
+
+  /**
+   * O destino de um link de afiliado: a afiliação ativa e o checkout por onde a venda entra.
+   *
+   * O afiliado divulga um produto, não uma página — é o produtor que decide qual checkout
+   * recebe a venda, e pode trocar isso sem invalidar os links já distribuídos. Sem checkout
+   * ativo não há para onde mandar: o link não vale, mesmo com a afiliação de pé.
+   */
+  async resolveLink(code: string) {
+    const target = await this.uow.repos.affiliates.findAffiliationByCode(normalizeReferralCode(code));
+    if (!target) return null;
+    const slug = await this.uow.repos.checkouts.findActiveSlugByProduct(target.productId);
+    if (!slug) return null;
+    return { target, slug };
   }
 
   /** Resolves a referral code to the affiliate that earns from it, if still active. */
   async resolveAttribution(organizationId: string, code: string) {
-    const target = await this.uow.repos.affiliates.findLinkByCode(code.trim().toUpperCase());
+    const target = await this.uow.repos.affiliates.findAffiliationByCode(normalizeReferralCode(code));
     if (!target || target.organizationId !== organizationId) return null;
     return target;
   }
 
   registerClick(code: string) {
-    return this.uow.repos.affiliates.registerClick(code.trim().toUpperCase());
+    return this.uow.repos.affiliates.registerClick(normalizeReferralCode(code));
   }
 
   /**
-   * Records the commission for a captured payment and parks the money in
-   * AFFILIATE_PAYABLE. Called inside the capture transaction, after the split.
+   * Registra a comissão da venda aprovada e passa o dinheiro para a conta de quem indicou.
+   *
+   * Entra no saldo PENDENTE dela, não no disponível: a venda acabou de ser aprovada e ainda
+   * corre o prazo de liberação, o mesmo que vale para o produtor. Ela vê o valor no saldo
+   * desde o primeiro minuto, com a data em que ele libera — e não um nada que vira dinheiro
+   * duas semanas depois.
+   *
+   * Quem não tem conta na Kabrun fica com a comissão parada em AFFILIATE_PAYABLE na conta de
+   * quem vendeu, para o produtor pagar por fora.
    */
   async recordCommission(
     repos: Repositories,
@@ -142,12 +315,111 @@ export class AffiliateService {
       currency: payment.currency,
       status: "PENDING",
     });
+
+    const commission = await repos.affiliates.findCommissionWithPayee(input.orderId);
+    if (commission) await this.transferToPayee(repos, commission, "PRODUCER_PENDING");
+
+  }
+
+  /**
+   * Passa a comissão da conta de quem vendeu para a conta de quem indicou.
+   *
+   * Dois lançamentos espelhados, um em cada organização, amarrados pelo id da comissão: o
+   * dinheiro não sai da Kabrun, só muda de dono. Na conta do produtor a dívida com o afiliado
+   * se extingue e o caixa atribuído a ela diminui; na conta dele o caixa entra e vira saldo.
+   *
+   * Dois lançamentos e não um porque cada um fecha em si: o `post` exige débito igual a
+   * crédito, e um lançamento só nunca poderia pertencer a duas organizações.
+   */
+  private async transferToPayee(
+    repos: Repositories,
+    commission: TransferableCommission,
+    account: "PRODUCER_PENDING" | "PRODUCER_AVAILABLE",
+  ): Promise<{ net: bigint; created: boolean }> {
+    const payee = commission.affiliate.payeeOrganizationId;
+    const net = commission.amount - commission.reversedAmount;
+    if (!payee || net <= 0n) return { net: 0n, created: false };
+
+    const currency = assertSupportedCurrency(commission.currency);
+    await this.ledger.post(repos, {
+      organizationId: commission.organizationId,
+      idempotencyKey: `affiliate-commission:${commission.id}:out`,
+      type: "affiliate.commission.transferred",
+      referenceType: "AffiliateCommission",
+      referenceId: commission.id,
+      currency,
+      description: `Comissão transferida para ${commission.affiliate.name}`,
+      lines: [
+        { account: "AFFILIATE_PAYABLE", direction: "DEBIT", amount: net, description: "Baixa da comissão devida" },
+        { account: "PLATFORM_CASH", direction: "CREDIT", amount: net, description: "Caixa transferido à conta do afiliado" },
+      ],
+    });
+    const { created } = await this.ledger.post(repos, {
+      organizationId: payee,
+      idempotencyKey: `affiliate-commission:${commission.id}:in`,
+      type: "affiliate.commission.received",
+      referenceType: "AffiliateCommission",
+      referenceId: commission.id,
+      currency,
+      description: "Comissão de afiliado recebida",
+      lines: [
+        { account: "PLATFORM_CASH", direction: "DEBIT", amount: net, description: "Caixa recebido da conta do produtor" },
+        { account, direction: "CREDIT", amount: net, description: "Comissão de venda indicada" },
+      ],
+    });
+    return { net, created };
+  }
+
+  /**
+   * Libera para saque a comissão que já está no saldo dela.
+   *
+   * Aqui o dinheiro não muda de conta — ele já é dela desde a venda: só sai do pendente para o
+   * disponível, exatamente como o saldo do produtor sai quando o prazo fecha. Por isso um
+   * lançamento só, dentro da organização dela.
+   */
+  async releaseSettledCommissions(repos: Repositories, orderId: string, now: Date): Promise<bigint> {
+    const commissions = await repos.affiliates.listTransferableByOrder(orderId);
+    let released = 0n;
+
+    for (const commission of commissions) {
+      const payee = commission.affiliate.payeeOrganizationId;
+      const net = commission.amount - commission.reversedAmount;
+      if (!payee || net <= 0n) continue;
+
+      // Quase sempre a transferência já aconteceu na venda, e isto é um no-op que só devolve
+      // `created: false` — o dinheiro está no pendente dela e só precisa passar para o
+      // disponível. Quando ela ligou a conta depois da venda, porém, a comissão nunca saiu da
+      // conta do produtor: aí é esta chamada que a move, direto para o disponível, e não há
+      // pendente nenhum para baixar.
+      const { created } = await this.transferToPayee(repos, commission, "PRODUCER_AVAILABLE");
+      if (!created) {
+        await this.ledger.post(repos, {
+          organizationId: payee,
+          idempotencyKey: `affiliate-commission:${commission.id}:released`,
+          type: "affiliate.commission.released",
+          referenceType: "AffiliateCommission",
+          referenceId: commission.id,
+          currency: assertSupportedCurrency(commission.currency),
+          description: "Comissão liberada para saque",
+          lines: [
+            { account: "PRODUCER_PENDING", direction: "DEBIT", amount: net },
+            { account: "PRODUCER_AVAILABLE", direction: "CREDIT", amount: net },
+          ],
+        });
+      }
+
+      // PAID porque, para quem tem conta aqui, a Kabrun já entregou: o dinheiro está no saldo
+      // dela, sacável. O que fica AVAILABLE é a comissão de quem o produtor ainda vai pagar.
+      await repos.affiliates.updateCommission(commission.id, { status: "PAID", paidAt: now });
+      released += net;
+    }
+    return released;
   }
 
   /** Gives back part of a commission when the sale is refunded or charged back. */
   async reverseCommission(repos: Repositories, orderId: string, amount: bigint): Promise<bigint> {
     if (amount <= 0n) return 0n;
-    const commission = await repos.affiliates.findCommissionByOrder(orderId);
+    const commission = await repos.affiliates.findCommissionWithPayee(orderId);
     if (!commission || commission.status === "CANCELED") return 0n;
 
     const outstanding = commission.amount - commission.reversedAmount;
@@ -159,6 +431,48 @@ export class AffiliateService {
       reversedAmount: reversedTotal,
       status: reversedTotal >= commission.amount ? "CANCELED" : commission.status,
     });
+
+    // Comissão que está na conta do afiliado volta de lá, não da do produtor.
+    //
+    // Quem reembolsa debita AFFILIATE_PAYABLE na conta de quem vendeu, e depois da
+    // transferência essa dívida não existe mais ali — debitá-la sem isto deixaria a conta do
+    // produtor devendo um valor negativo a um afiliado que ficou com o dinheiro.
+    //
+    // Sai do mesmo lugar onde o dinheiro está: do pendente enquanto a venda não liberou, do
+    // disponível depois. Se ele já sacou, o disponível fica negativo, e fica: é o preço de
+    // receber antes de a venda ser definitiva, e a próxima comissão cobre. O saque lê o saldo
+    // do ledger antes de pagar, então nada sai no vermelho.
+    const payee = commission.affiliate.payeeOrganizationId;
+    if (payee) {
+      const account = commission.status === "PENDING" ? "PRODUCER_PENDING" : "PRODUCER_AVAILABLE";
+      const currency = assertSupportedCurrency(commission.currency);
+      await this.ledger.post(repos, {
+        organizationId: payee,
+        idempotencyKey: `affiliate-commission:${commission.id}:clawback:${reversedTotal}:out`,
+        type: "affiliate.commission.returned",
+        referenceType: "AffiliateCommission",
+        referenceId: commission.id,
+        currency,
+        description: "Comissão devolvida — venda estornada",
+        lines: [
+          { account, direction: "DEBIT", amount: reversed, description: "Baixa da comissão estornada" },
+          { account: "PLATFORM_CASH", direction: "CREDIT", amount: reversed, description: "Caixa devolvido à conta do produtor" },
+        ],
+      });
+      await this.ledger.post(repos, {
+        organizationId: commission.organizationId,
+        idempotencyKey: `affiliate-commission:${commission.id}:clawback:${reversedTotal}:in`,
+        type: "affiliate.commission.reclaimed",
+        referenceType: "AffiliateCommission",
+        referenceId: commission.id,
+        currency,
+        description: `Comissão retomada de ${commission.affiliate.name}`,
+        lines: [
+          { account: "PLATFORM_CASH", direction: "DEBIT", amount: reversed, description: "Caixa recebido de volta" },
+          { account: "AFFILIATE_PAYABLE", direction: "CREDIT", amount: reversed, description: "Comissão devida outra vez, para o estorno baixar" },
+        ],
+      });
+    }
     return reversed;
   }
 
@@ -171,6 +485,11 @@ export class AffiliateService {
     return this.uow.transaction(async (repos) => {
       const affiliate = await repos.affiliates.findById(organizationId, affiliateId);
       if (!affiliate) throw new NotFoundError("Affiliate", affiliateId);
+      // Quem tem conta na Kabrun já recebeu: a comissão caiu no saldo dele na hora da venda.
+      // Sem isto o produtor pagaria a mesma comissão duas vezes, e a segunda do bolso dele.
+      if (affiliate.payeeOrganizationId) {
+        throw new ValidationError("Esta pessoa recebe pelo saldo da conta Kabrun dela, não por fora");
+      }
 
       const payable = await repos.affiliates.listPayable(organizationId, affiliateId);
       const total = payable.reduce((sum, row) => sum + (row.amount - row.reversedAmount), 0n);

@@ -7,6 +7,7 @@ import { IdempotencyService } from "@/lib/idempotency/idempotency.service";
 import { logger } from "@/lib/logger";
 import type { CurrencyCode } from "@/lib/money";
 import type { EmailProvider } from "@/lib/providers/email/email-provider";
+import type { ExchangeRateProvider } from "@/lib/providers/exchange";
 import type { StorageProvider } from "@/lib/providers/storage";
 import type { PaymentProvider } from "@/lib/providers/payment/types";
 import type { JobQueue } from "@/lib/providers/queue/job-queue";
@@ -21,6 +22,7 @@ import { PrismaAwardRepository } from "@/modules/awards/award.repository";
 import { AwardService } from "@/modules/awards/award.service";
 import { PrismaPlatformAdminRepository } from "@/modules/admin/platform-admin.repository";
 import { PlatformAdminService } from "@/modules/admin/platform-admin.service";
+import { PlatformFeeService } from "@/modules/fees/platform-fee.service";
 import { VerificationService } from "@/modules/compliance/verification.service";
 import { CouponService } from "@/modules/coupons/coupon.service";
 import { DisputeService } from "@/modules/disputes/dispute.service";
@@ -34,16 +36,17 @@ import { OfferService } from "@/modules/offers/offer.service";
 import { OrganizationService } from "@/modules/organizations/organization.service";
 import { PaymentService } from "@/modules/payments/payment.service";
 import { PayoutService } from "@/modules/payouts/payout.service";
+import { PayoutDestinationService } from "@/modules/payouts/payout-destination.service";
 import { ProductService } from "@/modules/products/product.service";
 import { RefundService } from "@/modules/refunds/refund.service";
 import type { RiskEventRepository } from "@/modules/risk/risk-event.repository";
 import { RiskService } from "@/modules/risk/risk.service";
 import { SettlementService } from "@/modules/settlements/settlement.service";
+import { ReserveService } from "@/modules/reserves/reserve.service";
 import { SubscriptionService } from "@/modules/subscriptions/subscription.service";
 import { WEBHOOK_JOB, WebhookIngestionService } from "@/modules/webhooks/webhook-ingestion.service";
 import type { WebhookPayloadRepository } from "@/modules/webhooks/webhook-payload.repository";
 import { WebhookProcessor } from "@/modules/webhooks/webhook-processor.service";
-import { TaxSettingsService } from "@/modules/taxes/tax-settings.service";
 import { PolicyTaxService } from "@/modules/taxes/tax.service";
 import { PrismaUnitOfWork } from "./unit-of-work";
 
@@ -64,12 +67,15 @@ export interface ServiceDependencies {
   eventBus: EventBus;
   emailProvider: EmailProvider;
   storageProvider: StorageProvider;
+  /** De onde vem o câmbio que converte um saldo em outra moeda na hora do saque. */
+  exchangeRates: ExchangeRateProvider;
   clock: Clock;
   config: {
     appUrl: string;
     dataHashSecret: string;
     defaultSettlementDelayDays: number;
     minimumPayout: Partial<Record<CurrencyCode, bigint>>;
+    payoutFee: Partial<Record<CurrencyCode, bigint>>;
   };
 }
 
@@ -86,15 +92,18 @@ export function buildServices(deps: ServiceDependencies) {
   });
   const refunds = new RefundService(uow, deps.paymentProvider, ledger, affiliates);
   const disputes = new DisputeService(uow, ledger, affiliates);
-  const settlements = new SettlementService(uow, ledger, deps.clock);
+  const finance = new FinanceOverviewService(uow, { defaultSettlementDelayDays: deps.config.defaultSettlementDelayDays });
+  const settlements = new SettlementService(uow, ledger, affiliates, finance, deps.clock);
+  const reserves = new ReserveService(uow, ledger, deps.clock);
   const risk = new RiskService(deps.mongo.riskEvents);
-  const payouts = new PayoutService(uow, deps.paymentProvider, ledger, balances, risk, deps.clock, {
+  const payouts = new PayoutService(uow, deps.paymentProvider, ledger, balances, risk, deps.exchangeRates, deps.clock, {
     minimumPayout: deps.config.minimumPayout,
+    payoutFee: deps.config.payoutFee,
   });
+  const payoutDestinations = new PayoutDestinationService(uow, deps.paymentProvider.type, deps.config.dataHashSecret);
   const merchantAccounts = new MerchantAccountService(uow, deps.paymentProvider, deps.mongo.providerSnapshots);
   // O imposto é do produtor: calculado e registrado aqui, recolhido por ele.
   const taxes = new PolicyTaxService(uow.repos.taxPolicies);
-  const taxSettings = new TaxSettingsService(uow);
   const subscriptions = new SubscriptionService(uow, deps.paymentProvider, payments, taxes);
   const organizations = new OrganizationService(uow, merchantAccounts, deps.config.dataHashSecret);
   const products = new ProductService(uow, deps.storageProvider);
@@ -115,8 +124,8 @@ export function buildServices(deps: ServiceDependencies) {
   const verification = new VerificationService(uow, merchantAccounts);
   // Cross-tenant reads for Kabrun staff; never reachable from the producer app.
   const platformAdmin = new PlatformAdminService(new PrismaPlatformAdminRepository(deps.prisma));
+  const platformFees = new PlatformFeeService(uow);
   const checkouts = new CheckoutService(uow, deps.mongo.checkoutConfigs, payments, tracking, idempotency, coupons, affiliates, subscriptions, deps.paymentProvider.type, taxes, deps.storageProvider);
-  const finance = new FinanceOverviewService(uow);
   const outboxPublisher = new OutboxPublisher(uow.repos.outbox, deps.eventBus);
 
   const webhookIngestion = new WebhookIngestionService(uow, deps.webhookProviders, deps.mongo.webhookPayloads, deps.queue);
@@ -144,10 +153,13 @@ export function buildServices(deps: ServiceDependencies) {
     refunds,
     disputes,
     settlements,
+    reserves,
     payouts,
+    payoutDestinations,
     merchantAccounts,
     verification,
     platformAdmin,
+    platformFees,
     awards,
     subscriptions,
     organizations,
@@ -160,7 +172,6 @@ export function buildServices(deps: ServiceDependencies) {
     checkouts,
     coupons,
     affiliates,
-    taxSettings,
     finance,
     outboxPublisher,
     webhookIngestion,

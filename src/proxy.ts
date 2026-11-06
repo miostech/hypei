@@ -18,6 +18,7 @@ const PROTECTED_PREFIXES = [
   "/finance",
   "/payouts",
   "/affiliates",
+  "/affiliations",
   "/coupons",
   "/members-area",
   "/analytics",
@@ -25,6 +26,7 @@ const PROTECTED_PREFIXES = [
   "/settings",
   "/admin",
   "/members",
+  "/aluno",
 ];
 
 export async function proxy(request: NextRequest) {

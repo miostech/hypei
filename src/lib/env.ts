@@ -31,6 +31,9 @@ const envSchema = z.object({
   MOCK_WEBHOOK_SECRET: z.string().default("mock-webhook-local-dev-secret"),
   MOCK_PROCESSOR_FEE_BPS: z.coerce.number().int().min(0).max(10_000).default(400),
 
+  // `ptax` busca a cotação oficial do Banco Central; `fixed` usa a tabela de desenvolvimento.
+  EXCHANGE_RATE_PROVIDER: z.enum(["ptax", "fixed"]).default("ptax"),
+
   STORAGE_PROVIDER: z.enum(["local", "s3", "r2", "minio", "hetzner", "none"]).default("none"),
   STORAGE_LOCAL_DIR: z.string().default(".storage"),
   // Credentials for the s3/r2/minio/hetzner providers. They must be part of the schema:
@@ -72,6 +75,9 @@ function assertProductionReady(env: Env): void {
   }
   if (env.EMAIL_PROVIDER === "console" || env.EMAIL_PROVIDER === "preview") {
     problems.push(`EMAIL_PROVIDER=${env.EMAIL_PROVIDER} does not deliver mail`);
+  }
+  if (env.EXCHANGE_RATE_PROVIDER === "fixed") {
+    problems.push("EXCHANGE_RATE_PROVIDER=fixed converts payouts at an invented rate");
   }
   if (env.STORAGE_PROVIDER === "local") {
     problems.push(

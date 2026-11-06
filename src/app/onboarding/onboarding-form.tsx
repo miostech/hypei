@@ -34,11 +34,14 @@ export function OnboardingForm({
   defaultEmail,
   providerName,
   countries,
+  returnTo,
 }: {
   defaultEmail: string;
   providerName: string;
   /** Resolvidos no servidor: a tabela ICU do Node e a do navegador podem divergir. */
   countries: { code: CountryCode; name: string }[];
+  /** Para onde voltar quando a conta nasceu no meio de outra coisa — um convite de afiliação. */
+  returnTo?: string;
 }) {
   const t = useAppDictionary().onboarding;
   const [state, formAction] = useActionState(completeOnboarding, idleState);
@@ -101,6 +104,7 @@ export function OnboardingForm({
 
       <CardContent>
         <form action={formAction} className="space-y-4">
+          {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
           <div className={step === 0 ? "space-y-4" : "hidden"}>
             <TextField
               label={t.name}

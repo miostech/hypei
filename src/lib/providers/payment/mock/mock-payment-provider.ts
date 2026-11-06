@@ -11,6 +11,7 @@ import type {
   MerchantOnboardingLinkInput,
   NormalizedProviderEvent,
   PaymentProvider,
+  PayoutDestinationInput,
   ProviderPaymentResult,
   ProviderPayoutResult,
   ProviderRefundResult,
@@ -65,6 +66,10 @@ interface MockPayout {
   id: string;
   payoutId: string | null;
   status: ProviderPayoutResult["status"];
+  /** O que a Kabrun mandou transferir — o líquido, já sem a taxa de saque. */
+  amount: bigint;
+  /** Para onde ela mandou, quando não é a conta conectada. */
+  destination: PayoutDestinationInput | null;
 }
 
 export interface MockPaymentProviderOptions {
@@ -180,7 +185,13 @@ export class MockPaymentProvider implements PaymentProvider {
   async createPayout(input: CreatePayoutInput): Promise<ProviderPayoutResult> {
     const result = this.once(input.idempotencyKey, () => {
       const id = `mock_po_${randomUUID()}`;
-      this.payouts.set(id, { id, payoutId: input.metadata.payoutId ?? null, status: "pending" });
+      this.payouts.set(id, {
+        id,
+        payoutId: input.metadata.payoutId ?? null,
+        status: "pending",
+        amount: input.amount,
+        destination: input.destination ?? null,
+      });
       return { providerPayoutId: id, status: "pending" as const, fresh: true };
     });
     if (result.fresh) {
@@ -193,6 +204,16 @@ export class MockPaymentProvider implements PaymentProvider {
       });
     }
     return { providerPayoutId: result.providerPayoutId, status: result.status };
+  }
+
+  /** Só para teste: quanto a Kabrun pediu para transferir neste saque. */
+  transferredAmount(providerPayoutId: string): bigint | undefined {
+    return this.payouts.get(providerPayoutId)?.amount;
+  }
+
+  /** Só para teste: para onde este saque foi mandado, quando não é a conta conectada. */
+  payoutDestination(providerPayoutId: string): PayoutDestinationInput | null | undefined {
+    return this.payouts.get(providerPayoutId)?.destination;
   }
 
   async getPayout(providerPayoutId: string): Promise<ProviderPayoutResult> {

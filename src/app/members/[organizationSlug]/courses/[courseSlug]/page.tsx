@@ -91,7 +91,7 @@ export default async function CoursePage({
       />
 
       <main className="mx-auto w-full max-w-4xl flex-1 space-y-6 p-4 sm:p-6">
-        <section className="bg-brand-gradient relative isolate overflow-hidden rounded-2xl p-6 text-white shadow-lift sm:p-8">
+        <section className="bg-brand-gradient relative isolate overflow-hidden rounded-xl p-6 text-white shadow-lift sm:p-8">
           <span aria-hidden className="bg-dot-grid pointer-events-none absolute inset-0 text-white/15 opacity-40" />
           <div className="relative space-y-5">
             <div>
@@ -126,7 +126,7 @@ export default async function CoursePage({
         </section>
 
         {outline.totalLessons === 0 ? (
-          <p className="rounded-2xl border border-dashed bg-card p-10 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border border-dashed bg-card p-10 text-center text-sm text-muted-foreground">
             {dict.course.unpublished}
           </p>
         ) : (

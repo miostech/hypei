@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Locale } from "@/lib/i18n/locale";
 import type { PrismaClient } from "@/generated/prisma/client";
+import type { PaymentMethodType } from "@/generated/prisma/enums";
 import { createPrismaClient } from "@/lib/database/postgres/client";
 import { InProcessEventBus } from "@/lib/events/event-bus";
+import { DEVELOPMENT_RATES, FixedExchangeRateProvider, type RateTable } from "@/lib/providers/exchange";
 import { MockPaymentProvider, type MockEvent } from "@/lib/providers/payment/mock/mock-payment-provider";
 import { InMemoryAnalyticsEventRepository } from "@/modules/analytics/analytics-event.repository";
 import { InMemoryCheckoutConfigRepository } from "@/modules/checkout/checkout-config.repository";
@@ -38,12 +40,28 @@ export interface TestApp {
   deliver(event: MockEvent, eventId?: string): Promise<{ duplicate: boolean }>;
 }
 
-export async function createTestApp(options: { platformFeeBps?: number; settlementDays?: number; processorFeeBps?: number } = {}): Promise<TestApp> {
+export async function createTestApp(
+  options: {
+    platformFeeBps?: number;
+    settlementDays?: number;
+    processorFeeBps?: number;
+    payoutFee?: bigint;
+    /** Sem reserva por padrão: cada teste de saldo fala de uma coisa só. Quem testa a
+     *  reserva liga a dela, e o padrão publicado tem teste próprio. */
+    reserveBps?: number;
+    reserveHoldDays?: number;
+    /** Cotações desta instância, para o teste de saque com conversão. */
+    rates?: RateTable;
+  } = {},
+): Promise<TestApp> {
   const prisma = testPrisma();
   await resetDatabase(prisma);
 
   await prisma.platformFeePolicy.create({ data: { currency: "BRL", percentageBps: options.platformFeeBps ?? 1000, fixedAmount: 0n } });
   await prisma.settlementPolicy.create({ data: { delayDays: options.settlementDays ?? 7 } });
+  await prisma.reservePolicy.create({
+    data: { percentageBps: options.reserveBps ?? 0, holdDays: options.reserveHoldDays ?? 30 },
+  });
 
   const clock = {
     // Provider events carry real timestamps, so the test clock starts at "now".
@@ -56,6 +74,8 @@ export async function createTestApp(options: { platformFeeBps?: number; settleme
   const queue = new ManualQueue();
   const email = new FakeEmailProvider();
   const storage = new FakeStorageProvider();
+  // Cotações fixas: o teste que converte sabe exatamente que número esperar.
+  const exchangeRates = new FixedExchangeRateProvider(options.rates ?? DEVELOPMENT_RATES, () => clock.now, "test");
 
   const services = buildServices({
     prisma,
@@ -70,12 +90,14 @@ export async function createTestApp(options: { platformFeeBps?: number; settleme
     eventBus: new InProcessEventBus(),
     emailProvider: email,
     storageProvider: storage,
+    exchangeRates,
     clock: () => clock.now,
     config: {
       appUrl: "https://app.kabrun.test",
       dataHashSecret: "test-hash-secret-with-at-least-32-chars!!",
       defaultSettlementDelayDays: 30,
       minimumPayout: { BRL: 1000n },
+      payoutFee: { BRL: options.payoutFee ?? 367n },
     },
   });
 
@@ -105,6 +127,14 @@ export async function createSeller(app: TestApp, options: { amount?: bigint; cur
     taxIdType: "CPF",
     taxId: VALID_CPF,
     supportEmail: `${slug}@example.com`,
+  });
+  // Produtora brasileira recebe por Pix, e sem chave cadastrada o saque não sai: a chave é o
+  // CPF da própria conta, que é o que a verificação de titularidade exige.
+  await app.services.payoutDestinations.savePix({
+    organizationId: organization.id,
+    country: "BR",
+    currency: options.currency ?? "BRL",
+    rawKey: VALID_CPF,
   });
   const product = await app.services.products.create(organization.id, user.id, {
     name: "Curso Teste",
@@ -158,9 +188,21 @@ export async function startPurchase(
   return { result, payment };
 }
 
-export async function confirmPayment(app: TestApp, payment: { providerPaymentId: string | null; amount: bigint; currency: string }, eventId?: string) {
+export async function confirmPayment(
+  app: TestApp,
+  payment: { providerPaymentId: string | null; amount: bigint; currency: string },
+  eventId?: string,
+  /** O meio que o provedor informa. Sem isto o mock diz cartão, como a maioria das vendas. */
+  paymentMethod?: PaymentMethodType,
+) {
   return app.deliver(
-    { type: "payment.succeeded", providerPaymentId: payment.providerPaymentId!, amount: payment.amount.toString(), currency: payment.currency },
+    {
+      type: "payment.succeeded",
+      providerPaymentId: payment.providerPaymentId!,
+      amount: payment.amount.toString(),
+      currency: payment.currency,
+      paymentMethod,
+    },
     eventId,
   );
 }
@@ -170,11 +212,11 @@ export async function flushEvents(app: TestApp): Promise<number> {
   return app.services.outboxPublisher.publishPending();
 }
 
-/** Sum of each account (normal side) across ALL organizations. */
-export async function accountTotals(prisma: PrismaClient, organizationId?: string) {
+/** Sum of each account (normal side) across ALL organizations, opcionalmente de uma moeda. */
+export async function accountTotals(prisma: PrismaClient, organizationId?: string, currency?: string) {
   const rows = await prisma.ledgerEntry.groupBy({
     by: ["account", "direction"],
-    where: organizationId ? { organizationId } : {},
+    where: { ...(organizationId ? { organizationId } : {}), ...(currency ? { currency } : {}) },
     _sum: { amount: true },
   });
   const net: Record<string, bigint> = {};
@@ -183,6 +225,44 @@ export async function accountTotals(prisma: PrismaClient, organizationId?: strin
     net[r.account] = (net[r.account] ?? 0n) + (r.direction === "DEBIT" ? v : -v);
   }
   return net; // debit-positive
+}
+
+/**
+ * Invariante da transferência entre contas: ela existe aos pares.
+ *
+ * O `post` garante que cada lançamento fecha em si, mas não que exista o outro lado — e é o
+ * outro lado que torna a transferência verdadeira: o valor que sai da conta de quem vendeu
+ * entra na de quem indicou, pela mesma comissão e pelo mesmo valor. Um lançamento órfão aqui
+ * significaria dinheiro que saiu de uma conta e não chegou em nenhuma.
+ */
+export async function expectAffiliateTransfersPaired(prisma: PrismaClient) {
+  const pairs = [
+    ["affiliate.commission.transferred", "affiliate.commission.received"],
+    ["affiliate.commission.returned", "affiliate.commission.reclaimed"],
+  ] as const;
+  const journals = await prisma.ledgerJournal.findMany({
+    where: { type: { in: pairs.flat() } },
+    include: { entries: true },
+  });
+  const total = (j: (typeof journals)[number]) => j.entries.reduce((sum, e) => (e.direction === "DEBIT" ? sum + e.amount : sum), 0n);
+
+  for (const [sentType, receivedType] of pairs) {
+    const sent = journals.filter((j) => j.type === sentType);
+    const received = journals.filter((j) => j.type === receivedType);
+    const matched = new Set<string>();
+    for (const journal of sent) {
+      const twin = received.find(
+        (candidate) =>
+          !matched.has(candidate.id) &&
+          candidate.referenceId === journal.referenceId &&
+          candidate.organizationId !== journal.organizationId &&
+          total(candidate) === total(journal),
+      );
+      if (!twin) throw new Error(`${sentType} ${journal.referenceId} (${total(journal)}) has no matching ${receivedType}`);
+      matched.add(twin.id);
+    }
+    if (matched.size !== received.length) throw new Error(`${receivedType}: ${received.length - matched.size} without a ${sentType}`);
+  }
 }
 
 /** Double-entry invariant: total debits == total credits (money is never created or lost). */

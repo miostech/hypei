@@ -16,7 +16,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function NewOfferPage({ searchParams }: PageProps<"/offers/new">) {
   const { organization } = await requirePagePermission("products:write");
   const params = await searchParams;
-  const products = await getServices().products.list(organization.id);
+  const services = getServices();
+  const [products, merchant] = await Promise.all([
+    services.products.list(organization.id),
+    services.merchantAccounts.getForOrganization(organization.id),
+  ]);
   if (products.length === 0) redirect("/products/new");
 
   const t = (await getAppDictionary(await appLocale())).offerForm;
@@ -29,6 +33,7 @@ export default async function NewOfferPage({ searchParams }: PageProps<"/offers/
         action={createOffer}
         products={products.map((p) => ({ id: p.id, name: p.name }))}
         submitLabel={t.createSubmit}
+        settlesIn={merchant?.defaultCurrency ?? null}
         defaultValues={{ productId, name: "", price: "", currency: organization.defaultCurrency, billingType: "ONE_TIME", active: true }}
       />
     </>

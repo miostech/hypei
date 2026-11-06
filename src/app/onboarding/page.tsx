@@ -36,6 +36,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
           defaultEmail={user.email}
           providerName={providerName}
           countries={localizedCountries(dict.localeTag)}
+          returnTo={typeof params.returnTo === "string" ? params.returnTo : undefined}
         />
         <p className="text-xs text-muted-foreground">{dict.onboarding.footnote}</p>
       </div>

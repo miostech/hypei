@@ -47,12 +47,28 @@ a ser requisito da emissão de nota, e deve ser tratada lá.
 
 Quem for mexer no resumo do checkout: a ausência da linha de imposto é intencional.
 
+## Revisão de 04/11/2026 — a tela do produtor saiu
+
+A NFS-e está fora do produto. Sem emissão de nota, mostrar o tributo ao produtor não serve a
+nada: o número não entra no ledger, não muda o que ele recebe, não muda a base da comissão do
+afiliado e não alimenta documento nenhum. Era um campo que pedia ao produtor a alíquota dele
+para depois repetir essa mesma alíquota de volta na tela.
+
+Então removemos a parte voltada ao produtor: o card "Regime tributário" em Configurações, o
+formulário que salvava regime, alíquota e município, a linha "Tributo incluso" no detalhe da
+venda, e o `TaxSettingsService` que ligava os dois.
+
+O encanamento fica dormindo, porque a decisão de fundo não mudou: `TaxService`,
+`PolicyTaxService`, o modelo `TaxPolicy`, `Order.taxAmount`/`Order.taxRegime` e a conta `TAXES`
+continuam no lugar. O dia em que a plataforma passar a ser responsável pelo recolhimento — ou em
+que a emissão de nota entrar — o cálculo volta a ter para onde ir, e aí a tela se justifica.
+
 ## Consequências
 
 - O comprador nunca paga mais do que o preço anunciado.
 - O ledger continua fechando sem o imposto participar, o que mantém a conciliação simples.
-- O produtor precisa de uma tela para configurar o próprio regime; enquanto ela não existe, a
-  política é criada direto no banco e o padrão é não cobrar nada.
+- Não existe tela de regime tributário: a política, se houver, é criada direto no banco, e o
+  padrão é não cobrar nada.
 - Emissão de documento fiscal (NFS-e no Brasil) **não** está incluída. É integração com emissor
   terceirizado e entra atrás da mesma interface.
 - UE e EUA ainda não têm motor. O `PolicyTaxService` serve qualquer jurisdição de alíquota
